@@ -10,6 +10,7 @@ import {
 } from "@/app/_lib/server/buildSubmissionDocx";
 import { requireActiveAdmin } from "@/app/_lib/server/adminApiAuth";
 import { decryptEncryptedPayloadFieldToJson } from "@/app/_lib/server/decryptEncryptedPayload";
+import { logSubmissionAudit } from "@/app/_lib/server/logSubmissionAudit";
 import {
   jsonForbidden,
   jsonNotFound,
@@ -79,6 +80,18 @@ export async function GET(request: NextRequest, context: RouteParams) {
     const filename = buildExportDocxFilename(display);
     const asciiName = asciiFallbackExportFilename(display);
     const encoded = encodeURIComponent(filename);
+
+    try {
+      await logSubmissionAudit({
+        submissionId: id,
+        adminUid: admin.uid,
+        adminEmail: admin.adminEmail,
+        action: "export_docx",
+        details: { filename },
+      });
+    } catch {
+      /* audit failure must not block export */
+    }
 
     return new NextResponse(new Uint8Array(buffer), {
       status: 200,

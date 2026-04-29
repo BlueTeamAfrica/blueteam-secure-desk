@@ -18,7 +18,6 @@ import { getFirebaseAuth } from "@/app/_lib/firebase/auth";
 import { useAuth } from "@/app/_components/auth/AuthContext";
 import { useCaseQueue } from "@/app/_components/dashboard/CaseQueueContext";
 import {
-  CASE_STATUS_LABEL,
   normalizeSidebarView,
   caseHasNoVisibleLead,
   normalizeSubmissionToCase,
@@ -45,9 +44,10 @@ import {
 } from "@/app/_lib/rbac";
 import { fetchSubmissionDocxDownload, triggerBrowserDownload } from "@/app/_lib/downloadSubmissionDocx";
 import { canAssignItem, canDeleteItem, mayExportSubmissionDocx } from "@/app/_lib/workflow/permissions";
-import { getOrgLabels } from "@/app/_lib/org/getOrgLabels";
+import { useDashboardBranding } from "@/app/_components/dashboard/WorkspaceBrandingProvider";
 import { filterItemsByView } from "@/app/_lib/items/filterItemsByView";
 import { getDashboardViewConfig } from "@/app/_lib/items/getDashboardViewConfig";
+import { exportSubmissionToOneDrive } from "@/app/_lib/integrations/onedrive/client";
 
 type SubmissionAuditAction = "save_reviewer_note";
 
@@ -57,6 +57,25 @@ export type WorkspaceMemberRow = {
   displayName: string | null;
   role: string;
 };
+
+function isSameLocalDay(a: Date, b: Date): boolean {
+  return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+}
+
+function parseIsoDate(iso: string | null): Date | null {
+  if (!iso) return null;
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+
+function formatDurationCompact(ms: number): string {
+  if (!Number.isFinite(ms) || ms <= 0) return "—";
+  const totalMin = Math.round(ms / 60000);
+  if (totalMin < 60) return `${totalMin}m`;
+  const h = Math.floor(totalMin / 60);
+  const m = totalMin % 60;
+  return m === 0 ? `${h}h` : `${h}h ${m}m`;
+}
 
 function relativeTimeShort(iso: string | null): string {
   if (!iso) return "—";
@@ -75,33 +94,17 @@ function relativeTimeShort(iso: string | null): string {
   return rtf.format(diffDay, "day");
 }
 
-function statusChipLabel(status: CaseStatus): string {
-  return CASE_STATUS_LABEL[status] ?? "Status";
+function statusChipLabel(status: CaseStatus, labels: ReturnType<typeof useDashboardBranding>["labels"]): string {
+  return labels.caseStatusLabels[status] ?? "Status";
 }
 
-const ME_PIPELINE_STAGES: CaseStatus[] = [
-  "new",
-  "needs_triage",
-  "assigned",
-  "in_review",
-  "waiting_follow_up",
-];
-
-function meDeskHrefForStage(status: CaseStatus): string {
-  switch (status) {
-    case "new":
-      return "/dashboard?view=new";
-    case "needs_triage":
-      return "/dashboard?view=needs_triage";
-    case "assigned":
-      return "/dashboard?view=assigned";
-    case "in_review":
-      return "/dashboard?view=in_review";
-    case "waiting_follow_up":
-      return "/dashboard?view=waiting_follow_up";
-    default:
-      return "/dashboard";
-  }
+function meDeskHrefForStage(
+  status: CaseStatus,
+  labels: ReturnType<typeof useDashboardBranding>["labels"],
+): string {
+  const key = labels.workflow.viewKeyByStatus[status];
+  const item = labels.workflow.sidebarStageViews.find((x) => x.key === key);
+  return item?.href ?? "/dashboard";
 }
 
 function countResolvedTodayLocal(list: WorkspaceCase[]): number {
@@ -119,7 +122,45 @@ function countResolvedTodayLocal(list: WorkspaceCase[]): number {
   }).length;
 }
 
-function managingEditorOpsFromCases(list: WorkspaceCase[]) {
+function executiveOverviewFromCases(list: WorkspaceCase[]) {
+  const now = new Date();
+  const newToday = list.filter((c) => {
+    const created = parseIsoDate(c.createdAt);
+    return created ? isSameLocalDay(created, now) : false;
+  }).length;
+
+  const awaitingReview = list.filter((c) => c.status === "needs_triage").length;
+  const inReview = list.filter((c) => c.status === "in_review").length;
+  const resolved = list.filter((c) => c.status === "resolved").length;
+
+  const windowStart = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+  const responseMs: number[] = [];
+  for (const c of list) {
+    const created = parseIsoDate(c.createdAt);
+    const reviewed = parseIsoDate(c.reviewedAt);
+    if (!created || !reviewed) continue;
+    if (created < windowStart) continue;
+    const dt = reviewed.getTime() - created.getTime();
+    if (!Number.isFinite(dt) || dt <= 0) continue;
+    responseMs.push(dt);
+  }
+  const avgResponseMs =
+    responseMs.length > 0 ? responseMs.reduce((acc, v) => acc + v, 0) / responseMs.length : null;
+
+  return {
+    newToday,
+    awaitingReview,
+    inReview,
+    resolved,
+    avgResponseLabel: avgResponseMs === null ? "—" : formatDurationCompact(avgResponseMs),
+    avgResponseHint:
+      avgResponseMs === null
+        ? "Response time appears once items have a Reviewed timestamp."
+        : `Avg (last 30d), from filed → reviewed · n=${responseMs.length}`,
+  };
+}
+
+function managingEditorOpsFromCases(list: WorkspaceCase[], labels: ReturnType<typeof useDashboardBranding>["labels"]) {
   const active = list.filter((c) => c.status !== "archived");
   const pipeline = active.filter((c) => c.status !== "resolved");
   const unassigned = pipeline.filter((c) => caseHasNoVisibleLead(c));
@@ -127,7 +168,7 @@ function managingEditorOpsFromCases(list: WorkspaceCase[]) {
   for (const c of pipeline) {
     byStage.set(c.status, (byStage.get(c.status) ?? 0) + 1);
   }
-  const bottlenecks = ME_PIPELINE_STAGES.map((status) => ({
+  const bottlenecks = labels.workflow.mePipelineStages.map((status) => ({
     status,
     count: byStage.get(status) ?? 0,
   })).filter((x) => x.count > 0);
@@ -216,7 +257,10 @@ export function SubmissionsList({
   sessionReady: boolean;
   role: WorkspaceRole | null;
 }) {
-  const labels = getOrgLabels();
+  const { labels, branding } = useDashboardBranding();
+  const needsTriageHref =
+    labels.workflow.sidebarStageViews.find((x) => x.key === "needs_triage")?.href ??
+    "/dashboard?view=needs_triage";
   const searchParams = useSearchParams();
   const view: SidebarViewKey = normalizeSidebarView(searchParams.get("view"));
   const caseDataEnabled = sessionReady && role !== null && role !== "readonly";
@@ -249,6 +293,8 @@ export function SubmissionsList({
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [exportDocxBusy, setExportDocxBusy] = useState(false);
   const [exportDocxError, setExportDocxError] = useState<string | null>(null);
+  const [exportOneDriveBusy, setExportOneDriveBusy] = useState(false);
+  const [exportOneDriveError, setExportOneDriveError] = useState<string | null>(null);
   const setDeleteConfirmPanelOpen = useCallback((open: boolean) => {
     setDeleteConfirmOpen(open);
     if (open) setDeleteError(null);
@@ -274,12 +320,13 @@ export function SubmissionsList({
 
   const filteredCases = useMemo(() => {
     return filterItemsByView({
-      submissions: cases,
+      submissions: roleFilteredCases,
       view: view,
       role,
       userCtx,
+      skipRoleVisibilityFilter: true,
     });
-  }, [cases, view, role, userCtx]);
+  }, [roleFilteredCases, view, role, userCtx]);
 
   const editorialCoverByCaseId = useMemo(
     () => editorialCoverUrlByCaseId(filteredCases),
@@ -293,33 +340,36 @@ export function SubmissionsList({
 
   const managingEditorOps = useMemo(() => {
     if (!managingEditorDesk || !viewConfig?.showRunSheet) return null;
-    return managingEditorOpsFromCases(roleFilteredCases);
-  }, [managingEditorDesk, roleFilteredCases, viewConfig?.showRunSheet]);
+    return managingEditorOpsFromCases(roleFilteredCases, labels);
+  }, [managingEditorDesk, roleFilteredCases, viewConfig?.showRunSheet, labels]);
+
+  const execOverview = useMemo(() => {
+    if (!role) return null;
+    return executiveOverviewFromCases(roleFilteredCases);
+  }, [role, roleFilteredCases]);
+
+  const selectedCase = useMemo(() => {
+    if (!selectedId) return null;
+    return cases.find((x) => x.id === selectedId) ?? null;
+  }, [selectedId, cases]);
 
   const allowedStatusTargets = useMemo((): CaseStatus[] => {
-    if (!selectedId || !role || !userCtx) return [];
-    const c = cases.find((x) => x.id === selectedId);
-    if (!c) return [];
-    return allowedCaseStatusTargets(role, c.status, c, userCtx);
-  }, [selectedId, cases, role, userCtx]);
+    if (!selectedCase || !role || !userCtx) return [];
+    return allowedCaseStatusTargets(role, selectedCase.status, selectedCase, userCtx);
+  }, [selectedCase, role, userCtx]);
 
   useEffect(() => {
-    if (!selectedId || !role || !userCtx) {
+    if (!selectedCase || !role || !userCtx) {
       setWorkflowStatusDraft(null);
       return;
     }
-    const c = cases.find((x) => x.id === selectedId);
-    if (!c) {
-      setWorkflowStatusDraft(null);
-      return;
-    }
-    const allowed = allowedCaseStatusTargets(role, c.status, c, userCtx);
+    const allowed = allowedStatusTargets;
     if (allowed.length === 0) {
       setWorkflowStatusDraft(null);
       return;
     }
-    setWorkflowStatusDraft(allowed.includes(c.status) ? c.status : allowed[0]!);
-  }, [selectedId, cases, role, userCtx]);
+    setWorkflowStatusDraft(allowed.includes(selectedCase.status) ? selectedCase.status : allowed[0]!);
+  }, [selectedCase, role, userCtx, allowedStatusTargets]);
 
   useEffect(() => {
     if (!caseDataEnabled) {
@@ -629,16 +679,18 @@ export function SubmissionsList({
       }
       const nextCases = cases.filter((c) => c.id !== id);
       setCases(nextCases);
+      const nextVisible = role && userCtx ? filterCasesVisibleToRole(role, nextCases, userCtx) : [];
       if (role && userCtx) {
-        setCaseQueueRows(filterCasesVisibleToRole(role, nextCases, userCtx).map(toCaseQueueSnapshot));
+        setCaseQueueRows(nextVisible.map(toCaseQueueSnapshot));
       } else {
         setCaseQueueRows([]);
       }
       const nextFiltered = filterItemsByView({
-        submissions: nextCases,
+        submissions: nextVisible,
         view,
         role,
         userCtx,
+        skipRoleVisibilityFilter: true,
       });
       const nextId =
         nextFiltered.length === 0
@@ -685,6 +737,32 @@ export function SubmissionsList({
       setExportDocxError("Network error while exporting.");
     } finally {
       setExportDocxBusy(false);
+    }
+  }
+
+  async function exportSelectedToOneDrive() {
+    if (!selectedId || !selected || !role || !userCtx) return;
+    if (!mayExportSubmissionDocx({ role, workspaceCase: selected, ctx: userCtx })) return;
+    setExportOneDriveBusy(true);
+    setExportOneDriveError(null);
+    try {
+      const user = getFirebaseAuth().currentUser;
+      if (!user) {
+        setExportOneDriveError("Please sign in again.");
+        return;
+      }
+      const result = await exportSubmissionToOneDrive({
+        submissionId: selected.id,
+        getIdToken: () => user.getIdToken(true),
+      });
+      if (!result.ok) {
+        setExportOneDriveError(result.error);
+        return;
+      }
+    } catch {
+      setExportOneDriveError("Network error while uploading to OneDrive.");
+    } finally {
+      setExportOneDriveBusy(false);
     }
   }
 
@@ -886,10 +964,8 @@ export function SubmissionsList({
     if (!mayAccessTeamInUi(role)) {
       return (
         <div className="card stack-16">
-          <div className="header-title">Team</div>
-          <p className="subtext" style={{ marginTop: 8 }}>
-            Team roster is limited to owner and administrator roles in this workspace.
-          </p>
+          <div className="header-title">{labels.teamPageTitle}</div>
+          <p className="subtext" style={{ marginTop: 8 }}>{labels.teamRosterLimitedBody}</p>
         </div>
       );
     }
@@ -911,11 +987,8 @@ export function SubmissionsList({
     return (
       <div className="card stack-16">
         <div>
-          <div className="header-title">Team</div>
-          <p className="subtext" style={{ marginTop: 8 }}>
-            A simple picture of who is in this workspace today. Invitations and roster editing will
-            arrive in a later phase.
-          </p>
+          <div className="header-title">{labels.teamPageTitle}</div>
+          <p className="subtext" style={{ marginTop: 8 }}>{labels.teamPageIntro}</p>
         </div>
 
         <div className="detail-section-title">You</div>
@@ -975,8 +1048,11 @@ export function SubmissionsList({
     !!role &&
     !!userCtx &&
     mayExportSubmissionDocx({ role, workspaceCase: selected, ctx: userCtx });
-  const stageLabel = editorDesk || managingEditorDesk ? "Where it stands" : "Case status";
-  const leadLabel = editorDesk || managingEditorDesk ? "Who has it" : "Owner";
+  const showExportOneDrive = showExportDocx;
+  const stageLabel =
+    editorDesk || managingEditorDesk ? labels.stageColumnTitleDesk : labels.stageColumnTitleDefault;
+  const leadLabel =
+    editorDesk || managingEditorDesk ? labels.leadColumnTitleDesk : labels.leadColumnTitleDefault;
   const priorityLabel = editorDesk || managingEditorDesk ? "Attention" : "Priority";
 
   const showStatusPicker =
@@ -1020,7 +1096,7 @@ export function SubmissionsList({
                         <span className="me-desk-kpi-label">{labels.activeReports}</span>
                       </span>
                     </Link>
-                    <Link className="me-desk-kpi me-desk-kpi--lead" href="/dashboard">
+                    <Link className="me-desk-kpi me-desk-kpi--lead" href={needsTriageHref}>
                       <span className="me-desk-kpi-icon">
                         <MeDeskKpiIcon kind="lead" />
                       </span>
@@ -1055,40 +1131,77 @@ export function SubmissionsList({
         </>
       ) : null}
 
+      {execOverview ? (
+        <section className="exec-overview" aria-label="Executive overview">
+          <div className="exec-overview-header">
+            <div>
+              <div className="exec-overview-kicker">{labels.workspaceName}</div>
+              <div className="exec-overview-title">{branding.welcomeText}</div>
+            </div>
+          </div>
+          <div className="exec-overview-grid">
+            <Link href="/dashboard?view=new" className="exec-kpi exec-kpi--new">
+              <div className="exec-kpi-label">New Today</div>
+              <div className="exec-kpi-value">{execOverview.newToday}</div>
+              <div className="exec-kpi-hint">Filed since midnight (local)</div>
+            </Link>
+            <Link href="/dashboard?view=needs_triage" className="exec-kpi exec-kpi--awaiting">
+              <div className="exec-kpi-label">Awaiting Review</div>
+              <div className="exec-kpi-value">{execOverview.awaitingReview}</div>
+              <div className="exec-kpi-hint">{labels.caseStatusLabels.needs_triage}</div>
+            </Link>
+            <Link href="/dashboard?view=in_review" className="exec-kpi exec-kpi--review">
+              <div className="exec-kpi-label">In Review</div>
+              <div className="exec-kpi-value">{execOverview.inReview}</div>
+              <div className="exec-kpi-hint">{labels.caseStatusLabels.in_review}</div>
+            </Link>
+            <Link href="/dashboard?view=resolved" className="exec-kpi exec-kpi--resolved">
+              <div className="exec-kpi-label">Resolved</div>
+              <div className="exec-kpi-value">{execOverview.resolved}</div>
+              <div className="exec-kpi-hint">{labels.caseStatusLabels.resolved}</div>
+            </Link>
+            <div className="exec-kpi exec-kpi--avg" role="group" aria-label="Average response time">
+              <div className="exec-kpi-label">Average Response Time</div>
+              <div className="exec-kpi-value">{execOverview.avgResponseLabel}</div>
+              <div className="exec-kpi-hint">{execOverview.avgResponseHint}</div>
+            </div>
+          </div>
+        </section>
+      ) : null}
+
       <div className={caseWorkspaceClass}>
       <div className="case-board">
         {cases.length === 0 ? (
           <div className="empty-state">
             <p className="empty-state-title">
               {editorDesk
-                ? "Nothing on your desk yet"
+                ? labels.emptyNoCasesTitleEditor
                 : managingEditorDesk
-                  ? "The wire is quiet"
-                  : "No cases yet"}
+                  ? labels.emptyNoCasesTitleManagingEditor
+                  : labels.emptyNoCasesTitleDefault}
             </p>
             <p className="subtext" style={{ margin: 0 }}>
               {editorDesk
-                ? "When the desk assigns a submission to you, it will land here. Check back after the next routing round."
+                ? labels.emptyNoCasesBodyEditor
                 : managingEditorDesk
-                  ? "When tips start filing, they will appear here with live leads and stages so you can steer the room."
-                  : "When a new report arrives, it will appear here for your team to work on."}
+                  ? labels.emptyNoCasesBodyManagingEditor
+                  : labels.emptyNoCasesBodyDefault}
             </p>
           </div>
         ) : roleFilteredCases.length === 0 && role === "reviewer" ? (
           <div className="empty-state">
-            <p className="empty-state-title">Nothing assigned to you right now</p>
-            <p className="subtext" style={{ margin: 0 }}>
-              Your list only shows submissions where you are the lead. If you expected work here,
-              ask the desk to confirm the assignment — they may still be routing it.
-            </p>
+            <p className="empty-state-title">{labels.emptyReviewerNothingAssignedTitle}</p>
+            <p className="subtext" style={{ margin: 0 }}>{labels.emptyReviewerNothingAssignedBody}</p>
           </div>
         ) : roleFilteredCases.length === 0 && role === "intake" ? (
           <div className="empty-state">
-            <p className="empty-state-title">Nothing in triage</p>
+            <p className="empty-state-title">{labels.intakeEmptyTitle}</p>
             <p className="subtext" style={{ margin: 0 }}>
-              Intake only sees reports in <span className="strong">New</span> or{" "}
-              <span className="strong">Needs Triage</span>. When submissions arrive in those states,
-              they will appear here.
+              {labels.intakeEmptyBeforeStates}
+              <span className="strong">{labels.intakeEmptyStateNewLabel}</span>
+              {labels.intakeEmptyOrWord}
+              <span className="strong">{labels.intakeEmptyStateTriageLabel}</span>
+              {labels.intakeEmptyAfterStates}
             </p>
           </div>
         ) : filteredCases.length === 0 ? (
@@ -1162,6 +1275,10 @@ export function SubmissionsList({
         exportDocxBusy={exportDocxBusy}
         exportDocxError={exportDocxError}
         onExportDocx={() => void exportSelectedDocx()}
+        showExportOneDrive={showExportOneDrive}
+        exportOneDriveBusy={exportOneDriveBusy}
+        exportOneDriveError={exportOneDriveError}
+        onExportOneDrive={() => void exportSelectedToOneDrive()}
         showStatusPicker={showStatusPicker}
         allowedStatusTargets={allowedStatusTargets}
         workflowStatusDraft={workflowStatusDraft}
@@ -1178,25 +1295,23 @@ export function SubmissionsList({
       {managingEditorDesk && managingEditorOps && viewConfig?.showRunSheet ? (
         <section
           className="ops-run-sheet ops-run-sheet--me-tier ops-run-sheet--me-tier-after-cards"
-          aria-label="Newsroom run sheet"
+          aria-label={labels.runSheetAriaLabel}
         >
           <div className="ops-run-sheet-header">
             <div className="ops-run-sheet-kicker">{labels.runSheet}</div>
-            <p className="ops-run-sheet-lede">
-              Live counts from your queue — who still needs a lead, what is in motion, and where work is stacking.
-            </p>
+            <p className="ops-run-sheet-lede">{labels.runSheetIntroLede}</p>
           </div>
           {viewConfig?.showKpis ? (
             <div className="ops-run-sheet-stats">
               <Link href="/dashboard" className="ops-stat ops-stat--link ops-stat--me ops-stat--me-pulse">
                 <div className="ops-stat-value">{managingEditorOps.pipelineTotal}</div>
-                <div className="ops-stat-label">In motion</div>
-                <div className="ops-stat-hint">Not resolved or archived</div>
+                <div className="ops-stat-label">{labels.mePipelineInMotionLabel}</div>
+                <div className="ops-stat-hint">{labels.mePipelineInMotionHint}</div>
               </Link>
               <div className="ops-stat ops-stat--me ops-stat--me-books">
                 <div className="ops-stat-value">{managingEditorOps.activeTotal}</div>
                 <div className="ops-stat-label">{labels.onTheBooks}</div>
-                <div className="ops-stat-hint">Everything not archived</div>
+                <div className="ops-stat-hint">{labels.meOnTheBooksHint}</div>
               </div>
               {managingEditorOps.resolvedStillOpen > 0 ? (
                 <Link
@@ -1204,8 +1319,8 @@ export function SubmissionsList({
                   className="ops-stat ops-stat--link ops-stat--me ops-stat--me-resolved-open"
                 >
                   <div className="ops-stat-value">{managingEditorOps.resolvedStillOpen}</div>
-                  <div className="ops-stat-label">Resolved, still open</div>
-                  <div className="ops-stat-hint">Ready to archive or file</div>
+                  <div className="ops-stat-label">{labels.meResolvedStillOpenLabel}</div>
+                  <div className="ops-stat-hint">{labels.meResolvedStillOpenHint}</div>
                 </Link>
               ) : null}
             </div>
@@ -1214,22 +1329,22 @@ export function SubmissionsList({
           {viewConfig?.showWhereItStacks ? (
             managingEditorOps.bottlenecks.length > 0 ? (
               <div className="ops-run-sheet-block">
-                <div className="ops-run-sheet-block-title">Where it stacks (in motion)</div>
+                <div className="ops-run-sheet-block-title">{labels.meWhereItStacksTitle}</div>
                 <div className="ops-bottleneck-row">
                   {managingEditorOps.bottlenecks.map(({ status, count }) => (
                     <Link
                       key={status}
-                      href={meDeskHrefForStage(status)}
+                              href={meDeskHrefForStage(status, labels)}
                       className={`ops-bottleneck-chip ops-bottleneck-chip--${status}`}
                     >
-                      <span>{CASE_STATUS_LABEL[status]}</span>
+                      <span>{labels.caseStatusLabels[status]}</span>
                       <span className="ops-bottleneck-count">{count}</span>
                     </Link>
                   ))}
                 </div>
               </div>
             ) : managingEditorOps.pipelineTotal > 0 ? (
-              <p className="ops-run-sheet-muted">No single stage is holding more than the rest right now.</p>
+              <p className="ops-run-sheet-muted">{labels.meBottleneckBalancedCopy}</p>
             ) : null
           ) : null}
         </section>
@@ -1265,7 +1380,7 @@ export function SubmissionsList({
                             <>
                               <div className="ops-unclaimed-top">
                                 <span className={`${statusBadgeClass(c.status)} badge--compact`}>
-                                  {statusChipLabel(c.status)}
+                                  {statusChipLabel(c.status, labels)}
                                 </span>
                                 <span className="ops-unclaimed-time">{relativeTimeShort(c.createdAt)}</span>
                               </div>
@@ -1288,7 +1403,7 @@ export function SubmissionsList({
                                       setSelectedId(c.id);
                                     }}
                                   >
-                                    Open
+                                    {labels.actionLabels?.open ?? labels.cardOpenLabel ?? "Open"}
                                   </button>
                                   {showAssign ? (
                                     <button
@@ -1300,7 +1415,7 @@ export function SubmissionsList({
                                         setAssignPanelOpen(true);
                                       }}
                                     >
-                                      Assign
+                                      {labels.actionLabels?.assign ?? labels.cardAssignLabel ?? "Assign"}
                                     </button>
                                   ) : null}
                                 </div>
@@ -1314,19 +1429,17 @@ export function SubmissionsList({
                 </ul>
                 {managingEditorOps.unassignedCount > managingEditorOps.unassignedPreview.length ? (
                   <p className="ops-run-sheet-muted">
-                    +{managingEditorOps.unassignedCount - managingEditorOps.unassignedPreview.length} more in motion
-                    still need someone on them — scan Active reports or Needs triage in the queue.
+                    +{managingEditorOps.unassignedCount - managingEditorOps.unassignedPreview.length}
+                    {labels.meUnclaimedOverflowSuffix}
                   </p>
                 ) : null}
               </div>
             </div>
           </section>
         ) : managingEditorOps.pipelineTotal > 0 ? (
-          <section className="me-unclaimed-deck" aria-label="Assignment status">
+          <section className="me-unclaimed-deck" aria-label={labels.meAssignmentStatusAriaLabel}>
             <div className="me-unclaimed-deck__inner">
-              <p className="ops-run-sheet-muted me-unclaimed-deck__solo">
-                Every in-motion submission already has someone on it.
-              </p>
+              <p className="ops-run-sheet-muted me-unclaimed-deck__solo">{labels.meAllClaimedMessage}</p>
             </div>
           </section>
         ) : null

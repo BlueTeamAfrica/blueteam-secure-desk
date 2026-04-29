@@ -1,6 +1,7 @@
 import type { WorkspaceCase } from "@/app/_lib/caseWorkspaceModel";
 import type { DecryptedFilingReadout } from "@/app/_lib/decryptedSubmissionReadout";
 import { formatSubmissionTimestampForCard } from "@/app/_lib/caseWorkspaceModel";
+import { getOrgLabels } from "@/app/_lib/org/getOrgLabels";
 
 export const REPORTER_NAME_FALLBACK = "Reporter not set";
 
@@ -95,7 +96,7 @@ function pickBody(submission: WorkspaceCase, filing?: DecryptedFilingReadout): s
 export function getSubmissionExportTitle(display: SubmissionDisplay): string {
   if (!isPlaceholderTitle(display.displayTitle)) return display.displayTitle;
   const ref = clean(display.displayRef);
-  return ref ? `Submission ${ref}` : "Secure Reporter submission";
+  return ref ? `Submission ${ref}` : "Secure Desk submission";
 }
 
 function pickReporterDisplayName(submission: WorkspaceCase): string {
@@ -124,8 +125,8 @@ export function getSubmissionDisplay(args: {
   const displayCardContextLine = contextParts.length > 0 ? contextParts.join(" • ") : null;
 
   const displayMetaLine = displayCardContextLine
-    ? `Filed by ${displayReporterName} • ${displayCardContextLine}`
-    : `Filed by ${displayReporterName}`;
+    ? `${getOrgLabels().deskLabels?.filedByLabel ?? "Filed by"} ${displayReporterName} • ${displayCardContextLine}`
+    : `${getOrgLabels().deskLabels?.filedByLabel ?? "Filed by"} ${displayReporterName}`;
 
   return {
     displayTitle: pickTitle(submission, decryptedFiling),

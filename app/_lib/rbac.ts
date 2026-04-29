@@ -15,11 +15,11 @@ export type WorkspaceRole = (typeof WORKSPACE_ROLES)[number];
 const ROLE_SET = new Set<string>(WORKSPACE_ROLES);
 
 export const ROLE_LABEL: Record<WorkspaceRole, string> = {
-  owner: "Owner",
-  admin: "Admin",
-  reviewer: "Reviewer",
-  intake: "Intake",
-  readonly: "Read-only",
+  owner: "Editor in Chief",
+  admin: "Managing Editor",
+  reviewer: "Editor",
+  intake: "Proofreader",
+  readonly: "Viewer",
 };
 
 /** Firestore `users/{uid}` role field — string, one of WORKSPACE_ROLES. */
@@ -39,6 +39,8 @@ export function normalizeWorkspaceRole(value: unknown): WorkspaceRole | null {
 /** Nav keys matching sidebar routes (case views + analytics + settings). */
 export type DashboardNavKey =
   | "inbox"
+  | "needs_lead"
+  | "assigned_work"
   | "new"
   | "needs_triage"
   | "assigned"
@@ -54,6 +56,8 @@ export type DashboardNavKey =
 export const ROLE_NAV: Record<WorkspaceRole, readonly DashboardNavKey[]> = {
   owner: [
     "inbox",
+    "needs_lead",
+    "assigned_work",
     "new",
     "needs_triage",
     "assigned",
@@ -66,6 +70,8 @@ export const ROLE_NAV: Record<WorkspaceRole, readonly DashboardNavKey[]> = {
   ],
   admin: [
     "inbox",
+    "needs_lead",
+    "assigned_work",
     "new",
     "needs_triage",
     "assigned",
@@ -98,13 +104,22 @@ export const ROLE_NAV: Record<WorkspaceRole, readonly DashboardNavKey[]> = {
     "resolved",
     "archive",
   ],
-  readonly: ["analytics"],
+  readonly: [
+    "inbox",
+    "new",
+    "needs_triage",
+    "assigned",
+    "in_review",
+    "waiting_follow_up",
+    "resolved",
+    "archive",
+  ],
 };
 
 /** Firestore cases + decrypt APIs (not analytics-only). */
 export function canAccessCaseData(role: WorkspaceRole | null): boolean {
   if (!role) return false;
-  return role !== "readonly";
+  return true;
 }
 
 /** Mutations on submissions (reviewer-action API). */
@@ -119,9 +134,7 @@ export function isDashboardQueryViewAllowed(role: WorkspaceRole, view: string): 
 }
 
 export function defaultDashboardViewForRole(role: WorkspaceRole): string {
-  if (role === "readonly") return "analytics";
-  if (role === "intake") return "inbox";
-  if (role === "reviewer") return "inbox";
+  void role;
   return "inbox";
 }
 
@@ -177,7 +190,7 @@ export function mayShowDecryptUi(
 ): boolean {
   void _c;
   void _ctx;
-  // Collaborative newsroom: any editor-level user may open filings/attachments.
+  // Viewer is read-only and does not open decrypted filings/attachments.
   return role !== "readonly";
 }
 
@@ -202,7 +215,6 @@ export function maySaveReviewerNoteOnCase(
 ): boolean {
   void _c;
   void _ctx;
-  // Collaborative newsroom: editor-level users may add notes on any report.
   return role !== "readonly";
 }
 
@@ -225,7 +237,7 @@ export function mayResolveOrArchiveInUi(
 ): boolean {
   void _c;
   void _ctx;
-  // Authority narrow: only chief roles may publish/archive.
+  // Leadership only.
   return role === "owner" || role === "admin";
 }
 
@@ -238,8 +250,8 @@ export function mayChangeCaseStatusInUi(
   void _c;
   void _ctx;
   if (role === "readonly") return false;
-  // Authority narrow: workflow stage changes are chief-only.
-  return role === "owner" || role === "admin";
+  // Editor/proofreader can move limited stages; leadership can move all.
+  return role !== null;
 }
 
 /** Approved targets the given role may set from the current case state. */
@@ -249,11 +261,19 @@ export function allowedCaseStatusTargets(
   _c: WorkspaceCase,
   _ctx: WorkspaceUserContext,
 ): CaseStatus[] {
-  void _current;
   void _c;
   void _ctx;
   const all = [...CASE_STATUS_KEYS] as CaseStatus[];
-  if (role === "owner" || role === "admin") return all;
+  if (role === "owner") return all;
+  if (role === "admin") return all;
+  // Editor: can move through editorial stages but cannot publish/archive.
+  if (role === "reviewer") {
+    return ["new", "needs_triage", "assigned", "waiting_follow_up"] as CaseStatus[];
+  }
+  // Proofreader: can set proof-related stages only.
+  if (role === "intake") {
+    return ["in_review", "waiting_follow_up"] as CaseStatus[];
+  }
   return [];
 }
 

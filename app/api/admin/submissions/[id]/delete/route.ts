@@ -3,6 +3,7 @@ import { requireActiveAdmin } from "@/app/_lib/server/adminApiAuth";
 import { getAdminFirestore } from "@/app/_lib/server/firebaseAdmin";
 import { fetchWorkspaceRole } from "@/app/_lib/server/workspaceRole";
 import { canDeleteItem } from "@/app/_lib/workflow/permissions";
+import { logSubmissionAudit } from "@/app/_lib/server/logSubmissionAudit";
 
 type RouteParams = { params: Promise<{ id: string }> };
 
@@ -33,6 +34,17 @@ export async function DELETE(request: NextRequest, context: RouteParams) {
     }
 
     await ref.delete();
+
+    try {
+      await logSubmissionAudit({
+        submissionId: id,
+        adminUid: admin.uid,
+        adminEmail: admin.adminEmail,
+        action: "delete",
+      });
+    } catch {
+      /* audit failure must not block delete */
+    }
 
     return NextResponse.json({ ok: true });
   } catch {

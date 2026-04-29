@@ -23,12 +23,12 @@ export function canAssignItem(role: WorkspaceRole | null): boolean {
 }
 
 export function canDeleteItem(role: WorkspaceRole | null): boolean {
-  return role === "owner" || role === "admin";
+  // Destructive delete: Editor in Chief only.
+  return role === "owner";
 }
 
 /**
- * Editorial .docx export — mirrors dashboard visibility (not decrypt UI):
- * owner/admin: all cases; reviewer: assigned; intake: triage inbox only; readonly: none.
+ * Editorial .docx export — restricted to leadership roles.
  */
 export function mayExportSubmissionDocx(args: {
   role: WorkspaceRole | null;
@@ -37,13 +37,10 @@ export function mayExportSubmissionDocx(args: {
 }): boolean {
   const { role, workspaceCase, ctx } = args;
   if (!role) return false;
-  if (role === "readonly") return false;
-  if (role === "owner" || role === "admin") return true;
-  if (role === "reviewer") return isCaseAssignedToWorkspaceUser(workspaceCase, ctx);
-  if (role === "intake") {
-    return workspaceCase.status === "new" || workspaceCase.status === "needs_triage";
-  }
-  return false;
+  void workspaceCase;
+  void ctx;
+  // Export produces a portable newsroom artifact; keep it limited to leadership.
+  return role === "owner" || role === "admin";
 }
 
 export function canUseReviewerActions(role: WorkspaceRole | null): boolean {
@@ -52,13 +49,8 @@ export function canUseReviewerActions(role: WorkspaceRole | null): boolean {
 
 export function canViewUnassignedItem(role: WorkspaceRole | null): boolean {
   if (!role) return false;
-  // Mirrors current visibility:
-  // - owner/admin: can view everything
-  // - intake: can view triage queues regardless of assignment
-  // - reviewer: only assigned items
-  // - readonly: analytics only
-  if (role === "owner" || role === "admin" || role === "intake") return true;
-  return false;
+  // Atar small newsroom: all desk roles (including Viewer) may view lists.
+  return true;
 }
 
 export function canViewAssignedItem(
@@ -66,13 +58,10 @@ export function canViewAssignedItem(
   assignedOwnerId: string | null,
   currentUserId: string | null,
 ): boolean {
+  void assignedOwnerId;
+  void currentUserId;
   if (!role) return false;
-  if (role === "owner" || role === "admin" || role === "intake") return true;
-  if (role === "reviewer") {
-    if (!assignedOwnerId || !currentUserId) return false;
-    return assignedOwnerId.trim() === currentUserId.trim();
-  }
-  return false;
+  return true;
 }
 
 /**

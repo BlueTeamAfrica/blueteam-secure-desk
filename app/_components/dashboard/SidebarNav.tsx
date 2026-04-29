@@ -1,100 +1,121 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useMemo } from "react";
 import { useAuth } from "@/app/_components/auth/AuthContext";
 import { useCaseQueue } from "@/app/_components/dashboard/CaseQueueContext";
+import { SidebarBrandHeader } from "@/app/_components/dashboard/SidebarBrandHeader";
 import { ROLE_NAV, type WorkspaceRole } from "@/app/_lib/rbac";
 import { normalizeSidebarView, rowMatchesSidebarView, type SidebarViewKey } from "@/app/_lib/caseWorkspaceModel";
-import { getOrgLabels } from "@/app/_lib/org/getOrgLabels";
+import type { OrgLabels } from "@/app/_lib/org/types";
+import { useDashboardBranding } from "@/app/_components/dashboard/WorkspaceBrandingProvider";
 
 type NavItem =
   | { kind: "cases"; key: SidebarViewKey; label: string; href: string }
-  | { kind: "route"; key: "my_queue" | "assignments"; label: string; href: string; roles: WorkspaceRole[] }
+  | { kind: "route"; key: "my_queue"; label: string; href: string; roles: WorkspaceRole[] }
   | { kind: "settings"; label: string; href: string };
 
-const ALL_SIDEBAR_ITEMS: NavItem[] = [
-  { kind: "cases", key: "inbox", label: "Inbox", href: "/dashboard" },
-  { kind: "cases", key: "new", label: "Raw Materials", href: "/dashboard?view=new" },
-  { kind: "cases", key: "needs_triage", label: "First Editing", href: "/dashboard?view=needs_triage" },
-  { kind: "cases", key: "assigned", label: "Second Editing", href: "/dashboard?view=assigned" },
-  { kind: "cases", key: "in_review", label: "Proofreading", href: "/dashboard?view=in_review" },
-  {
-    kind: "cases",
-    key: "waiting_follow_up",
-    label: "Designed",
-    href: "/dashboard?view=waiting_follow_up",
-  },
-  { kind: "cases", key: "resolved", label: "Published", href: "/dashboard?view=resolved" },
-  { kind: "cases", key: "archive", label: "Archive", href: "/dashboard?view=archive" },
-  { kind: "cases", key: "team", label: "Team", href: "/dashboard?view=team" },
-  { kind: "cases", key: "analytics", label: "Analytics", href: "/dashboard?view=analytics" },
-  {
-    kind: "route",
-    key: "my_queue",
-    label: "My Queue",
-    href: "/dashboard/my-queue",
-    roles: ["owner", "admin"],
-  },
-  {
-    kind: "route",
-    key: "assignments",
-    label: "Assignments",
-    href: "/dashboard/assignments",
-    roles: ["owner", "admin"],
-  },
-  { kind: "settings", label: "Settings", href: "/settings" },
-];
+function buildAllSidebarItems(l: OrgLabels, role: WorkspaceRole | null): NavItem[] {
+  const hrefByKey = new Map<SidebarViewKey, string>(
+    l.workflow.sidebarStageViews.map(({ key, href }) => [
+      key,
+      key === "inbox"
+        ? href
+        : href === "/dashboard" || href === "/dashboard?view=inbox"
+          ? `/dashboard?view=${key}`
+          : href,
+    ]),
+  );
 
-function navLabelForRole(role: WorkspaceRole | null, item: NavItem): string {
-  const labels = getOrgLabels();
+  const casesItem = (key: SidebarViewKey): NavItem => ({
+    kind: "cases",
+    key,
+    href: hrefByKey.get(key) ?? `/dashboard?view=${key}`,
+    label: key,
+  });
+
+  const stageLaneKeys: SidebarViewKey[] = ["new", "needs_triage", "assigned", "in_review", "waiting_follow_up", "resolved"];
+
+  const baseForManaging: NavItem[] = [
+    casesItem("inbox"),
+    casesItem("needs_lead"),
+    casesItem("assigned_work"),
+    { kind: "route", key: "my_queue", label: l.myQueue, href: "/dashboard/my-queue", roles: ["owner", "admin", "reviewer", "intake"] },
+    ...stageLaneKeys.map((k) => casesItem(k)),
+    casesItem("archive"),
+    casesItem("team"),
+    { kind: "settings", label: l.settings, href: "/settings" },
+  ];
+
+  const baseForEditor: NavItem[] = [
+    casesItem("inbox"),
+    { kind: "route", key: "my_queue", label: l.myQueue, href: "/dashboard/my-queue", roles: ["owner", "admin", "reviewer", "intake"] },
+    ...stageLaneKeys.map((k) => casesItem(k)),
+    casesItem("archive"),
+  ];
+
+  if (role === "owner" || role === "admin") return baseForManaging;
+  if (role === "reviewer" || role === "intake" || role === "readonly") return baseForEditor;
+  return baseForEditor;
+}
+
+function navLabelForRole(role: WorkspaceRole | null, item: NavItem, labels: OrgLabels): string {
   if (item.kind === "settings") return item.label;
   if (item.kind === "route") {
-    if (item.key === "my_queue") return labels.myQueue;
-    if (item.key === "assignments") return labels.assignments;
-    return item.label;
-  }
-  if (role === "reviewer" && item.key === "assigned") return labels.myQueue;
-  if ((role === "owner" || role === "admin") && item.kind === "cases") {
-    if (item.key === "inbox") return labels.activeReports;
-    if (item.key === "new") return labels.new;
-    if (item.key === "needs_triage") return labels.needsTriage;
-    if (item.key === "assigned") return labels.withLead;
-    if (item.key === "in_review") return labels.inReview;
-    if (item.key === "waiting_follow_up") return labels.awaitingFollowUp;
-    if (item.key === "resolved") return labels.resolved;
-    if (item.key === "archive") return labels.archive;
-    if (item.key === "team") return "Team roster";
-    if (item.key === "analytics") return labels.analytics;
+    return labels.myQueue;
   }
   if (item.kind === "cases") {
     if (item.key === "inbox") return labels.inbox;
-    if (item.key === "new") return labels.new;
-    if (item.key === "needs_triage") return labels.needsTriage;
-    if (item.key === "assigned") return labels.assignments;
-    if (item.key === "in_review") return labels.inReview;
-    if (item.key === "waiting_follow_up") return labels.awaitingFollowUp;
-    if (item.key === "resolved") return labels.resolved;
-    if (item.key === "archive") return labels.archive;
+    if (item.key === "needs_lead") return labels.needsALead;
+    if (item.key === "assigned_work") return "Assigned work";
+    if (item.key === "team") return labels.teamNavDefault;
     if (item.key === "analytics") return labels.analytics;
-    if (item.key === "team") return "Team";
+    if (item.key === "archive") return labels.archive;
+    if (item.key === "needs_triage") return labels.caseStatusLabels.needs_triage ?? labels.needsTriage;
+    if (item.key === "waiting_follow_up")
+      return labels.caseStatusLabels.waiting_follow_up ?? labels.awaitingFollowUp;
+    if (item.key === "in_review") return labels.caseStatusLabels.in_review ?? labels.inReview;
+    if (item.key === "new") return labels.caseStatusLabels.new ?? labels.new;
+    if (item.key === "assigned") return labels.caseStatusLabels.assigned ?? labels.assignments;
+    if (item.key === "resolved") return labels.caseStatusLabels.resolved ?? labels.resolved;
   }
   return item.label;
 }
 
-function navSectionLabel(role: WorkspaceRole | null): string {
-  if (role === "reviewer") return "Your desk";
-  if (role === "owner" || role === "admin") return "Queues";
-  return "Menu";
+function navSectionLabel(role: WorkspaceRole | null, labels: OrgLabels): string {
+  if (role === "reviewer") return labels.navSectionYourDesk;
+  if (role === "owner" || role === "admin") return labels.navSectionQueues;
+  return labels.navSectionMenu;
+}
+
+function rowHasOwner(r: { assignedOwnerId: string | null; assignedOwnerName: string | null }): boolean {
+  return !!(r.assignedOwnerId?.trim() || r.assignedOwnerName?.trim());
+}
+
+function isRowAssignedToUser(
+  r: { assignedOwnerId: string | null; assignedOwnerName: string | null },
+  ctx: { uid: string; email: string | null; displayName: string | null },
+): boolean {
+  const ownerId = r.assignedOwnerId?.trim();
+  if (ownerId && ownerId === ctx.uid) return true;
+  const name = r.assignedOwnerName?.trim();
+  if (!name) return false;
+  const nl = name.toLowerCase();
+  const em = ctx.email?.trim().toLowerCase() ?? "";
+  if (em && nl === em) return true;
+  const dn = ctx.displayName?.trim().toLowerCase() ?? "";
+  if (dn && nl === dn) return true;
+  const local = em.includes("@") ? em.slice(0, em.indexOf("@")) : em;
+  if (local && nl === local) return true;
+  return false;
 }
 
 export function SidebarNav() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const { state } = useAuth();
-  const labels = getOrgLabels();
+  const { labels } = useDashboardBranding();
   const activeView =
     pathname.startsWith("/dashboard") ? normalizeSidebarView(searchParams.get("view")) : null;
   const { rows } = useCaseQueue();
@@ -109,9 +130,11 @@ export function SidebarNav() {
 
   const routeRole: WorkspaceRole | null = workspaceRole;
 
+  const allSidebarItems = useMemo(() => buildAllSidebarItems(labels, workspaceRole), [labels, workspaceRole]);
+
   const navItems = useMemo(
     () =>
-      ALL_SIDEBAR_ITEMS.filter((item) => {
+      allSidebarItems.filter((item) => {
         if (item.kind === "settings") return allowedKeys.has("settings");
         if (item.kind === "route") {
           if (!routeRole) return false;
@@ -119,29 +142,35 @@ export function SidebarNav() {
         }
         return allowedKeys.has(item.key);
       }),
-    [allowedKeys, routeRole],
+    [allowedKeys, routeRole, allSidebarItems],
   );
 
+  const displayNavItems = navItems;
+
   const counts = useMemo(() => {
-    const base: Record<SidebarViewKey, number> = {
-      inbox: 0,
-      new: 0,
-      needs_triage: 0,
-      assigned: 0,
-      in_review: 0,
-      waiting_follow_up: 0,
-      resolved: 0,
-      archive: 0,
-      team: 0,
-      analytics: 0,
-    };
+    const base = Object.fromEntries(
+      labels.workflow.sidebarStageViews.map(({ key }) => [key, 0]),
+    ) as Record<SidebarViewKey, number>;
     for (const r of rows) {
       for (const key of Object.keys(base) as SidebarViewKey[]) {
         if (rowMatchesSidebarView(r, key)) base[key] += 1;
       }
     }
     return base;
-  }, [rows]);
+  }, [rows, labels.workflow.sidebarStageViews]);
+
+  const userCtx = useMemo(() => {
+    if (state.status !== "signedInWorkspace") return null;
+    const u = state.user;
+    return { uid: u.uid, email: u.email ?? null, displayName: u.displayName ?? null };
+  }, [state]);
+
+  const assignedAnyCount = useMemo(() => rows.filter((r) => rowHasOwner(r) && r.status !== "archived").length, [rows]);
+  const needsLeadCount = useMemo(() => rows.filter((r) => !rowHasOwner(r) && r.status !== "archived").length, [rows]);
+  const myQueueCount = useMemo(() => {
+    if (!userCtx) return 0;
+    return rows.filter((r) => rowHasOwner(r) && r.status !== "archived" && isRowAssignedToUser(r, userCtx)).length;
+  }, [rows, userCtx]);
 
   const isEditorDesk = workspaceRole === "reviewer";
   const isManagingEditorDesk = workspaceRole === "owner" || workspaceRole === "admin";
@@ -151,45 +180,12 @@ export function SidebarNav() {
       className={`sidebar${isEditorDesk ? " sidebar--editor-desk" : ""}${isManagingEditorDesk ? " sidebar--managing-editor-desk" : ""}`}
     >
       <div className="sidebar-inner">
-        {isManagingEditorDesk ? (
-          <div className="brand brand--logo-card">
-            <div className="brand-logo-tile" aria-hidden="true">
-              <Image
-                src="/editorial/sf1.png"
-                alt=""
-                width={720}
-                height={240}
-                sizes="(max-width: 900px) 280px, 320px"
-                className="brand-logo-img"
-                priority
-              />
-            </div>
-            <div className="brand-subtitle brand-subtitle--logo-card">Managing Editor Desk</div>
-          </div>
-        ) : (
-          <div className="brand">
-            <div className="brand-logo" aria-hidden="true">
-              <Image
-                src="/editorial/sf1.png"
-                alt=""
-                width={72}
-                height={72}
-                sizes="(max-width: 900px) 64px, 72px"
-                className="brand-logo-img"
-                priority
-              />
-            </div>
-            <div>
-              <div className="brand-title">{labels.productName}</div>
-              <div className="brand-subtitle">{isEditorDesk ? "Editor desk" : "Case workspace"}</div>
-            </div>
-          </div>
-        )}
+        <SidebarBrandHeader labels={labels} role={workspaceRole} />
 
         <div>
-          <div className="nav-section-label">{navSectionLabel(workspaceRole)}</div>
+          <div className="nav-section-label">{navSectionLabel(workspaceRole, labels)}</div>
           <div className="status-nav">
-            {navItems.map((item) => {
+            {displayNavItems.map((item) => {
               if (item.kind === "settings") {
                 const isActive = pathname.startsWith("/settings");
                 return (
@@ -198,21 +194,30 @@ export function SidebarNav() {
                     href={item.href}
                     className={`status-nav-item${isActive ? " is-active" : ""}`}
                   >
-                    <span>{navLabelForRole(workspaceRole, item)}</span>
+                    <span>{navLabelForRole(workspaceRole, item, labels)}</span>
                     <span className="status-count">—</span>
                   </Link>
                 );
               }
               if (item.kind === "route") {
                 const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
+                const countNum = item.key === "my_queue" ? myQueueCount : null;
                 return (
                   <Link
                     key={item.key}
                     href={item.href}
                     className={`status-nav-item${isActive ? " is-active" : ""}`}
                   >
-                    <span>{navLabelForRole(workspaceRole, item)}</span>
-                    <span className="status-count">—</span>
+                    <span>{navLabelForRole(workspaceRole, item, labels)}</span>
+                    {typeof countNum === "number" ? (
+                      countNum > 0 ? (
+                        <span className="status-count is-nonzero">{String(countNum)}</span>
+                      ) : (
+                        <span className="status-count is-zero">{String(countNum)}</span>
+                      )
+                    ) : (
+                      <span className="status-count">—</span>
+                    )}
                   </Link>
                 );
               }
@@ -226,27 +231,39 @@ export function SidebarNav() {
                     ? pathname.startsWith("/dashboard") && activeView === "inbox"
                     : pathname.startsWith("/dashboard") && activeView === item.key;
               const count =
-                isTeam || isAnalytics ? "—" : isInbox ? String(counts.inbox) : String(counts[item.key]);
+                isTeam || isAnalytics
+                  ? "—"
+                  : item.key === "assigned_work"
+                    ? String(assignedAnyCount)
+                    : item.key === "needs_lead"
+                      ? String(needsLeadCount)
+                    : isInbox
+                      ? String(counts.inbox)
+                      : String(counts[item.key]);
               const countNum =
-                isTeam || isAnalytics ? null : isInbox ? counts.inbox : counts[item.key];
+                isTeam || isAnalytics
+                  ? null
+                  : item.key === "assigned_work"
+                    ? assignedAnyCount
+                    : item.key === "needs_lead"
+                      ? needsLeadCount
+                    : isInbox
+                      ? counts.inbox
+                      : counts[item.key];
               return (
                 <Link
                   key={item.key}
                   href={item.href}
                   className={`status-nav-item${isActive ? " is-active" : ""}`}
                 >
-                  <span>{navLabelForRole(workspaceRole, item)}</span>
-                  <span
-                    className={`status-count${
-                      typeof countNum === "number" && countNum > 0
-                        ? " is-nonzero"
-                        : typeof countNum === "number"
-                          ? " is-zero"
-                          : ""
-                    }`}
-                  >
-                    {count}
-                  </span>
+                  <span>{navLabelForRole(workspaceRole, item, labels)}</span>
+                  {isTeam || isAnalytics ? (
+                    <span className="status-count">—</span>
+                  ) : typeof countNum === "number" && countNum > 0 ? (
+                    <span className="status-count is-nonzero">{count}</span>
+                  ) : (
+                    <span className="status-count is-zero">{count}</span>
+                  )}
                 </Link>
               );
             })}

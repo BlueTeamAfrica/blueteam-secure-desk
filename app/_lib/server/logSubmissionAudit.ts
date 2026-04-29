@@ -10,6 +10,10 @@ export type SubmissionAuditAction =
   | "save_reviewer_note"
   | "assign_owner"
   | "update_case_status"
+  | "update_priority"
+  | "update_due_date"
+  | "export_docx"
+  | "download_attachment"
   | "delete";
 
 export async function logSubmissionAudit(params: {

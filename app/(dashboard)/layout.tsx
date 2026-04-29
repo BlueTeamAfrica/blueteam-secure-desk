@@ -3,84 +3,28 @@
 import { Suspense, useEffect } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { SidebarNav } from "@/app/_components/dashboard/SidebarNav";
+import { SidebarBrandHeader } from "@/app/_components/dashboard/SidebarBrandHeader";
 import { UserMenu } from "@/app/_components/dashboard/UserMenu";
 import { CaseQueueProvider } from "@/app/_components/dashboard/CaseQueueContext";
 import { useAuth } from "@/app/_components/auth/AuthContext";
-import { getOrgLabels } from "@/app/_lib/org/getOrgLabels";
-import { normalizeSidebarView } from "@/app/_lib/caseWorkspaceModel";
+import { getEditorDeskHeaderFor } from "@/app/_lib/org/getWorkspaceConfig";
+import { WorkspaceBrandingProvider, useDashboardBranding } from "@/app/_components/dashboard/WorkspaceBrandingProvider";
 
 function SidebarFallback() {
-  const labels = getOrgLabels();
+  const { labels } = useDashboardBranding();
   return (
     <aside className="sidebar">
       <div className="sidebar-inner">
-        <div className="brand">
-          <div className="brand-badge">SR</div>
-          <div>
-            <div className="brand-title">{labels.productName}</div>
-            <div className="brand-subtitle">Case management</div>
-          </div>
-        </div>
+        <SidebarBrandHeader labels={labels} role={null} />
       </div>
     </aside>
   );
 }
 
-function editorDeskHeaderFor(args: { pathname: string; viewRaw: string | null }): {
-  title: string;
-  subtitle: string;
-} {
-  const { pathname, viewRaw } = args;
-  const t = (viewRaw ?? "").trim().toLowerCase().replace(/[\s_]+/g, "-");
-  const view = t || normalizeSidebarView(viewRaw);
-
-  const inferred =
-    pathname.endsWith("/my-queue") || pathname.endsWith("/my-queue/")
-      ? "your-queue"
-      : pathname.endsWith("/dashboard") || pathname.endsWith("/dashboard/")
-        ? view
-        : view;
-
-  switch (inferred) {
-    case "inbox":
-      return { title: "Inbox", subtitle: "All visible filings across the desk." };
-    case "raw":
-    case "new":
-    case "raw-materials":
-      return { title: "Raw Materials", subtitle: "New incoming material waiting for movement." };
-    case "edit1":
-    case "first-editing":
-    case "needs_triage":
-      return { title: "First Editing", subtitle: "Stories currently in the first editorial pass." };
-    case "assigned":
-    case "your-queue":
-      return { title: "Your queue", subtitle: "Items currently on your desk." };
-    case "proof":
-    case "proofreading":
-    case "in_review":
-      return { title: "Proofreading", subtitle: "Copy and correction stage." };
-    case "design":
-    case "designed":
-    case "waiting_follow_up":
-      return { title: "Designed", subtitle: "Stories currently in design." };
-    case "published":
-    case "resolved":
-      return { title: "Published", subtitle: "Released pieces kept visible for reference." };
-    case "archive":
-    case "archived":
-      return { title: "Archive", subtitle: "Past work retained for search and review." };
-    default:
-      return {
-        title: "Editor desk",
-        subtitle: "Work the desk clearly and move filings forward.",
-      };
-  }
-}
-
 function EditorDeskHeader() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const hdr = editorDeskHeaderFor({
+  const hdr = getEditorDeskHeaderFor({
     pathname,
     viewRaw: searchParams.get("view"),
   });
@@ -92,11 +36,13 @@ function EditorDeskHeader() {
   );
 }
 
-export default function DashboardLayout({ children }: { children: React.ReactNode }) {
+function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
   const { state } = useAuth();
   const { status } = state;
   const router = useRouter();
-  const labels = getOrgLabels();
+  const { labels, branding } = useDashboardBranding();
+  const editorDeskFallbackTitle = labels.editorDeskHeaderSuspenseTitle;
+  const editorDeskFallbackSubtitle = labels.editorDeskHeaderSuspenseSubtitle;
   const deskMode =
     state.status === "signedInWorkspace"
       ? state.role === "reviewer"
@@ -169,14 +115,16 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   return (
     <CaseQueueProvider>
-      <div className="dashboard-shell" {...(deskMode ? { "data-desk-mode": deskMode } : {})}>
+      <div
+        className="dashboard-shell"
+        {...(deskMode ? { "data-desk-mode": deskMode } : {})}
+        style={branding.accentColor ? ({ ["--accent" as string]: branding.accentColor } as Record<string, string>) : undefined}
+      >
         <Suspense fallback={<SidebarFallback />}>
           <SidebarNav />
         </Suspense>
         <div className="dash-column">
-          <header
-            className={`topbar${deskMode === "managing-editor" ? " topbar--managing-editor-minimal" : ""}`}
-          >
+          <header className={`topbar${deskMode === "managing-editor" ? " topbar--managing-editor-minimal" : ""}`}>
             <div
               className={`topbar-inner${deskMode === "managing-editor" ? " topbar-inner--managing-editor-minimal" : ""}`}
             >
@@ -186,26 +134,28 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     <Suspense
                       fallback={
                         <>
-                          <div className="header-title header-title--desk">Editor desk</div>
-                          <div className="header-subtitle header-subtitle--desk">
-                            Work the desk clearly and move filings forward.
-                          </div>
+                          <div className="header-title header-title--desk">{editorDeskFallbackTitle}</div>
+                          <div className="header-subtitle header-subtitle--desk">{editorDeskFallbackSubtitle}</div>
                         </>
                       }
                     >
                       <EditorDeskHeader />
                     </Suspense>
                   </>
-                ) : state.status === "signedInWorkspace" &&
-                  (state.role === "owner" || state.role === "admin") ? (
+                ) : state.status === "signedInWorkspace" && (state.role === "owner" || state.role === "admin") ? (
                   <div className="topbar-me-brand" aria-hidden="true">
-                    <span className="topbar-me-brand-mark" />
-                    <span className="topbar-me-brand-text">{labels.productName}</span>
+                    {branding.logoUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={branding.logoUrl} alt="" className="topbar-me-logo" />
+                    ) : (
+                      <span className="topbar-me-brand-mark" />
+                    )}
+                    <span className="topbar-me-brand-text">{labels.workspaceName}</span>
                   </div>
                 ) : (
                   <>
-                    <div className="header-title">News desk</div>
-                    <div className="header-subtitle">Route tips, keep the trail clear, move work forward.</div>
+                    <div className="header-title">{labels.intakeTopbarTitle}</div>
+                    <div className="header-subtitle">{labels.intakeTopbarSubtitle}</div>
                   </>
                 )}
               </div>
@@ -218,5 +168,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
       </div>
     </CaseQueueProvider>
+  );
+}
+
+export default function DashboardLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <WorkspaceBrandingProvider>
+      <DashboardLayoutInner>{children}</DashboardLayoutInner>
+    </WorkspaceBrandingProvider>
   );
 }

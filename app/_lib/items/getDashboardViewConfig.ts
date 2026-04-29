@@ -1,11 +1,13 @@
 import type { WorkspaceRole } from "@/app/_lib/rbac";
-import type { OrgLabels } from "@/app/_lib/org/getOrgLabels";
+import type { OrgLabels } from "@/app/_lib/org/types";
 
 export type DashboardPresentationView =
   | "activeReports"
   | "new"
   | "needsTriage"
   | "withLead"
+  | "assignedWork"
+  | "needsLead"
   | "inReview"
   | "awaitingFollowUp"
   | "resolved"
@@ -29,8 +31,14 @@ function normalizePresentationView(view: string | null | undefined): DashboardPr
       return "needsTriage";
     case "withLead":
     case "with_lead":
-    case "assigned":
       return "withLead";
+    case "assigned_work":
+    case "assignedWork":
+      return "assignedWork";
+    case "needs_lead":
+    case "needsLead":
+    case "unassigned":
+      return "needsLead";
     case "inReview":
     case "in_review":
       return "inReview";
@@ -87,6 +95,10 @@ export function getDashboardViewConfig(args: {
           ? "Nothing is assigned to you right now."
           : presentationView === "withLead"
             ? `No ${labels.withLead.toLowerCase()} ${labels.itemPlural} yet.`
+            : presentationView === "assignedWork"
+              ? "No assigned work right now."
+              : presentationView === "needsLead"
+                ? "No items need a lead right now."
             : presentationView === "new"
               ? `No new ${labels.itemPlural} yet.`
               : presentationView === "needsTriage"
@@ -108,6 +120,10 @@ export function getDashboardViewConfig(args: {
           ? "When you’re set as the lead on a report, it will show up here for quick access."
           : presentationView === "withLead"
             ? "Assigned work will appear here once a lead is set."
+            : presentationView === "assignedWork"
+              ? "Items that already have a lead."
+              : presentationView === "needsLead"
+                ? "Unclaimed items waiting for assignment."
             : presentationView === "activeReports"
               ? "Switch queues on the left or wait for new filings — the run sheet above still reflects the whole room."
               : "Try another tab on the left, or check back as cases move through the workflow.";

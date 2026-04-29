@@ -5,6 +5,7 @@ import { useAuth } from "@/app/_components/auth/AuthContext";
 import { useCaseQueue } from "@/app/_components/dashboard/CaseQueueContext";
 import { editorialCoverUrlByCaseId } from "@/app/_lib/assignEditorialCoverUrls";
 import { fetchSubmissionDocxDownload, triggerBrowserDownload } from "@/app/_lib/downloadSubmissionDocx";
+import { exportSubmissionToOneDrive } from "@/app/_lib/integrations/onedrive/client";
 import { getFirebaseAuth } from "@/app/_lib/firebase/auth";
 import { db } from "@/app/_lib/firebase/firestore";
 import { collection, onSnapshot } from "firebase/firestore";
@@ -30,7 +31,7 @@ import {
   type WorkspaceUserContext,
 } from "@/app/_lib/rbac";
 import { canAssignItem, canDeleteItem, mayExportSubmissionDocx } from "@/app/_lib/workflow/permissions";
-import { getOrgLabels } from "@/app/_lib/org/getOrgLabels";
+import { useDashboardBranding } from "@/app/_components/dashboard/WorkspaceBrandingProvider";
 import { ItemCard } from "@/components/items/ItemCard";
 import { ItemDetailPanel } from "@/components/items/ItemDetailPanel";
 
@@ -42,7 +43,7 @@ type WorkspaceMemberRow = {
 };
 
 export function AssignmentsView() {
-  const labels = getOrgLabels();
+  const { labels } = useDashboardBranding();
   const { state: authState } = useAuth();
   const { setRows: setCaseQueueRows } = useCaseQueue();
 
@@ -90,6 +91,8 @@ export function AssignmentsView() {
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [exportDocxBusy, setExportDocxBusy] = useState(false);
   const [exportDocxError, setExportDocxError] = useState<string | null>(null);
+  const [exportOneDriveBusy, setExportOneDriveBusy] = useState(false);
+  const [exportOneDriveError, setExportOneDriveError] = useState<string | null>(null);
   const setDeleteConfirmPanelOpen = useCallback((open: boolean) => {
     setDeleteConfirmOpen(open);
     if (open) setDeleteError(null);
@@ -134,13 +137,11 @@ export function AssignmentsView() {
     return filterCasesVisibleToRole(role, cases, userCtx);
   }, [role, userCtx, cases]);
 
-  const unassigned = useMemo(() => visibleCases.filter((c) => caseHasNoVisibleLead(c)), [visibleCases]);
   const assigned = useMemo(() => visibleCases.filter((c) => !caseHasNoVisibleLead(c)), [visibleCases]);
 
-  const editorialCoverUnassigned = useMemo(() => editorialCoverUrlByCaseId(unassigned), [unassigned]);
   const editorialCoverAssigned = useMemo(() => editorialCoverUrlByCaseId(assigned), [assigned]);
 
-  const ordered = useMemo(() => [...unassigned, ...assigned], [unassigned, assigned]);
+  const ordered = assigned;
 
   useEffect(() => {
     if (ordered.length === 0) {
@@ -256,6 +257,7 @@ export function AssignmentsView() {
     !!role &&
     !!userCtx &&
     mayExportSubmissionDocx({ role, workspaceCase: selected, ctx: userCtx });
+  const showExportOneDrive = showExportDocx;
   const stageLabel = editorDesk || managingEditorDesk ? "Where it stands" : "Case status";
   const leadLabel = editorDesk || managingEditorDesk ? "Who has it" : "Owner";
   const priorityLabel = editorDesk || managingEditorDesk ? "Attention" : "Priority";
@@ -488,6 +490,32 @@ export function AssignmentsView() {
     }
   }
 
+  async function exportSelectedToOneDrive() {
+    if (!selectedId || !selected || !role || !userCtx) return;
+    if (!mayExportSubmissionDocx({ role, workspaceCase: selected, ctx: userCtx })) return;
+    setExportOneDriveBusy(true);
+    setExportOneDriveError(null);
+    try {
+      const user = getFirebaseAuth().currentUser;
+      if (!user) {
+        setExportOneDriveError("Please sign in again.");
+        return;
+      }
+      const result = await exportSubmissionToOneDrive({
+        submissionId: selected.id,
+        getIdToken: () => user.getIdToken(true),
+      });
+      if (!result.ok) {
+        setExportOneDriveError(result.error);
+        return;
+      }
+    } catch {
+      setExportOneDriveError("Network error while uploading to OneDrive.");
+    } finally {
+      setExportOneDriveBusy(false);
+    }
+  }
+
   async function runActionSaveNote() {
     setActionError(null);
     setActionPending(true);
@@ -558,30 +586,6 @@ export function AssignmentsView() {
       <div className={`case-workspace case-workspace--managing-editor-desk`}>
         <div className="case-board stack-16">
           <div className="card" style={{ padding: 18 }}>
-            <div className="detail-section-title">{labels.noLeadYet}</div>
-            {unassigned.length === 0 ? (
-              <p className="subtext" style={{ margin: 0 }}>
-                Nothing unclaimed right now.
-              </p>
-            ) : (
-              <div className="report-grid">
-                {unassigned.map((c) => (
-                  <ItemCard
-                    key={c.id}
-                    submission={c}
-                    decryptedFiling={filingByCaseId[c.id]}
-                    selected={c.id === selectedId}
-                    editorDesk={false}
-                    managingEditorDesk={true}
-                    coverImageUrl={editorialCoverUnassigned.get(c.id)}
-                    onSelect={() => setSelectedId(c.id)}
-                  />
-                ))}
-              </div>
-            )}
-          </div>
-
-          <div className="card" style={{ padding: 18 }}>
             <div className="detail-section-title">{labels.withLead}</div>
             {assigned.length === 0 ? (
               <p className="subtext" style={{ margin: 0 }}>
@@ -651,6 +655,10 @@ export function AssignmentsView() {
           exportDocxBusy={exportDocxBusy}
           exportDocxError={exportDocxError}
           onExportDocx={() => void exportSelectedDocx()}
+          showExportOneDrive={showExportOneDrive}
+          exportOneDriveBusy={exportOneDriveBusy}
+          exportOneDriveError={exportOneDriveError}
+          onExportOneDrive={() => void exportSelectedToOneDrive()}
           showStatusPicker={showStatusPicker}
           allowedStatusTargets={allowedStatusTargets}
           workflowStatusDraft={workflowStatusDraft}

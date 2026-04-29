@@ -7,10 +7,10 @@ import { defaultDashboardViewForRole, isDashboardQueryViewAllowed } from "@/app/
 import { normalizeSidebarView } from "@/app/_lib/caseWorkspaceModel";
 import type { WorkspaceRole } from "@/app/_lib/rbac";
 import { SubmissionsList } from "@/app/(dashboard)/dashboard/SubmissionsList";
-import { getOrgLabels } from "@/app/_lib/org/getOrgLabels";
+import { useDashboardBranding } from "@/app/_components/dashboard/WorkspaceBrandingProvider";
 
 function SubmissionsFallback({ role }: { role: WorkspaceRole | null }) {
-  const labels = getOrgLabels();
+  const { labels } = useDashboardBranding();
   const label =
     role === "reviewer"
       ? "Opening your desk…"

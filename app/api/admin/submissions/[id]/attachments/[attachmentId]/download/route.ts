@@ -3,6 +3,7 @@ import { requireActiveAdmin } from "@/app/_lib/server/adminApiAuth";
 import { getSupabaseAdmin } from "@/app/_lib/server/supabaseAdmin";
 import { decryptEncryptedPayloadFieldToJson } from "@/app/_lib/server/decryptEncryptedPayload";
 import { extractSubmissionAttachments } from "@/app/_lib/attachments/extractSubmissionAttachments";
+import { logSubmissionAudit } from "@/app/_lib/server/logSubmissionAudit";
 import {
   assertMayDecryptSubmission,
   jsonForbidden,
@@ -62,6 +63,18 @@ export async function GET(request: NextRequest, context: RouteParams) {
 
     if (error || !data?.signedUrl) {
       return NextResponse.json({ error: "Could not generate download URL" }, { status: 500 });
+    }
+
+    try {
+      await logSubmissionAudit({
+        submissionId: id,
+        adminUid: admin.uid,
+        adminEmail: admin.adminEmail,
+        action: "download_attachment",
+        details: { attachmentId, name: attachment.name ?? null },
+      });
+    } catch {
+      /* audit failure must not block download */
     }
 
     return NextResponse.json(

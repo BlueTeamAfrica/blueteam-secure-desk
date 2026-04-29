@@ -5,6 +5,8 @@ import { filterCasesVisibleToRole, isCaseAssignedToWorkspaceUser } from "@/app/_
 export type DashboardViewKey =
   | "activeReports"
   | "inbox"
+  | "needs_lead"
+  | "assigned_work"
   | "new"
   | "needsTriage"
   | "needs_triage"
@@ -44,6 +46,13 @@ function normalizeView(raw: string | null | undefined): DashboardViewKey {
     case "withLead":
     case "with_lead":
       return "withLead";
+    case "needs_lead":
+    case "needslead":
+    case "unassigned":
+      return "needs_lead";
+    case "assigned_work":
+    case "assignedwork":
+      return "assigned_work";
     case "inReview":
     case "in_review":
       return "in_review";
@@ -63,6 +72,24 @@ function normalizeView(raw: string | null | undefined): DashboardViewKey {
     case "team":
       return "team";
     case "resolved":
+      return "resolved";
+    // Atar workflow aliases (query param friendly).
+    case "raw":
+    case "raw_materials":
+      return "new";
+    case "edit1":
+    case "first_editing":
+      return "needs_triage";
+    case "edit2":
+    case "second_editing":
+      return "assigned";
+    case "proof":
+    case "proofreading":
+      return "in_review";
+    case "design":
+    case "designed":
+      return "waiting_follow_up";
+    case "published":
       return "resolved";
     case "assigned":
       return "assigned";
@@ -90,12 +117,14 @@ export function filterItemsByView(args: {
   view: string | null;
   role: WorkspaceRole | null;
   userCtx: WorkspaceUserContext | null;
+  /** If true, `submissions` are already filtered for role visibility. */
+  skipRoleVisibilityFilter?: boolean;
 }): WorkspaceCase[] {
-  const { submissions, view, role, userCtx } = args;
+  const { submissions, view, role, userCtx, skipRoleVisibilityFilter } = args;
   if (!role || !userCtx) return [];
 
   // First apply role visibility exactly as today.
-  const visible = filterCasesVisibleToRole(role, submissions, userCtx);
+  const visible = skipRoleVisibilityFilter ? submissions : filterCasesVisibleToRole(role, submissions, userCtx);
 
   const v = normalizeView(view);
   switch (v) {
@@ -117,8 +146,17 @@ export function filterItemsByView(args: {
       return visible.filter((c) => matchesStatus(c, "needs_triage"));
 
     case "withLead":
-    case "assigned":
       return visible.filter((c) => hasOwner(c));
+
+    case "needs_lead":
+      return visible.filter((c) => !hasOwner(c) && c.status !== "archived");
+
+    case "assigned_work":
+      return visible.filter((c) => hasOwner(c) && c.status !== "archived");
+
+    case "assigned":
+      // Stage lane: Second Editing (strict status).
+      return visible.filter((c) => matchesStatus(c, "assigned"));
 
     case "inReview":
     case "in_review":

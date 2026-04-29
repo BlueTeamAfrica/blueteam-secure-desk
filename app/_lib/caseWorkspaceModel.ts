@@ -63,6 +63,8 @@ export type WorkspaceCase = {
   encryptedPayload: string | null;
   status: CaseStatus;
   priority: PriorityLevel;
+  /** Optional due date for operational SLAs (ISO string when available). */
+  dueDate: string | null;
   assignedOwnerId: string | null;
   assignedOwnerName: string | null;
   assignedOwnerType: OwnerType;
@@ -97,6 +99,8 @@ export type CaseQueueSnapshot = {
 
 export type SidebarViewKey =
   | "inbox"
+  | "needs_lead"
+  | "assigned_work"
   | "new"
   | "needs_triage"
   | "assigned"
@@ -109,6 +113,8 @@ export type SidebarViewKey =
 
 const SIDEBAR_KEYS = new Set<string>([
   "inbox",
+  "needs_lead",
+  "assigned_work",
   "new",
   "needs_triage",
   "assigned",
@@ -345,8 +351,21 @@ export function editorialCardHeadline(c: WorkspaceCase): string {
 }
 
 export function ownerDisplayLine(c: WorkspaceCase): string {
-  if (!c.assignedOwnerName?.trim() && !c.assignedOwnerId) return "No one assigned yet";
-  return c.assignedOwnerName?.trim() || "No one assigned yet";
+  if (!c.assignedOwnerName?.trim() && !c.assignedOwnerId) return "Unassigned";
+  const raw = c.assignedOwnerName?.trim();
+  if (!raw) return "Unassigned";
+  // Prefer a friendly display string when legacy assignments stored raw emails.
+  const looksLikeEmail = raw.includes("@") && !raw.includes(" ");
+  if (looksLikeEmail) {
+    const local = raw.slice(0, raw.indexOf("@")).replace(/[._-]+/g, " ").trim();
+    if (local) {
+      return local
+        .split(/\s+/g)
+        .map((w) => (w ? w[0]!.toUpperCase() + w.slice(1) : w))
+        .join(" ");
+    }
+  }
+  return raw;
 }
 
 export function normalizeSubmissionToCase(id: string, data: DocumentData): WorkspaceCase {
@@ -375,6 +394,7 @@ export function normalizeSubmissionToCase(id: string, data: DocumentData): Works
     encryptedPayload: enc,
     status,
     priority,
+    dueDate: timestampToIso(data.dueDate),
     assignedOwnerId: owner.assignedOwnerId,
     assignedOwnerName: owner.assignedOwnerName,
     assignedOwnerType: owner.assignedOwnerType,
@@ -408,14 +428,29 @@ export function toCaseQueueSnapshot(c: WorkspaceCase): CaseQueueSnapshot {
 
 export function normalizeSidebarView(raw: string | null): SidebarViewKey {
   if (raw && SIDEBAR_KEYS.has(raw)) return raw as SidebarViewKey;
+  const t = (raw ?? "").trim().toLowerCase().replace(/[\s-]+/g, "_");
+  if (t === "needs_lead" || t === "needslead" || t === "unassigned") return "needs_lead";
+  if (t === "assigned_work" || t === "assignedwork" || t === "with_lead") return "assigned_work";
+  if (t === "raw" || t === "raw_materials") return "new";
+  if (t === "edit1" || t === "first_editing") return "needs_triage";
+  if (t === "edit2" || t === "second_editing") return "assigned";
+  if (t === "proof" || t === "proofreading") return "in_review";
+  if (t === "design" || t === "designed") return "waiting_follow_up";
+  if (t === "published") return "resolved";
+  if (t === "archive" || t === "archived") return "archive";
   return "inbox";
 }
 
 export function rowMatchesSidebarView(row: CaseQueueSnapshot, view: SidebarViewKey): boolean {
   if (view === "team" || view === "analytics") return false;
-  const hasOwner =
-    (row.assignedOwnerId !== null && row.assignedOwnerId.trim() !== "") ||
-    (row.assignedOwnerName !== null && row.assignedOwnerName.trim() !== "");
+  if (view === "needs_lead") {
+    const hasOwner = !!(row.assignedOwnerId?.trim() || row.assignedOwnerName?.trim());
+    return !hasOwner && row.status !== "archived";
+  }
+  if (view === "assigned_work") {
+    const hasOwner = !!(row.assignedOwnerId?.trim() || row.assignedOwnerName?.trim());
+    return hasOwner && row.status !== "archived";
+  }
   switch (view) {
     case "inbox":
       return row.status !== "archived";
@@ -424,7 +459,7 @@ export function rowMatchesSidebarView(row: CaseQueueSnapshot, view: SidebarViewK
     case "needs_triage":
       return row.status === "needs_triage";
     case "assigned":
-      return hasOwner;
+      return row.status === "assigned";
     case "in_review":
       return row.status === "in_review";
     case "waiting_follow_up":

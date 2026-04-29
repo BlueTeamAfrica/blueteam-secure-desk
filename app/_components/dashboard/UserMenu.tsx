@@ -2,7 +2,7 @@
 
 import { useAuth } from "@/app/_components/auth/AuthContext";
 import type { WorkspaceRole } from "@/app/_lib/rbac";
-import { getOrgLabels } from "@/app/_lib/org/getOrgLabels";
+import { useDashboardBranding } from "@/app/_components/dashboard/WorkspaceBrandingProvider";
 
 function roleBadgeClass(role: WorkspaceRole): string {
   switch (role) {
@@ -23,7 +23,7 @@ function roleBadgeClass(role: WorkspaceRole): string {
 
 export function UserMenu() {
   const { state, signOut } = useAuth();
-  const labels = getOrgLabels();
+  const { labels } = useDashboardBranding();
 
   const email =
     state.status === "signedInWorkspace" ||

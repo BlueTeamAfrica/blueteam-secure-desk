@@ -1,17 +1,7 @@
 "use client";
 
 import { statusBadgeClass, type CaseStatus } from "@/app/_lib/caseWorkspaceModel";
-
-/** Friendly badge copy used across the current dashboard UI. */
-const STATUS_CHIP: Record<CaseStatus, string> = {
-  new: "Raw Materials",
-  needs_triage: "First Editing",
-  assigned: "Second Editing",
-  in_review: "Proofreading",
-  waiting_follow_up: "Designed",
-  resolved: "Published",
-  archived: "Archive",
-};
+import { useDashboardBranding } from "@/app/_components/dashboard/WorkspaceBrandingProvider";
 
 export function ItemStatusBadge({
   status,
@@ -20,8 +10,9 @@ export function ItemStatusBadge({
   status: CaseStatus;
   className?: string;
 }) {
+  const { labels } = useDashboardBranding();
   const base = statusBadgeClass(status);
   const merged = [base, className].filter(Boolean).join(" ");
-  return <span className={merged}>{STATUS_CHIP[status]}</span>;
+  return <span className={merged}>{labels.caseStatusLabels[status]}</span>;
 }
 

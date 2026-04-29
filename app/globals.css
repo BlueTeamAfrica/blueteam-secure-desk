@@ -381,6 +381,7 @@ a:hover {
   display: flex;
   flex: 1;
   background: var(--bg-deep);
+  min-width: 0;
 }
 
 .dash-column {
@@ -413,20 +414,27 @@ a:hover {
   flex-direction: column;
   gap: var(--space-6);
   flex: 1;
+  min-width: 0;
 }
 
 .brand {
   display: flex;
   gap: 12px;
   align-items: center;
-  padding: 4px 4px 0;
+  padding: 3px 4px 0;
 }
 
-.brand--logo-card {
+/* Managing Editor brand card (hard-constrained logo; no overflow). */
+.sidebar-brand-card {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 14px;
+  border-radius: 18px;
+  overflow: hidden;
+  display: flex;
   flex-direction: column;
-  align-items: stretch;
+  align-items: center;
   gap: 12px;
-  text-align: center;
 }
 
 .brand-badge {
@@ -458,32 +466,77 @@ a:hover {
   object-position: center;
 }
 
-.brand-logo-tile {
+.sidebar-logo-box {
   width: 100%;
-  min-height: 108px;
-  max-height: 132px;
-  padding: 12px 14px;
-  border-radius: var(--radius-lg);
-  background: #ffffff;
-  border: 1px solid color-mix(in oklab, var(--border) 70%, transparent);
-  box-shadow:
-    0 1px 0 color-mix(in oklab, #fff 65%, transparent) inset,
-    0 10px 24px rgba(12, 11, 9, 0.06);
-  display: grid;
-  place-items: center;
+  max-width: 180px;
+  height: 84px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.brand--logo-card .brand-logo-img {
-  height: auto !important;
-  max-height: 90px;
+.sidebar-logo-img {
+  display: block;
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
+  height: auto;
   object-fit: contain;
 }
 
-.brand-subtitle--logo-card {
+.sidebar-brand-subtitle {
+  text-align: center;
   font-size: 14px;
   font-weight: 500;
+  line-height: 1.35;
+  color: color-mix(in oklab, var(--text) 72%, var(--muted));
+}
+
+.sidebar-brand-workspace {
+  text-align: center;
+  font-size: 15px;
+  font-weight: 650;
+  letter-spacing: -0.015em;
+  color: var(--text);
+  line-height: 1.25;
+}
+
+.sidebar-brand-role {
+  text-align: center;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.35;
+  color: var(--text-tertiary);
+  margin-top: -4px;
+}
+
+.sidebar-brand-powered {
+  text-align: center;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  line-height: 1.25;
+  color: color-mix(in oklab, var(--text-tertiary) 92%, var(--text-secondary));
+  max-width: 220px;
+  text-wrap: balance;
+}
+
+.sidebar-brand-powered-label {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: color-mix(in oklab, var(--text-tertiary) 92%, var(--text-secondary));
+}
+
+.sidebar-brand-powered-name {
+  display: block;
+  font-size: 12px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
   color: color-mix(in oklab, var(--text) 78%, var(--muted));
-  margin-top: 0;
 }
 
 .brand-title {
@@ -606,6 +659,38 @@ a:hover {
   border-color: color-mix(in oklab, var(--accent) 20%, var(--border));
 }
 
+.detail-meta-strip {
+  margin-top: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.detail-meta-chip {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 10px;
+  border-radius: 12px;
+  background: color-mix(in oklab, var(--panel-secondary) 82%, var(--border));
+  border: 1px solid color-mix(in oklab, var(--border) 82%, var(--text));
+  min-width: 120px;
+}
+
+.detail-meta-label {
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+
+.detail-meta-value {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+
 .topbar {
   position: sticky;
   top: 0;
@@ -629,6 +714,7 @@ a:hover {
   flex: 1;
   padding: 32px 32px 56px;
   overflow-x: hidden;
+  min-width: 0;
 }
 
 .header-title {
@@ -1135,6 +1221,17 @@ a:hover {
   box-shadow: var(--card-shadow-hover), var(--premium-selected-inset);
 }
 
+.report-card--overdue {
+  border-color: color-mix(in oklab, var(--danger) 35%, var(--border)) !important;
+  box-shadow:
+    var(--card-shadow),
+    0 0 0 1px color-mix(in oklab, var(--danger) 10%, transparent) inset;
+}
+
+.report-card--overdue:hover {
+  border-color: color-mix(in oklab, var(--danger) 52%, var(--border)) !important;
+}
+
 .report-card-top {
   display: flex;
   align-items: flex-start;
@@ -1355,6 +1452,27 @@ a:hover {
 .detail-read-ambient {
   padding: 14px 4px 6px;
   margin-top: 4px;
+}
+
+.detail-activity-row {
+  padding: 9px 12px;
+  border-radius: 12px;
+  background: color-mix(in oklab, var(--panel-secondary) 82%, var(--border));
+  border: 1px solid color-mix(in oklab, var(--border) 82%, var(--text));
+}
+
+.detail-activity-action {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+  line-height: 1.35;
+}
+
+.detail-activity-meta {
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--text-tertiary);
+  line-height: 1.35;
 }
 
 .detail-read-actions {
@@ -2843,6 +2961,14 @@ a:hover {
   gap: 10px;
 }
 
+.topbar-me-logo {
+  width: 18px;
+  height: 18px;
+  border-radius: 6px;
+  object-fit: contain;
+  box-shadow: 0 0 0 1px color-mix(in oklab, var(--border) 65%, transparent);
+}
+
 .topbar-me-brand-mark {
   width: 9px;
   height: 9px;
@@ -3194,6 +3320,122 @@ a:hover {
   margin-top: clamp(28px, 4vw, 48px);
 }
 
+/* Executive overview (dashboard homepage) */
+.exec-overview {
+  margin-bottom: var(--space-6);
+  padding: 22px var(--space-6);
+  border-radius: var(--radius-xl);
+  border: 1px solid color-mix(in oklab, var(--border) 78%, var(--text));
+  background: var(--panel-secondary);
+  box-shadow: var(--card-shadow);
+}
+
+.exec-overview-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding-bottom: var(--space-4);
+  border-bottom: 1px solid color-mix(in oklab, var(--border) 52%, transparent);
+  margin-bottom: var(--space-5);
+}
+
+.exec-overview-kicker {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+
+.exec-overview-title {
+  margin-top: 10px;
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  color: var(--text);
+}
+
+.exec-overview-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 12px;
+}
+
+.exec-kpi {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-height: 110px;
+  padding: 16px 18px 14px;
+  border-radius: var(--radius-lg);
+  border: 1px solid color-mix(in oklab, var(--border) 82%, var(--text));
+  background: linear-gradient(
+    180deg,
+    color-mix(in oklab, var(--bg-elevated) 92%, var(--surface)) 0%,
+    color-mix(in oklab, var(--panel-secondary) 92%, var(--surface)) 100%
+  );
+  color: inherit;
+  transition: var(--transition-elevate);
+  box-shadow: var(--card-shadow);
+}
+
+a.exec-kpi:hover {
+  border-color: color-mix(in oklab, var(--accent) 32%, var(--border));
+  box-shadow: var(--card-shadow-hover);
+  transform: translateY(-1px);
+}
+
+.exec-kpi-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: color-mix(in oklab, var(--text-tertiary) 88%, var(--text));
+}
+
+.exec-kpi-value {
+  margin-top: 10px;
+  font-size: clamp(1.65rem, 1.2vw + 1.05rem, 2rem);
+  font-weight: 750;
+  letter-spacing: -0.04em;
+  line-height: 1.05;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+}
+
+.exec-kpi-hint {
+  margin-top: 10px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--text-tertiary);
+}
+
+.exec-kpi--new {
+  border-color: color-mix(in oklab, var(--info) 18%, var(--border));
+  background: color-mix(in oklab, var(--info-surface) 24%, var(--bg-elevated));
+}
+
+.exec-kpi--awaiting {
+  border-color: color-mix(in oklab, var(--warning) 18%, var(--border));
+  background: color-mix(in oklab, var(--warning-surface) 22%, var(--bg-elevated));
+}
+
+.exec-kpi--review {
+  border-color: color-mix(in oklab, var(--review) 18%, var(--border));
+  background: color-mix(in oklab, var(--review-surface) 22%, var(--bg-elevated));
+}
+
+.exec-kpi--resolved {
+  border-color: color-mix(in oklab, var(--success) 18%, var(--border));
+  background: color-mix(in oklab, var(--success-surface) 22%, var(--bg-elevated));
+}
+
+.exec-kpi--avg {
+  border-color: color-mix(in oklab, var(--accent) 16%, var(--border));
+  background: color-mix(in oklab, var(--accent-surface) 18%, var(--bg-elevated));
+}
+
 /* Unclaimed queue — visually later on the page (below board + detail) */
 .me-unclaimed-deck {
   margin-top: clamp(40px, 6vw, 72px);
@@ -3252,6 +3494,10 @@ a:hover {
     flex: 1 1 100%;
   }
 
+  .sidebar-brand-card {
+    flex: 1 1 100%;
+  }
+
   .nav {
     flex-direction: row;
     flex-wrap: wrap;
@@ -3278,6 +3524,19 @@ a:hover {
   .status-count {
     position: static;
   }
+
+  .detail-meta-strip {
+    gap: 6px;
+  }
+
+  .detail-meta-chip {
+    min-width: 140px;
+    flex: 1 1 calc(50% - 6px);
+  }
+
+  .report-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 @media (max-width: 600px) {
@@ -3291,6 +3550,24 @@ a:hover {
 
   .report-grid {
     grid-template-columns: 1fr;
+  }
+
+  .status-nav-item {
+    min-width: 100%;
+  }
+
+  .detail-meta-chip {
+    min-width: 0;
+    flex: 1 1 100%;
+  }
+
+  .ops-run-sheet-stats {
+    grid-template-columns: 1fr;
+  }
+
+  .ops-unclaimed-bottom {
+    flex-direction: column;
+    align-items: flex-start;
   }
 
   .user-menu .user-block {

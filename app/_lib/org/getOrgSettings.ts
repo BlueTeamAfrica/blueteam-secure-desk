@@ -1,23 +1,13 @@
-export type OrgSettings = {
-  /** Branding / copy */
-  productName: string;
-  /** Future i18n */
-  locale: string;
-  /** Future theming hooks */
-  theme: "light";
-};
+import type { OrgSettings } from "@/app/_lib/org/types";
+import { getWorkspaceConfig } from "@/app/_lib/org/getWorkspaceConfig";
 
-/**
- * Organization-level settings.
- *
- * Phase 4: default-backed, no backend migration yet.
- * Later: this can read from a workspace/org document safely.
- */
+export type { OrgSettings };
+
 export function getOrgSettings(): OrgSettings {
+  const c = getWorkspaceConfig();
   return {
-    productName: "Secure Reporter",
-    locale: "en",
-    theme: "light",
+    ...c.branding,
+    locale: c.locale,
+    theme: c.theme,
   };
 }
-

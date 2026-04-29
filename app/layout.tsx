@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist_Mono, Poppins } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/app/_components/auth/AuthContext";
+import { getOrgSettings } from "@/app/_lib/org/getOrgSettings";
 
 const poppins = Poppins({
   subsets: ["latin"],
@@ -16,8 +17,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Secure Reporter Dashboard",
-  description: "Admin dashboard for Secure Reporter",
+  title: getOrgSettings().productName,
+  description: "Secure newsroom case desk",
 };
 
 export default function RootLayout({
