@@ -14,6 +14,10 @@ import { getFirebaseAuth, signOut as firebaseSignOut } from "@/app/_lib/firebase
 import type { WorkspaceRole } from "@/app/_lib/rbac";
 import { normalizeWorkspaceRole } from "@/app/_lib/rbac";
 
+function isTrueish(value: unknown): boolean {
+  return value === true || value === "true";
+}
+
 type AuthState =
   | { status: "loading"; user: null }
   | { status: "signedOut"; user: null }
@@ -69,7 +73,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             const ref = doc(db, "adminUsers", user.uid);
             const snap = await getDoc(ref);
             const data = snap.exists() ? (snap.data() as { active?: unknown }) : null;
-            const isAdmin = data?.active === true;
+            const isAdmin = isTrueish(data?.active);
 
             if (!isAdmin) {
               setState({ status: "signedInButUnauthorized", user });

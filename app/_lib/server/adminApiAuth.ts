@@ -9,6 +9,10 @@ export type AdminAuthResult =
   | { ok: true; admin: VerifiedAdmin }
   | { ok: false; response: NextResponse };
 
+function isTrueish(value: unknown): boolean {
+  return value === true || value === "true";
+}
+
 export async function requireActiveAdmin(request: NextRequest): Promise<AdminAuthResult> {
   const authHeader = request.headers.get("authorization");
   if (!authHeader?.startsWith("Bearer ")) {
@@ -32,7 +36,7 @@ export async function requireActiveAdmin(request: NextRequest): Promise<AdminAut
   const db = getAdminFirestore();
   const adminSnap = await db.collection("adminUsers").doc(uid).get();
   const adminData = adminSnap.data() as { active?: unknown } | undefined;
-  if (!adminSnap.exists || adminData?.active !== true) {
+  if (!adminSnap.exists || !isTrueish(adminData?.active)) {
     return { ok: false, response: NextResponse.json({ error: "Forbidden" }, { status: 403 }) };
   }
 

@@ -7,6 +7,7 @@ import { getAdminAuth, getAdminFirestore } from "@/app/_lib/server/firebaseAdmin
 import { logSubmissionAudit } from "@/app/_lib/server/logSubmissionAudit";
 import { assertWorkspaceRole, jsonForbidden } from "@/app/_lib/server/submissionCaseAccess";
 import { fetchWorkspaceRole } from "@/app/_lib/server/workspaceRole";
+import { isWorkspaceUserActive, type WorkspaceUserProfile } from "@/app/_lib/workspace/userProfile";
 
 type RouteParams = { params: Promise<{ id: string }> };
 
@@ -50,7 +51,10 @@ export async function POST(request: NextRequest, context: RouteParams) {
     if (!assigneeDoc.exists) {
       return NextResponse.json({ error: "Invalid request." }, { status: 400 });
     }
-    const assigneeData = assigneeDoc.data() as Record<string, unknown>;
+    const assigneeData = assigneeDoc.data() as WorkspaceUserProfile;
+    if (!isWorkspaceUserActive(assigneeData)) {
+      return NextResponse.json({ error: "Invalid request." }, { status: 400 });
+    }
     const assigneeRole = normalizeWorkspaceRole(assigneeData.role);
     if (!assigneeRole) {
       return NextResponse.json({ error: "Invalid request." }, { status: 400 });

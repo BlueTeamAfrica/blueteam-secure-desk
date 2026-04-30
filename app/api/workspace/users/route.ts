@@ -4,6 +4,7 @@ import { requireActiveAdmin } from "@/app/_lib/server/adminApiAuth";
 import { getAdminAuth, getAdminFirestore } from "@/app/_lib/server/firebaseAdmin";
 import { assertWorkspaceRole, jsonForbidden } from "@/app/_lib/server/submissionCaseAccess";
 import { fetchWorkspaceRole } from "@/app/_lib/server/workspaceRole";
+import { isWorkspaceUserActive, type WorkspaceUserProfile } from "@/app/_lib/workspace/userProfile";
 
 export type WorkspaceMemberDto = {
   uid: string;
@@ -36,7 +37,8 @@ export async function GET(request: NextRequest) {
 
     for (const doc of snap.docs) {
       const uid = doc.id;
-      const data = doc.data() as Record<string, unknown>;
+      const data = doc.data() as WorkspaceUserProfile;
+      if (!isWorkspaceUserActive(data)) continue;
       const r = normalizeWorkspaceRole(data.role);
       if (!r) continue;
 
