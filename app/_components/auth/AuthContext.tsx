@@ -13,6 +13,7 @@ import { db } from "@/app/_lib/firebase/firestore";
 import { getFirebaseAuth, signOut as firebaseSignOut } from "@/app/_lib/firebase/auth";
 import type { WorkspaceRole } from "@/app/_lib/rbac";
 import { normalizeWorkspaceRole } from "@/app/_lib/rbac";
+import { isWorkspaceUserActive, type WorkspaceUserProfile } from "@/app/_lib/workspace/userProfile";
 
 function isTrueish(value: unknown): boolean {
   return value === true || value === "true";
@@ -49,6 +50,14 @@ async function loadWorkspaceRole(user: User): Promise<WorkspaceRole | null> {
   return normalizeWorkspaceRole(raw);
 }
 
+async function loadWorkspaceRoleFromClientFirestore(uid: string): Promise<WorkspaceRole | null> {
+  const snap = await getDoc(doc(db, "users", uid));
+  if (!snap.exists()) return null;
+  const data = snap.data() as WorkspaceUserProfile;
+  if (!isWorkspaceUserActive(data)) return null;
+  return normalizeWorkspaceRole(data.role);
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<AuthState>({
     status: "loading",
@@ -80,12 +89,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               return;
             }
 
-            const role = await loadWorkspaceRole(user);
+            const [serverRole, clientRole] = await Promise.all([
+              loadWorkspaceRole(user),
+              loadWorkspaceRoleFromClientFirestore(user.uid),
+            ]);
+
+            const role = serverRole ?? clientRole;
             if (!role) {
               setState({ status: "signedInNoRole", user });
-            } else {
-              setState({ status: "signedInWorkspace", user, role });
+              return;
             }
+
+            if (serverRole !== role && clientRole === role) {
+              // Non-sensitive: just indicate disagreement, no tokens or doc data.
+              console.warn("[auth] Server role check returned null; using client users/{uid} role fallback.", {
+                uid: user.uid,
+              });
+            } else if (serverRole && clientRole && serverRole !== clientRole) {
+              console.warn("[auth] Server/client role mismatch; using server role.", { uid: user.uid });
+            }
+
+            setState({ status: "signedInWorkspace", user, role });
           } catch {
             setState({ status: "signedOut", user: null });
           }

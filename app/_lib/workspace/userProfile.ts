@@ -1,6 +1,7 @@
 export type WorkspaceUserProfile = {
   active?: unknown;
   status?: unknown;
+  enabled?: unknown;
   role?: unknown;
   email?: unknown;
   displayName?: unknown;
@@ -19,6 +20,7 @@ export function isTrueish(value: unknown): boolean {
 export function isWorkspaceUserActive(data: WorkspaceUserProfile | null | undefined): boolean {
   if (!data) return false;
   if (isTrueish(data.active)) return true;
-  return data.status === "active";
+  if (data.status === "active") return true;
+  return data.enabled === true;
 }
 

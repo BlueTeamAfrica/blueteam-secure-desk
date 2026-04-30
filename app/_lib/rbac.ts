@@ -31,7 +31,13 @@ export type UserRoleDocument = {
 
 export function normalizeWorkspaceRole(value: unknown): WorkspaceRole | null {
   if (typeof value !== "string") return null;
-  const t = value.trim().toLowerCase();
+  const raw = value.trim().toLowerCase();
+  const t =
+    raw === "managing_editor"
+      ? "admin"
+      : raw === "editor"
+        ? "reviewer"
+        : raw;
   if (ROLE_SET.has(t)) return t as WorkspaceRole;
   return null;
 }
