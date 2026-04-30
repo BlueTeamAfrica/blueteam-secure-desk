@@ -7,6 +7,7 @@ import { SidebarBrandHeader } from "@/app/_components/dashboard/SidebarBrandHead
 import { UserMenu } from "@/app/_components/dashboard/UserMenu";
 import { CaseQueueProvider } from "@/app/_components/dashboard/CaseQueueContext";
 import { useAuth } from "@/app/_components/auth/AuthContext";
+import { RoleNotAssignedDebug } from "@/app/_components/auth/RoleNotAssignedDebug";
 import { getEditorDeskHeaderFor } from "@/app/_lib/org/getWorkspaceConfig";
 import { WorkspaceBrandingProvider, useDashboardBranding } from "@/app/_components/dashboard/WorkspaceBrandingProvider";
 
@@ -104,6 +105,7 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
             (Firestore <code className="inline-code">users</code> / your user id). Ask an owner to
             assign a role so the correct navigation and permissions load.
           </p>
+          <RoleNotAssignedDebug user={state.user} />
         </div>
       </main>
     );
