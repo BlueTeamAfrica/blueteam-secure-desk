@@ -41,6 +41,7 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
   const { state } = useAuth();
   const { status } = state;
   const router = useRouter();
+  const pathname = usePathname();
   const { labels, branding } = useDashboardBranding();
   const editorDeskFallbackTitle = labels.editorDeskHeaderSuspenseTitle;
   const editorDeskFallbackSubtitle = labels.editorDeskHeaderSuspenseSubtitle;
@@ -55,9 +56,11 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (status === "signedOut") {
-      router.replace("/login?next=/dashboard");
+      const qs = typeof window !== "undefined" ? window.location.search : "";
+      const next = `${pathname}${qs || ""}`;
+      router.replace(`/login?next=${encodeURIComponent(next)}`);
     }
-  }, [router, status]);
+  }, [pathname, router, status]);
 
   if (status === "loading") {
     return (

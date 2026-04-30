@@ -1,7 +1,7 @@
 "use client";
 
 import { Suspense, useEffect } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/app/_components/auth/AuthContext";
 import { defaultDashboardViewForRole, isDashboardQueryViewAllowed } from "@/app/_lib/rbac";
 import { normalizeSidebarView } from "@/app/_lib/caseWorkspaceModel";
@@ -32,6 +32,7 @@ function SubmissionsFallback({ role }: { role: WorkspaceRole | null }) {
 function DashboardContent() {
   const { state } = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
 
   const sessionReady = state.status === "signedInWorkspace";
@@ -42,9 +43,9 @@ function DashboardContent() {
     const raw = searchParams.get("view");
     const view = normalizeSidebarView(raw);
     if (!isDashboardQueryViewAllowed(role, view)) {
-      router.replace(`/dashboard?view=${defaultDashboardViewForRole(role)}`);
+      router.replace(`${pathname}?view=${defaultDashboardViewForRole(role)}`);
     }
-  }, [router, searchParams, role, sessionReady]);
+  }, [pathname, router, searchParams, role, sessionReady]);
 
   return (
     <Suspense fallback={<SubmissionsFallback role={role} />}>
