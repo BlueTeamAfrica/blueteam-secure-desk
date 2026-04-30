@@ -16,22 +16,23 @@ type NavItem =
   | { kind: "route"; key: "my_queue"; label: string; href: string; roles: WorkspaceRole[] }
   | { kind: "settings"; label: string; href: string };
 
-function buildAllSidebarItems(l: OrgLabels, role: WorkspaceRole | null): NavItem[] {
+function buildAllSidebarItems(args: { labels: OrgLabels; role: WorkspaceRole | null; basePath: string }): NavItem[] {
+  const { labels: l, role, basePath } = args;
   const hrefByKey = new Map<SidebarViewKey, string>(
     l.workflow.sidebarStageViews.map(({ key, href }) => [
       key,
       key === "inbox"
-        ? href
-        : href === "/dashboard" || href === "/dashboard?view=inbox"
-          ? `/dashboard?view=${key}`
-          : href,
+        ? basePath
+        : href === "/dashboard" || href === "/dashboard?view=inbox" || href === basePath || href === `${basePath}?view=inbox`
+          ? `${basePath}?view=${key}`
+          : href.replace(/^\/dashboard\b/, basePath),
     ]),
   );
 
   const casesItem = (key: SidebarViewKey): NavItem => ({
     kind: "cases",
     key,
-    href: hrefByKey.get(key) ?? `/dashboard?view=${key}`,
+    href: hrefByKey.get(key) ?? `${basePath}?view=${key}`,
     label: key,
   });
 
@@ -41,16 +42,28 @@ function buildAllSidebarItems(l: OrgLabels, role: WorkspaceRole | null): NavItem
     casesItem("inbox"),
     casesItem("needs_lead"),
     casesItem("assigned_work"),
-    { kind: "route", key: "my_queue", label: l.myQueue, href: "/dashboard/my-queue", roles: ["owner", "admin", "reviewer", "intake"] },
+    {
+      kind: "route",
+      key: "my_queue",
+      label: l.myQueue,
+      href: `${basePath}/my-queue`,
+      roles: ["owner", "admin", "reviewer", "intake"],
+    },
     ...stageLaneKeys.map((k) => casesItem(k)),
     casesItem("archive"),
     casesItem("team"),
-    { kind: "settings", label: l.settings, href: "/settings" },
+    { kind: "settings", label: l.settings, href: basePath === "/sudanfacts" ? "/sudanfacts/settings" : "/settings" },
   ];
 
   const baseForEditor: NavItem[] = [
     casesItem("inbox"),
-    { kind: "route", key: "my_queue", label: l.myQueue, href: "/dashboard/my-queue", roles: ["owner", "admin", "reviewer", "intake"] },
+    {
+      kind: "route",
+      key: "my_queue",
+      label: l.myQueue,
+      href: `${basePath}/my-queue`,
+      roles: ["owner", "admin", "reviewer", "intake"],
+    },
     ...stageLaneKeys.map((k) => casesItem(k)),
     casesItem("archive"),
   ];
@@ -116,8 +129,9 @@ export function SidebarNav() {
   const searchParams = useSearchParams();
   const { state } = useAuth();
   const { labels } = useDashboardBranding();
+  const basePath = pathname.startsWith("/sudanfacts") ? "/sudanfacts" : "/dashboard";
   const activeView =
-    pathname.startsWith("/dashboard") ? normalizeSidebarView(searchParams.get("view")) : null;
+    pathname.startsWith(basePath) ? normalizeSidebarView(searchParams.get("view")) : null;
   const { rows } = useCaseQueue();
 
   const workspaceRole: WorkspaceRole | null =
@@ -130,7 +144,10 @@ export function SidebarNav() {
 
   const routeRole: WorkspaceRole | null = workspaceRole;
 
-  const allSidebarItems = useMemo(() => buildAllSidebarItems(labels, workspaceRole), [labels, workspaceRole]);
+  const allSidebarItems = useMemo(
+    () => buildAllSidebarItems({ labels, role: workspaceRole, basePath }),
+    [basePath, labels, workspaceRole],
+  );
 
   const navItems = useMemo(
     () =>
@@ -187,7 +204,7 @@ export function SidebarNav() {
           <div className="status-nav">
             {displayNavItems.map((item) => {
               if (item.kind === "settings") {
-                const isActive = pathname.startsWith("/settings");
+                const isActive = pathname.startsWith("/settings") || pathname.startsWith("/sudanfacts/settings");
                 return (
                   <Link
                     key="settings"
@@ -226,10 +243,10 @@ export function SidebarNav() {
               const isAnalytics = item.key === "analytics";
               const isActive =
                 isTeam || isAnalytics
-                  ? pathname.startsWith("/dashboard") && activeView === item.key
+                  ? pathname.startsWith(basePath) && activeView === item.key
                   : isInbox
-                    ? pathname.startsWith("/dashboard") && activeView === "inbox"
-                    : pathname.startsWith("/dashboard") && activeView === item.key;
+                    ? pathname.startsWith(basePath) && activeView === "inbox"
+                    : pathname.startsWith(basePath) && activeView === item.key;
               const count =
                 isTeam || isAnalytics
                   ? "—"

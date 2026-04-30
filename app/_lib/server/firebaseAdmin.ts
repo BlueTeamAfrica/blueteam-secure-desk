@@ -50,14 +50,3 @@ export function getAdminAuth(): Auth {
 export function getAdminFirestore(): Firestore {
   return getFirestore(getAdminApp());
 }
-
-export function getAdminProjectId(): string | null {
-  const a = getAdminApp();
-  const projectId =
-    typeof a.options?.projectId === "string"
-      ? a.options.projectId
-      : typeof process.env.FIREBASE_PROJECT_ID === "string"
-        ? process.env.FIREBASE_PROJECT_ID
-        : null;
-  return projectId && projectId.length > 0 ? projectId : null;
-}
