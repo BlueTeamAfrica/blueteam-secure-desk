@@ -11,6 +11,8 @@ import { ItemStatusBadge } from "@/components/items/ItemStatusBadge";
 import { getFirebaseAuth } from "@/app/_lib/firebase/auth";
 import { fetchSubmissionAttachmentSignedUrl, openSignedUrlInNewTab } from "@/app/_lib/downloadSubmissionAttachment";
 import type { ExportPackage } from "@/app/_lib/integrations/types";
+import { useAuth } from "@/app/_components/auth/AuthContext";
+import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { useDashboardBranding } from "@/app/_components/dashboard/WorkspaceBrandingProvider";
 
@@ -514,6 +516,9 @@ export function ItemDetailPanel({
   onApplyWorkflowStatus: () => void;
 }) {
   const { labels } = useDashboardBranding();
+  const { signOut } = useAuth();
+  const router = useRouter();
+  const pathname = usePathname();
   const action = labels.actionLabels ?? ({} as Partial<(typeof labels)["actionLabels"]>);
   const desk = labels.deskLabels ?? ({} as Partial<(typeof labels)["deskLabels"]>);
   const section = labels.detailSectionLabels ?? ({} as Partial<(typeof labels)["detailSectionLabels"]>);
@@ -537,9 +542,42 @@ export function ItemDetailPanel({
   const [exportPreviewError, setExportPreviewError] = useState<string | null>(null);
   const [exportPreview, setExportPreview] = useState<ExportPackage | null>(null);
 
+  const expireSession = useCallback(async () => {
+    try {
+      await signOut();
+    } finally {
+      const qs = typeof window !== "undefined" ? window.location.search : "";
+      const next = `${pathname}${qs || ""}`;
+      router.replace(`/login?next=${encodeURIComponent(next)}`);
+    }
+  }, [pathname, router, signOut]);
+
+  const fetchWithAuth = useCallback(
+    async (url: string, init?: RequestInit): Promise<Response> => {
+      const user = getFirebaseAuth().currentUser;
+      if (!user) {
+        await expireSession();
+        throw new Error("No current user.");
+      }
+      const headers = new Headers(init?.headers ?? undefined);
+      const run = async (forceRefresh: boolean) => {
+        const token = await user.getIdToken(forceRefresh);
+        headers.set("Authorization", `Bearer ${token}`);
+        return await fetch(url, { ...init, headers });
+      };
+      let res = await run(false);
+      if (res.status === 401) {
+        res = await run(true);
+        if (res.status === 401) await expireSession();
+      }
+      return res;
+    },
+    [expireSession],
+  );
+
   useEffect(() => {
     setOpenSections(DEFAULT_SECTION_OPEN);
-  }, [selected?.id]);
+  }, [fetchWithAuth, selected?.id]);
 
   useEffect(() => {
     if (!selected) return;
@@ -552,7 +590,7 @@ export function ItemDetailPanel({
   useEffect(() => {
     setBusyAttachmentIds(new Set());
     setAttachmentErrorById({});
-  }, [selected?.id]);
+  }, [fetchWithAuth, selected?.id]);
 
   useEffect(() => {
     if (!selected?.id) {
@@ -566,18 +604,15 @@ export function ItemDetailPanel({
       setAuditLoading(true);
       setAuditError(null);
       try {
-        const user = getFirebaseAuth().currentUser;
-        if (!user) {
-          setAuditError("Please sign in again.");
-          return;
-        }
-        const token = await user.getIdToken(true);
-        const res = await fetch(`/api/admin/submissions/${selected.id}/audit`, {
+        const res = await fetchWithAuth(`/api/admin/submissions/${selected.id}/audit`, {
           method: "GET",
-          headers: { Authorization: `Bearer ${token}` },
         });
         const body = (await res.json().catch(() => null)) as unknown;
         if (!res.ok) {
+          if (res.status === 401) {
+            setAuditError("Your session expired. Redirecting to sign in…");
+            return;
+          }
           const msg = (() => {
             if (!body || typeof body !== "object") return null;
             if (!("error" in body)) return null;
@@ -602,7 +637,7 @@ export function ItemDetailPanel({
     return () => {
       cancelled = true;
     };
-  }, [selected?.id]);
+  }, [fetchWithAuth, selected?.id]);
 
   useEffect(() => {
     if (!selected?.id) {
@@ -616,18 +651,15 @@ export function ItemDetailPanel({
       setExportPreviewLoading(true);
       setExportPreviewError(null);
       try {
-        const user = getFirebaseAuth().currentUser;
-        if (!user) {
-          setExportPreviewError("Please sign in again.");
-          return;
-        }
-        const token = await user.getIdToken(true);
-        const res = await fetch(`/api/admin/submissions/${selected.id}/export-package-preview`, {
+        const res = await fetchWithAuth(`/api/admin/submissions/${selected.id}/export-package-preview`, {
           method: "GET",
-          headers: { Authorization: `Bearer ${token}` },
         });
         const body = (await res.json().catch(() => null)) as unknown;
         if (!res.ok) {
+          if (res.status === 401) {
+            setExportPreviewError("Your session expired. Redirecting to sign in…");
+            return;
+          }
           const msg = (() => {
             if (!body || typeof body !== "object") return null;
             if (!("error" in body)) return null;
@@ -651,7 +683,7 @@ export function ItemDetailPanel({
     return () => {
       cancelled = true;
     };
-  }, [selected?.id]);
+  }, [fetchWithAuth, selected?.id]);
 
   const toggleSection = useCallback((key: DetailSectionKey) => {
     setOpenSections((prev) => ({ ...prev, [key]: !prev[key] }));
@@ -1082,7 +1114,8 @@ export function ItemDetailPanel({
                           const result = await fetchSubmissionAttachmentSignedUrl({
                             submissionId: selected.id,
                             attachmentId: a.id,
-                            getIdToken: () => user.getIdToken(true),
+                            getIdToken: (forceRefresh) => user.getIdToken(!!forceRefresh),
+                            onSessionExpired: expireSession,
                           });
                           if (!result.ok) {
                             setAttachmentErrorById((prev) => ({ ...prev, [a.id]: result.error }));

@@ -21,13 +21,26 @@ export function parseFilenameFromContentDisposition(header: string | null): stri
 
 export async function fetchSubmissionDocxDownload(args: {
   submissionId: string;
-  getIdToken: () => Promise<string>;
+  getIdToken: (forceRefresh?: boolean) => Promise<string>;
+  onSessionExpired?: () => void | Promise<void>;
 }): Promise<{ ok: true; blob: Blob; filename: string } | { ok: false; error: string }> {
-  const { submissionId, getIdToken } = args;
-  const token = await getIdToken();
-  const res = await fetch(`/api/admin/submissions/${encodeURIComponent(submissionId)}/export-docx`, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
+  const { submissionId, getIdToken, onSessionExpired } = args;
+  const url = `/api/admin/submissions/${encodeURIComponent(submissionId)}/export-docx`;
+
+  async function run(forceRefresh?: boolean) {
+    const token = await getIdToken(forceRefresh);
+    return await fetch(url, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  }
+
+  let res = await run(false);
+  if (res.status === 401) {
+    res = await run(true);
+    if (res.status === 401) {
+      await onSessionExpired?.();
+    }
+  }
   const disposition = res.headers.get("content-disposition");
   const filename =
     parseFilenameFromContentDisposition(disposition) ?? `Secure-Reporter-${submissionId}.docx`;
@@ -42,6 +55,8 @@ export async function fetchSubmissionDocxDownload(args: {
       } catch {
         /* ignore */
       }
+    } else if (res.status === 401) {
+      error = "Your session expired. Please sign in again.";
     } else if (res.status === 403) {
       error = "You don't have permission to export this report.";
     } else if (res.status === 404) {

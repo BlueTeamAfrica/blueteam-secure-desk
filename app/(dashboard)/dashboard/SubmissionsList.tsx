@@ -11,7 +11,7 @@ import { getSubmissionDisplay } from "@/app/_lib/items/getSubmissionDisplay";
 import { ItemCard } from "@/components/items/ItemCard";
 import { ItemDetailPanel } from "@/components/items/ItemDetailPanel";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { collection, onSnapshot } from "firebase/firestore";
 import { db } from "@/app/_lib/firebase/firestore";
 import { getFirebaseAuth } from "@/app/_lib/firebase/auth";
@@ -257,11 +257,13 @@ export function SubmissionsList({
   sessionReady: boolean;
   role: WorkspaceRole | null;
 }) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const { labels, branding } = useDashboardBranding();
   const needsTriageHref =
     labels.workflow.sidebarStageViews.find((x) => x.key === "needs_triage")?.href ??
     "/dashboard?view=needs_triage";
-  const searchParams = useSearchParams();
   const view: SidebarViewKey = normalizeSidebarView(searchParams.get("view"));
   const caseDataEnabled = sessionReady && role !== null && role !== "readonly";
   const editorDesk = role === "reviewer";
@@ -300,8 +302,51 @@ export function SubmissionsList({
     if (open) setDeleteError(null);
   }, []);
   const prevSelectedId = useRef<string | null>(null);
-  const { state: authState } = useAuth();
+  const { state: authState, signOut } = useAuth();
   const { setRows: setCaseQueueRows } = useCaseQueue();
+  const [sessionExpired, setSessionExpired] = useState(false);
+
+  const expireSession = useCallback(async () => {
+    setSessionExpired(true);
+    setCases([]);
+    setCaseQueueRows([]);
+    setSelectedId(null);
+    setDecryptError("Your session expired. Redirecting to sign in…");
+    try {
+      await signOut();
+    } finally {
+      const qs = typeof window !== "undefined" ? window.location.search : "";
+      const next = `${pathname}${qs || ""}`;
+      router.replace(`/login?next=${encodeURIComponent(next)}`);
+    }
+  }, [pathname, router, setCaseQueueRows, signOut]);
+
+  const fetchWithAuth = useCallback(
+    async (url: string, init?: RequestInit): Promise<Response> => {
+      const user = getFirebaseAuth().currentUser;
+      if (!user) {
+        await expireSession();
+        throw new Error("No current user.");
+      }
+
+      const headers = new Headers(init?.headers ?? undefined);
+      const run = async (forceRefresh: boolean) => {
+        const token = await user.getIdToken(forceRefresh);
+        headers.set("Authorization", `Bearer ${token}`);
+        return await fetch(url, { ...init, headers });
+      };
+
+      let res = await run(false);
+      if (res.status === 401) {
+        res = await run(true);
+        if (res.status === 401) {
+          await expireSession();
+        }
+      }
+      return res;
+    },
+    [expireSession],
+  );
 
   const userCtx: WorkspaceUserContext | null = useMemo(() => {
     if (authState.status !== "signedInWorkspace") return null;
@@ -376,6 +421,7 @@ export function SubmissionsList({
       setError(null);
       setCases([]);
       setCaseQueueRows([]);
+      setSessionExpired(false);
       return;
     }
 
@@ -528,9 +574,6 @@ export function SubmissionsList({
     let cancelled = false;
 
     void (async () => {
-      const user = getFirebaseAuth().currentUser;
-      if (!user) return;
-      const token = await user.getIdToken();
       const eligible = cases.filter(
         (c) => !!c.encryptedPayload?.trim() && mayShowDecryptUi(role, c, userCtx),
       );
@@ -547,9 +590,8 @@ export function SubmissionsList({
         if (filingByCaseIdRef.current[c.id]?.fp === fp) continue;
 
         try {
-          const res = await fetch(`/api/admin/submissions/${encodeURIComponent(c.id)}/decrypt`, {
+          const res = await fetchWithAuth(`/api/admin/submissions/${encodeURIComponent(c.id)}/decrypt`, {
             method: "GET",
-            headers: { Authorization: `Bearer ${token}` },
           });
           const text = await res.text();
           let body: unknown;
@@ -590,7 +632,20 @@ export function SubmissionsList({
     return () => {
       cancelled = true;
     };
-  }, [cases, caseDataEnabled, role, userCtx, selectedId]);
+  }, [cases, caseDataEnabled, fetchWithAuth, role, userCtx, selectedId]);
+
+  if (sessionExpired) {
+    return (
+      <div className="card" style={{ padding: "32px 24px" }}>
+        <div className="row-between">
+          <div className="spinner" />
+          <span className="muted" style={{ fontSize: 14 }}>
+            Your session expired. Redirecting to sign in…
+          </span>
+        </div>
+      </div>
+    );
+  }
 
   async function updateCaseWorkflowStatus(next: CaseStatus) {
     if (!selectedId || !role || !userCtx) return;
@@ -726,7 +781,8 @@ export function SubmissionsList({
       }
       const result = await fetchSubmissionDocxDownload({
         submissionId: selected.id,
-        getIdToken: () => user.getIdToken(true),
+        getIdToken: (forceRefresh) => user.getIdToken(!!forceRefresh),
+        onSessionExpired: expireSession,
       });
       if (!result.ok) {
         setExportDocxError(result.error);
@@ -753,7 +809,8 @@ export function SubmissionsList({
       }
       const result = await exportSubmissionToOneDrive({
         submissionId: selected.id,
-        getIdToken: () => user.getIdToken(true),
+        getIdToken: (forceRefresh) => user.getIdToken(!!forceRefresh),
+        onSessionExpired: expireSession,
       });
       if (!result.ok) {
         setExportOneDriveError(result.error);

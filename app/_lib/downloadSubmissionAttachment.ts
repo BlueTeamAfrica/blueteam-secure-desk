@@ -8,18 +8,28 @@
 export async function fetchSubmissionAttachmentSignedUrl(args: {
   submissionId: string;
   attachmentId: string;
-  getIdToken: () => Promise<string>;
+  getIdToken: (forceRefresh?: boolean) => Promise<string>;
+  onSessionExpired?: () => void | Promise<void>;
 }): Promise<{ ok: true; signedUrl: string } | { ok: false; error: string }> {
-  const { submissionId, attachmentId, getIdToken } = args;
-  const token = await getIdToken();
+  const { submissionId, attachmentId, getIdToken, onSessionExpired } = args;
 
-  const res = await fetch(
-    `/api/admin/submissions/${encodeURIComponent(submissionId)}/attachments/${encodeURIComponent(attachmentId)}/download`,
-    {
+  const url = `/api/admin/submissions/${encodeURIComponent(submissionId)}/attachments/${encodeURIComponent(attachmentId)}/download`;
+
+  async function run(forceRefresh?: boolean) {
+    const token = await getIdToken(forceRefresh);
+    return await fetch(url, {
       method: "GET",
       headers: { Authorization: `Bearer ${token}` },
-    },
-  );
+    });
+  }
+
+  let res = await run(false);
+  if (res.status === 401) {
+    res = await run(true);
+    if (res.status === 401) {
+      await onSessionExpired?.();
+    }
+  }
 
   const text = await res.text();
   let body: unknown = null;
