@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireActiveAdmin } from "@/app/_lib/server/adminApiAuth";
-import { decryptEncryptedPayloadFieldToJson } from "@/app/_lib/server/decryptEncryptedPayload";
+import {
+  decryptEncryptedPayloadFieldToJson,
+  getSubmissionPayloadSecretDiagnostics,
+  SubmissionPayloadDecryptFailedError,
+  SubmissionPayloadSecretMissingError,
+} from "@/app/_lib/server/decryptEncryptedPayload";
 import { logSubmissionAudit } from "@/app/_lib/server/logSubmissionAudit";
 import {
   assertMayDecryptSubmission,
@@ -105,10 +110,21 @@ export async function GET(request: NextRequest, context: RouteParams) {
       return NextResponse.json({ error: "Internal server error" }, { status: 500 });
     }
 
+    console.warn("[decrypt] decrypt_secret_state", {
+      ...getSubmissionPayloadSecretDiagnostics(),
+      submissionId: id,
+    });
+
     let decrypted: unknown;
     try {
       decrypted = decryptEncryptedPayloadFieldToJson(encryptedPayload);
     } catch (decryptErr) {
+      if (decryptErr instanceof SubmissionPayloadSecretMissingError) {
+        return NextResponse.json({ error: decryptErr.message }, { status: 503 });
+      }
+      if (decryptErr instanceof SubmissionPayloadDecryptFailedError) {
+        return NextResponse.json({ error: "Could not decrypt this submission." }, { status: 400 });
+      }
       throw decryptErr instanceof Error ? decryptErr : new Error(String(decryptErr));
     }
 
@@ -140,8 +156,18 @@ export async function GET(request: NextRequest, context: RouteParams) {
       submissionId,
     });
 
+    const safeForClient =
+      message === "Server decrypt secret is not configured" ||
+      message === "Could not decrypt this submission." ||
+      !/openssl|decoder routines|::|digital envelope routines|bad decrypt|wrong final block length/i.test(
+        message,
+      );
+
     return NextResponse.json(
-      { error: "Internal server error", debug: message },
+      {
+        error: "Internal server error",
+        ...(safeForClient ? { debug: message } : {}),
+      },
       { status: 500 },
     );
   }

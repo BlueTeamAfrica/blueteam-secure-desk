@@ -592,8 +592,17 @@ export function SubmissionsList({
               typeof body === "object" && body !== null && "debug" in body
                 ? (body as { debug?: unknown }).debug
                 : null;
+            const serverError =
+              typeof body === "object" &&
+              body !== null &&
+              "error" in body &&
+              typeof (body as { error: unknown }).error === "string"
+                ? ((body as { error: string }).error).trim()
+                : null;
             const msg =
-              res.status === 401
+              (res.status === 503 || res.status === 400) && serverError
+                ? serverError
+                : res.status === 401
                 ? "You’re signed in, but this filing request was rejected."
                 : res.status === 403
                   ? "You do not have permission to view this filing content."
