@@ -11,7 +11,7 @@ import { getSubmissionDisplay } from "@/app/_lib/items/getSubmissionDisplay";
 import { ItemCard } from "@/components/items/ItemCard";
 import { ItemDetailPanel } from "@/components/items/ItemDetailPanel";
 import Link from "next/link";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { collection, onSnapshot } from "firebase/firestore";
 import { db } from "@/app/_lib/firebase/firestore";
 import { getFirebaseAuth } from "@/app/_lib/firebase/auth";
@@ -257,8 +257,6 @@ export function SubmissionsList({
   sessionReady: boolean;
   role: WorkspaceRole | null;
 }) {
-  const router = useRouter();
-  const pathname = usePathname();
   const searchParams = useSearchParams();
   const { labels, branding } = useDashboardBranding();
   const needsTriageHref =
@@ -302,30 +300,13 @@ export function SubmissionsList({
     if (open) setDeleteError(null);
   }, []);
   const prevSelectedId = useRef<string | null>(null);
-  const { state: authState, signOut } = useAuth();
+  const { state: authState } = useAuth();
   const { setRows: setCaseQueueRows } = useCaseQueue();
-  const [sessionExpired, setSessionExpired] = useState(false);
-
-  const expireSession = useCallback(async () => {
-    setSessionExpired(true);
-    setCases([]);
-    setCaseQueueRows([]);
-    setSelectedId(null);
-    setDecryptError("Your session expired. Redirecting to sign in…");
-    try {
-      await signOut();
-    } finally {
-      const qs = typeof window !== "undefined" ? window.location.search : "";
-      const next = `${pathname}${qs || ""}`;
-      router.replace(`/login?next=${encodeURIComponent(next)}`);
-    }
-  }, [pathname, router, setCaseQueueRows, signOut]);
 
   const fetchWithAuth = useCallback(
     async (url: string, init?: RequestInit): Promise<Response> => {
       const user = getFirebaseAuth().currentUser;
       if (!user) {
-        await expireSession();
         throw new Error("No current user.");
       }
 
@@ -340,12 +321,13 @@ export function SubmissionsList({
       if (res.status === 401) {
         res = await run(true);
         if (res.status === 401) {
-          await expireSession();
+          // Keep the user signed in; handle this failure inline for the specific feature.
+          console.warn("auth session valid but API authorization failed");
         }
       }
       return res;
     },
-    [expireSession],
+    [],
   );
 
   const userCtx: WorkspaceUserContext | null = useMemo(() => {
@@ -421,7 +403,6 @@ export function SubmissionsList({
       setError(null);
       setCases([]);
       setCaseQueueRows([]);
-      setSessionExpired(false);
       return;
     }
 
@@ -606,7 +587,7 @@ export function SubmissionsList({
           if (!res.ok) {
             const msg =
               res.status === 401
-                ? "Your session expired. Please sign in again."
+                ? "You’re signed in, but this filing request was rejected."
                 : res.status === 403
                   ? "You don’t have access to this filing."
                   : res.status === 404
@@ -633,19 +614,6 @@ export function SubmissionsList({
       cancelled = true;
     };
   }, [cases, caseDataEnabled, fetchWithAuth, role, userCtx, selectedId]);
-
-  if (sessionExpired) {
-    return (
-      <div className="card" style={{ padding: "32px 24px" }}>
-        <div className="row-between">
-          <div className="spinner" />
-          <span className="muted" style={{ fontSize: 14 }}>
-            Your session expired. Redirecting to sign in…
-          </span>
-        </div>
-      </div>
-    );
-  }
 
   async function updateCaseWorkflowStatus(next: CaseStatus) {
     if (!selectedId || !role || !userCtx) return;
@@ -782,7 +750,6 @@ export function SubmissionsList({
       const result = await fetchSubmissionDocxDownload({
         submissionId: selected.id,
         getIdToken: (forceRefresh) => user.getIdToken(!!forceRefresh),
-        onSessionExpired: expireSession,
       });
       if (!result.ok) {
         setExportDocxError(result.error);
@@ -810,7 +777,6 @@ export function SubmissionsList({
       const result = await exportSubmissionToOneDrive({
         submissionId: selected.id,
         getIdToken: (forceRefresh) => user.getIdToken(!!forceRefresh),
-        onSessionExpired: expireSession,
       });
       if (!result.ok) {
         setExportOneDriveError(result.error);

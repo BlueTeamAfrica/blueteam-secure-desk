@@ -11,8 +11,6 @@ import { ItemStatusBadge } from "@/components/items/ItemStatusBadge";
 import { getFirebaseAuth } from "@/app/_lib/firebase/auth";
 import { fetchSubmissionAttachmentSignedUrl, openSignedUrlInNewTab } from "@/app/_lib/downloadSubmissionAttachment";
 import type { ExportPackage } from "@/app/_lib/integrations/types";
-import { useAuth } from "@/app/_components/auth/AuthContext";
-import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { useDashboardBranding } from "@/app/_components/dashboard/WorkspaceBrandingProvider";
 
@@ -516,9 +514,6 @@ export function ItemDetailPanel({
   onApplyWorkflowStatus: () => void;
 }) {
   const { labels } = useDashboardBranding();
-  const { signOut } = useAuth();
-  const router = useRouter();
-  const pathname = usePathname();
   const action = labels.actionLabels ?? ({} as Partial<(typeof labels)["actionLabels"]>);
   const desk = labels.deskLabels ?? ({} as Partial<(typeof labels)["deskLabels"]>);
   const section = labels.detailSectionLabels ?? ({} as Partial<(typeof labels)["detailSectionLabels"]>);
@@ -542,21 +537,10 @@ export function ItemDetailPanel({
   const [exportPreviewError, setExportPreviewError] = useState<string | null>(null);
   const [exportPreview, setExportPreview] = useState<ExportPackage | null>(null);
 
-  const expireSession = useCallback(async () => {
-    try {
-      await signOut();
-    } finally {
-      const qs = typeof window !== "undefined" ? window.location.search : "";
-      const next = `${pathname}${qs || ""}`;
-      router.replace(`/login?next=${encodeURIComponent(next)}`);
-    }
-  }, [pathname, router, signOut]);
-
   const fetchWithAuth = useCallback(
     async (url: string, init?: RequestInit): Promise<Response> => {
       const user = getFirebaseAuth().currentUser;
       if (!user) {
-        await expireSession();
         throw new Error("No current user.");
       }
       const headers = new Headers(init?.headers ?? undefined);
@@ -568,11 +552,11 @@ export function ItemDetailPanel({
       let res = await run(false);
       if (res.status === 401) {
         res = await run(true);
-        if (res.status === 401) await expireSession();
+        if (res.status === 401) console.warn("auth session valid but API authorization failed");
       }
       return res;
     },
-    [expireSession],
+    [],
   );
 
   useEffect(() => {
@@ -610,7 +594,7 @@ export function ItemDetailPanel({
         const body = (await res.json().catch(() => null)) as unknown;
         if (!res.ok) {
           if (res.status === 401) {
-            setAuditError("Your session expired. Redirecting to sign in…");
+            setAuditError("You’re signed in, but activity could not be loaded (authorization failed).");
             return;
           }
           const msg = (() => {
@@ -657,7 +641,7 @@ export function ItemDetailPanel({
         const body = (await res.json().catch(() => null)) as unknown;
         if (!res.ok) {
           if (res.status === 401) {
-            setExportPreviewError("Your session expired. Redirecting to sign in…");
+            setExportPreviewError("You’re signed in, but the export preview could not be loaded (authorization failed).");
             return;
           }
           const msg = (() => {
@@ -1115,7 +1099,6 @@ export function ItemDetailPanel({
                             submissionId: selected.id,
                             attachmentId: a.id,
                             getIdToken: (forceRefresh) => user.getIdToken(!!forceRefresh),
-                            onSessionExpired: expireSession,
                           });
                           if (!result.ok) {
                             setAttachmentErrorById((prev) => ({ ...prev, [a.id]: result.error }));

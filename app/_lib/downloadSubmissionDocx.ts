@@ -22,9 +22,8 @@ export function parseFilenameFromContentDisposition(header: string | null): stri
 export async function fetchSubmissionDocxDownload(args: {
   submissionId: string;
   getIdToken: (forceRefresh?: boolean) => Promise<string>;
-  onSessionExpired?: () => void | Promise<void>;
 }): Promise<{ ok: true; blob: Blob; filename: string } | { ok: false; error: string }> {
-  const { submissionId, getIdToken, onSessionExpired } = args;
+  const { submissionId, getIdToken } = args;
   const url = `/api/admin/submissions/${encodeURIComponent(submissionId)}/export-docx`;
 
   async function run(forceRefresh?: boolean) {
@@ -37,9 +36,7 @@ export async function fetchSubmissionDocxDownload(args: {
   let res = await run(false);
   if (res.status === 401) {
     res = await run(true);
-    if (res.status === 401) {
-      await onSessionExpired?.();
-    }
+    if (res.status === 401) console.warn("auth session valid but API authorization failed");
   }
   const disposition = res.headers.get("content-disposition");
   const filename =
@@ -56,7 +53,7 @@ export async function fetchSubmissionDocxDownload(args: {
         /* ignore */
       }
     } else if (res.status === 401) {
-      error = "Your session expired. Please sign in again.";
+      error = "You’re signed in, but this export request was rejected.";
     } else if (res.status === 403) {
       error = "You don't have permission to export this report.";
     } else if (res.status === 404) {

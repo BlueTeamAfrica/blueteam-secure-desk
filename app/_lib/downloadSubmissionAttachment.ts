@@ -9,9 +9,8 @@ export async function fetchSubmissionAttachmentSignedUrl(args: {
   submissionId: string;
   attachmentId: string;
   getIdToken: (forceRefresh?: boolean) => Promise<string>;
-  onSessionExpired?: () => void | Promise<void>;
 }): Promise<{ ok: true; signedUrl: string } | { ok: false; error: string }> {
-  const { submissionId, attachmentId, getIdToken, onSessionExpired } = args;
+  const { submissionId, attachmentId, getIdToken } = args;
 
   const url = `/api/admin/submissions/${encodeURIComponent(submissionId)}/attachments/${encodeURIComponent(attachmentId)}/download`;
 
@@ -26,9 +25,7 @@ export async function fetchSubmissionAttachmentSignedUrl(args: {
   let res = await run(false);
   if (res.status === 401) {
     res = await run(true);
-    if (res.status === 401) {
-      await onSessionExpired?.();
-    }
+    if (res.status === 401) console.warn("auth session valid but API authorization failed");
   }
 
   const text = await res.text();
@@ -42,7 +39,7 @@ export async function fetchSubmissionAttachmentSignedUrl(args: {
   if (!res.ok) {
     const msg =
       res.status === 401
-        ? "Your session expired. Please sign in again."
+        ? "You’re signed in, but this attachment request was rejected."
         : res.status === 403
           ? "You don’t have access to this attachment."
           : res.status === 404
