@@ -274,6 +274,7 @@ export function SubmissionsList({
   const [actionPending, setActionPending] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [decryptError, setDecryptError] = useState<string | null>(null);
+  const [decryptDebug, setDecryptDebug] = useState<unknown>(null);
   const [filingByCaseId, setFilingByCaseId] = useState<Record<string, CachedCaseFiling>>({});
   const filingByCaseIdRef = useRef(filingByCaseId);
   filingByCaseIdRef.current = filingByCaseId;
@@ -453,6 +454,7 @@ export function SubmissionsList({
     prevSelectedId.current = selectedId;
     setActionError(null);
     setDecryptError(null);
+    setDecryptDebug(null);
     setScaffoldMessage(null);
     setDeleteConfirmOpen(false);
     setDeleteError(null);
@@ -581,10 +583,15 @@ export function SubmissionsList({
           } catch {
             if (c.id === selectedId) {
               setDecryptError("We couldn’t read the response from the server.");
+              setDecryptDebug(null);
             }
             continue;
           }
           if (!res.ok) {
+            const debug =
+              typeof body === "object" && body !== null && "debug" in body
+                ? (body as { debug?: unknown }).debug
+                : null;
             const msg =
               res.status === 401
                 ? "You’re signed in, but this filing request was rejected."
@@ -595,16 +602,23 @@ export function SubmissionsList({
                     : res.status === 500
                       ? "We couldn’t open this filing. Try again shortly."
                       : "Something went wrong.";
-            if (c.id === selectedId) setDecryptError(msg);
+            if (c.id === selectedId) {
+              setDecryptError(msg);
+              setDecryptDebug(debug);
+            }
             continue;
           }
           if (cancelled) return;
           const readout = extractDecryptedFiling(body);
           setFilingByCaseId((prev) => ({ ...prev, [c.id]: { ...readout, fp } }));
-          if (c.id === selectedId) setDecryptError(null);
+          if (c.id === selectedId) {
+            setDecryptError(null);
+            setDecryptDebug(null);
+          }
         } catch {
           if (c.id === selectedId) {
             setDecryptError("We couldn’t load the filing. Check your connection and try again.");
+            setDecryptDebug(null);
           }
         }
       }
@@ -1263,6 +1277,7 @@ export function SubmissionsList({
         setScaffoldMessage={setScaffoldMessage}
         showDecrypt={showDecrypt}
         decryptError={decryptError}
+        decryptDebug={decryptDebug}
         decryptPanelLoading={decryptPanelLoading}
         stageLabel={stageLabel}
         leadLabel={leadLabel}

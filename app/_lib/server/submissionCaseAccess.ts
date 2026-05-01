@@ -9,6 +9,7 @@ import {
   mayRunLegacyReviewerStatusApi,
   maySaveReviewerNoteOnCase,
   mayShowDecryptUi,
+  mayViewSubmission,
   type WorkspaceRole,
   type WorkspaceUserContext,
 } from "@/app/_lib/rbac";
@@ -63,7 +64,9 @@ export function assertMayDecryptSubmission(
   workspaceCase: WorkspaceCase,
   ctx: WorkspaceUserContext,
 ): NextResponse | null {
-  if (!role || !mayShowDecryptUi(role, workspaceCase, ctx)) return jsonForbidden();
+  if (!role) return jsonForbidden();
+  if (!mayViewSubmission(role, workspaceCase, ctx)) return jsonForbidden();
+  if (!mayShowDecryptUi(role, workspaceCase, ctx)) return jsonForbidden();
   return null;
 }
 

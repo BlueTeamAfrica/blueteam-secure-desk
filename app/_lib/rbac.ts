@@ -200,6 +200,18 @@ export function mayShowDecryptUi(
   return role !== "readonly";
 }
 
+/**
+ * Whether the signed-in workspace member may view this submission in the dashboard.
+ * This is currently permissive (newsroom-wide visibility) but remains a distinct check
+ * so server routes can report precise permission decisions.
+ */
+export function mayViewSubmission(role: WorkspaceRole, c: WorkspaceCase, ctx: WorkspaceUserContext): boolean {
+  void c;
+  void ctx;
+  // Read-only users can still view metadata lists, but not decrypted content.
+  return role !== null;
+}
+
 export function mayAssignInUi(role: WorkspaceRole): boolean {
   return role === "owner" || role === "admin";
 }

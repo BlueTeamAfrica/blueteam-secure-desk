@@ -4,14 +4,20 @@ import { decryptEncryptedPayloadFieldToJson } from "@/app/_lib/server/decryptEnc
 import { logSubmissionAudit } from "@/app/_lib/server/logSubmissionAudit";
 import {
   assertMayDecryptSubmission,
-  jsonForbidden,
   jsonNotFound,
   loadWorkspaceCaseForSubmission,
   workspaceUserContextFromAdmin,
 } from "@/app/_lib/server/submissionCaseAccess";
 import { fetchWorkspaceRole } from "@/app/_lib/server/workspaceRole";
+import { mayShowDecryptUi, mayViewSubmission, normalizeWorkspaceRole } from "@/app/_lib/rbac";
 
 type RouteParams = { params: Promise<{ id: string }> };
+
+function looksLikeEmail(v: string | null | undefined): boolean {
+  const t = (v ?? "").trim();
+  if (!t) return false;
+  return t.includes("@") && !t.includes(" ");
+}
 
 export async function GET(request: NextRequest, context: RouteParams) {
   try {
@@ -19,25 +25,58 @@ export async function GET(request: NextRequest, context: RouteParams) {
     if (!auth.ok) return auth.response;
     const { admin } = auth;
 
+    const { id } = await context.params;
+
     const role = await fetchWorkspaceRole(admin.uid);
     if (!role) {
       // Temporary server-side debug only (no payload/title/body).
       console.warn("[decrypt] permissionDecision", {
         uid: admin.uid,
         role: null,
-        submissionId: (await context.params).id,
+        submissionId: id,
         permissionDecision: "deny_no_role",
       });
-      return jsonForbidden();
+      return NextResponse.json(
+        {
+          error: "You don't have permission to perform this action.",
+          debug: {
+            uid: admin.uid,
+            email: admin.adminEmail,
+            workspaceRole: null,
+            normalizedRole: null,
+            caseId: id,
+            caseStatus: null,
+            assignedOwnerId: null,
+            assignedOwnerEmail: null,
+            mayViewSubmission: false,
+            mayShowDecryptUi: false,
+            reason: "no_workspace_role",
+          },
+        },
+        { status: 403 },
+      );
     }
 
-    const { id } = await context.params;
     const workspaceCase = await loadWorkspaceCaseForSubmission(id);
     if (!workspaceCase) {
       return jsonNotFound();
     }
 
     const ctx = await workspaceUserContextFromAdmin(admin);
+    const assignedOwnerEmail = looksLikeEmail(workspaceCase.assignedOwnerName) ? workspaceCase.assignedOwnerName : null;
+    const debugBase = {
+      uid: admin.uid,
+      email: admin.adminEmail,
+      workspaceRole: role,
+      normalizedRole: normalizeWorkspaceRole(role),
+      caseId: workspaceCase.id,
+      caseStatus: workspaceCase.status,
+      assignedOwnerId: workspaceCase.assignedOwnerId,
+      assignedOwnerEmail,
+      mayViewSubmission: mayViewSubmission(role, workspaceCase, ctx),
+      mayShowDecryptUi: mayShowDecryptUi(role, workspaceCase, ctx),
+    };
+
     const decryptDenied = assertMayDecryptSubmission(role, workspaceCase, ctx);
     if (decryptDenied) {
       // Temporary server-side debug only (no payload/title/body).
@@ -47,7 +86,18 @@ export async function GET(request: NextRequest, context: RouteParams) {
         submissionId: id,
         permissionDecision: "deny_assertMayDecryptSubmission",
       });
-      return decryptDenied;
+      const reason = !debugBase.mayViewSubmission
+        ? "mayViewSubmission=false"
+        : !debugBase.mayShowDecryptUi
+          ? "mayShowDecryptUi=false"
+          : "assertMayDecryptSubmission_denied";
+      return NextResponse.json(
+        {
+          error: "You don't have permission to perform this action.",
+          debug: { ...debugBase, reason },
+        },
+        { status: 403 },
+      );
     }
 
     const encryptedPayload = workspaceCase.encryptedPayload;
