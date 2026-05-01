@@ -108,8 +108,8 @@ export async function GET(request: NextRequest, context: RouteParams) {
     let decrypted: unknown;
     try {
       decrypted = decryptEncryptedPayloadFieldToJson(encryptedPayload);
-    } catch {
-      return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    } catch (decryptErr) {
+      throw decryptErr instanceof Error ? decryptErr : new Error(String(decryptErr));
     }
 
     try {
@@ -124,7 +124,25 @@ export async function GET(request: NextRequest, context: RouteParams) {
     }
 
     return NextResponse.json(decrypted);
-  } catch {
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  } catch (err) {
+    let submissionId: string | undefined;
+    try {
+      submissionId = (await context.params).id;
+    } catch {
+      submissionId = undefined;
+    }
+
+    const message = err instanceof Error ? err.message : String(err);
+    const stack = err instanceof Error ? err.stack : undefined;
+    console.error("[DECRYPT ERROR]", {
+      message,
+      stack,
+      submissionId,
+    });
+
+    return NextResponse.json(
+      { error: "Internal server error", debug: message },
+      { status: 500 },
+    );
   }
 }
