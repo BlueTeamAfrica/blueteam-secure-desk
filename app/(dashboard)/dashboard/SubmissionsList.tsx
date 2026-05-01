@@ -589,7 +589,7 @@ export function SubmissionsList({
               res.status === 401
                 ? "You’re signed in, but this filing request was rejected."
                 : res.status === 403
-                  ? "You don’t have access to this filing."
+                  ? "You do not have permission to view this filing content."
                   : res.status === 404
                     ? "This submission is no longer available."
                     : res.status === 500

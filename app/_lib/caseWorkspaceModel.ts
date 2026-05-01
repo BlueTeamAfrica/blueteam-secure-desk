@@ -328,7 +328,25 @@ export function pickReporterSourceLabelFromRecord(r: Record<string, unknown>): s
 }
 
 function pickSubmittedTitleFromDocument(data: DocumentData): string {
-  return pickSubmittedTitleFromRecord(data as Record<string, unknown>);
+  const root = data as Record<string, unknown>;
+  const direct = pickSubmittedTitleFromRecord(root);
+  if (direct) return direct;
+
+  // Some pipelines keep a non-sensitive metadata title nested under `payload` (even when body is encrypted).
+  const payload = root.payload;
+  if (payload && typeof payload === "object" && !Array.isArray(payload)) {
+    const nested = pickSubmittedTitleFromRecord(payload as Record<string, unknown>);
+    if (nested) return nested;
+  }
+
+  // Legacy nesting
+  const submission = root.submission;
+  if (submission && typeof submission === "object" && !Array.isArray(submission)) {
+    const nested = pickSubmittedTitleFromRecord(submission as Record<string, unknown>);
+    if (nested) return nested;
+  }
+
+  return "";
 }
 
 function pickReporterSourceNameFromDocument(data: DocumentData): string | null {

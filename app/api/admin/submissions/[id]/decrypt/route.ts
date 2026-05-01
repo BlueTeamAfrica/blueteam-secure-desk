@@ -21,6 +21,13 @@ export async function GET(request: NextRequest, context: RouteParams) {
 
     const role = await fetchWorkspaceRole(admin.uid);
     if (!role) {
+      // Temporary server-side debug only (no payload/title/body).
+      console.warn("[decrypt] permissionDecision", {
+        uid: admin.uid,
+        role: null,
+        submissionId: (await context.params).id,
+        permissionDecision: "deny_no_role",
+      });
       return jsonForbidden();
     }
 
@@ -32,7 +39,16 @@ export async function GET(request: NextRequest, context: RouteParams) {
 
     const ctx = await workspaceUserContextFromAdmin(admin);
     const decryptDenied = assertMayDecryptSubmission(role, workspaceCase, ctx);
-    if (decryptDenied) return decryptDenied;
+    if (decryptDenied) {
+      // Temporary server-side debug only (no payload/title/body).
+      console.warn("[decrypt] permissionDecision", {
+        uid: admin.uid,
+        role,
+        submissionId: id,
+        permissionDecision: "deny_assertMayDecryptSubmission",
+      });
+      return decryptDenied;
+    }
 
     const encryptedPayload = workspaceCase.encryptedPayload;
     if (encryptedPayload === undefined || encryptedPayload === null) {
