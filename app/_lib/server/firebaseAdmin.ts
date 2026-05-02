@@ -37,6 +37,36 @@ export function getFirebaseAdminEnvDiagnostics(): FirebaseAdminEnvDiagnostics {
   };
 }
 
+/** First N chars for logs only; newlines shown as `\n` so Vercel one-line logs stay readable. */
+function privateKeyPreview(s: string, maxLen: number): string {
+  return s
+    .slice(0, maxLen)
+    .replace(/\r/g, "\\r")
+    .replace(/\n/g, "\\n");
+}
+
+/**
+ * Runtime-only: compares raw env vs `\\n` → newline normalization (never logs full key).
+ */
+function logFirebasePrivateKeyRuntimeShape(): void {
+  const raw =
+    typeof process.env.FIREBASE_PRIVATE_KEY === "string" ? process.env.FIREBASE_PRIVATE_KEY : "";
+  const normalized = raw.replace(/\\n/g, "\n");
+  console.warn("[firebase-admin] private_key_shape", {
+    rawPrivateKeyLength: raw.length,
+    normalizedPrivateKeyLength: normalized.length,
+    rawFirst30: privateKeyPreview(raw, 30),
+    normalizedFirst30: privateKeyPreview(normalized, 30),
+    rawIncludesBeginPrivateKey: raw.includes("BEGIN PRIVATE KEY"),
+    rawIncludesBeginRsaPrivateKey: raw.includes("BEGIN RSA PRIVATE KEY"),
+    normalizedIncludesBeginPrivateKey: normalized.includes("BEGIN PRIVATE KEY"),
+    normalizedIncludesBeginRsaPrivateKey: normalized.includes("BEGIN RSA PRIVATE KEY"),
+    rawHasActualNewlineChars: raw.includes("\n"),
+    normalizedHasActualNewlineChars: normalized.includes("\n"),
+    rawHasEscapedNewlineSequence: raw.includes("\\n"),
+  });
+}
+
 /**
  * Server-only service account fields (no NEXT_PUBLIC_*).
  * FIREBASE_PRIVATE_KEY may use literal "\\n" in env; those become newlines before passing to cert().
@@ -50,6 +80,7 @@ function getAdminApp(): App {
   }
 
   console.warn("[firebase-admin] env_diagnostics", getFirebaseAdminEnvDiagnostics());
+  logFirebasePrivateKeyRuntimeShape();
 
   const projectId = process.env.FIREBASE_PROJECT_ID;
   const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
