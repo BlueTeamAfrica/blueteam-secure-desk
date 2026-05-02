@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import {
   getAdminFirestore,
   getFirebaseAdminEnvDiagnostics,
+  getFirebaseAdminResolvedProjectId,
 } from "@/app/_lib/server/firebaseAdmin";
 
 export const dynamic = "force-dynamic";
@@ -11,7 +12,7 @@ export const dynamic = "force-dynamic";
  * Response contains no tokens, keys, or document data.
  */
 export async function GET() {
-  const projectId = process.env.FIREBASE_PROJECT_ID ?? null;
+  const projectId = getFirebaseAdminResolvedProjectId();
   const envDiagnostics = getFirebaseAdminEnvDiagnostics();
 
   let firestoreReadOk = false;
