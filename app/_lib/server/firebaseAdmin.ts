@@ -9,7 +9,7 @@ let app: App | undefined;
 /** Preferred on Vercel: full service account JSON, base64-encoded (no PEM newline issues). */
 export const FIREBASE_SERVICE_ACCOUNT_BASE64_ENV = "FIREBASE_SERVICE_ACCOUNT_BASE64";
 
-export type FirebaseAdminEnvDiagnostics = {
+type FirebaseAdminEnvDiagnostics = {
   credentialMode: "service_account_base64" | "legacy_env";
   FIREBASE_SERVICE_ACCOUNT_BASE64_present: boolean;
   /** Length of trimmed base64 env string (not decoded JSON). */
@@ -62,8 +62,9 @@ function tryParseServiceAccountFromBase64(): ParsedServiceAccountJson | null {
 
 /**
  * Safe diagnostics (never logs private key, client email, or JSON body).
+ * For local troubleshooting only — never expose via HTTP in production.
  */
-export function getFirebaseAdminEnvDiagnostics(): FirebaseAdminEnvDiagnostics {
+function getFirebaseAdminEnvDiagnostics(): FirebaseAdminEnvDiagnostics {
   const b64Raw =
     typeof process.env[FIREBASE_SERVICE_ACCOUNT_BASE64_ENV] === "string"
       ? process.env[FIREBASE_SERVICE_ACCOUNT_BASE64_ENV]
@@ -95,19 +96,10 @@ export function getFirebaseAdminEnvDiagnostics(): FirebaseAdminEnvDiagnostics {
 }
 
 /**
- * Resolved Firebase project id for health checks (not a secret). Base64 JSON wins when valid.
- */
-export function getFirebaseAdminResolvedProjectId(): string | null {
-  const fromB64 = tryParseServiceAccountFromBase64();
-  if (fromB64?.projectId) return fromB64.projectId;
-  const envPid = process.env.FIREBASE_PROJECT_ID;
-  return typeof envPid === "string" && envPid.length > 0 ? envPid : null;
-}
-
-/**
  * Runtime-only: legacy PEM env shape (never logs full key). Skipped when using base64 credential.
  */
 function logFirebasePrivateKeyRuntimeShape(): void {
+  if (process.env.NODE_ENV === "production") return;
   const raw =
     typeof process.env.FIREBASE_PRIVATE_KEY === "string" ? process.env.FIREBASE_PRIVATE_KEY : "";
   const normalized = raw.replace(/\\n/g, "\n");
@@ -140,26 +132,30 @@ function getAdminApp(): App {
   }
 
   const diag = getFirebaseAdminEnvDiagnostics();
-  console.warn("[firebase-admin] env_diagnostics", diag);
+  if (process.env.NODE_ENV !== "production") {
+    console.warn("[firebase-admin] env_diagnostics", diag);
+  }
 
   const fromB64 = tryParseServiceAccountFromBase64();
   if (fromB64) {
-    const decodedUtf8Length = (() => {
-      try {
-        const b64 = process.env[FIREBASE_SERVICE_ACCOUNT_BASE64_ENV]!;
-        return Buffer.from(b64.trim(), "base64").toString("utf8").length;
-      } catch {
-        return null;
-      }
-    })();
-    console.warn("[firebase-admin] init_credential", {
-      credentialMode: "service_account_base64",
-      serviceAccountBase64EnvLength: diag.serviceAccountBase64EnvLength,
-      decodedServiceAccountJsonUtf8Length: decodedUtf8Length,
-      projectIdLength: fromB64.projectId.length,
-      clientEmailLength: fromB64.clientEmail.length,
-      privateKeyLength: fromB64.privateKey.length,
-    });
+    if (process.env.NODE_ENV !== "production") {
+      const decodedUtf8Length = (() => {
+        try {
+          const b64 = process.env[FIREBASE_SERVICE_ACCOUNT_BASE64_ENV]!;
+          return Buffer.from(b64.trim(), "base64").toString("utf8").length;
+        } catch {
+          return null;
+        }
+      })();
+      console.warn("[firebase-admin] init_credential", {
+        credentialMode: "service_account_base64",
+        serviceAccountBase64EnvLength: diag.serviceAccountBase64EnvLength,
+        decodedServiceAccountJsonUtf8Length: decodedUtf8Length,
+        projectIdLength: fromB64.projectId.length,
+        clientEmailLength: fromB64.clientEmail.length,
+        privateKeyLength: fromB64.privateKey.length,
+      });
+    }
 
     app = initializeApp({
       credential: cert({
@@ -190,12 +186,14 @@ function getAdminApp(): App {
 
   const privateKey = process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, "\n");
 
-  console.warn("[firebase-admin] init_credential", {
-    credentialMode: "legacy_env",
-    projectIdLength: projectId.length,
-    clientEmailLength: clientEmail.length,
-    privateKeyLength: privateKey.length,
-  });
+  if (process.env.NODE_ENV !== "production") {
+    console.warn("[firebase-admin] init_credential", {
+      credentialMode: "legacy_env",
+      projectIdLength: projectId.length,
+      clientEmailLength: clientEmail.length,
+      privateKeyLength: privateKey.length,
+    });
+  }
 
   app = initializeApp({
     credential: cert({

@@ -78,12 +78,15 @@ function looksLikeOpenSslOrLowLevelCryptoMessage(message: string): boolean {
 
 function wrapCryptoFailure(err: unknown): never {
   const raw = err instanceof Error ? err.message : String(err);
-  console.warn("[decrypt] submission_payload_crypto_failure", {
-    ...getSubmissionPayloadSecretDiagnostics(),
-    reason: "crypto_or_decode",
-    // Server-only: may include OpenSSL detail; never return this string to clients.
-    internalMessage: raw.slice(0, 500),
-  });
+  if (process.env.NODE_ENV !== "production") {
+    console.warn("[decrypt] submission_payload_crypto_failure", {
+      ...getSubmissionPayloadSecretDiagnostics(),
+      reason: "crypto_or_decode",
+      internalMessage: raw.slice(0, 500),
+    });
+  } else {
+    console.warn("[decrypt] submission_payload_crypto_failure");
+  }
   throw new SubmissionPayloadDecryptFailedError();
 }
 

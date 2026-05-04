@@ -410,7 +410,6 @@ export function ItemDetailPanel({
   setScaffoldMessage,
   showDecrypt,
   decryptError,
-  decryptDebug,
   decryptPanelLoading,
   stageLabel,
   leadLabel,
@@ -467,7 +466,6 @@ export function ItemDetailPanel({
   setScaffoldMessage: (v: string | null) => void;
   showDecrypt: boolean;
   decryptError: string | null;
-  decryptDebug?: unknown;
   decryptPanelLoading: boolean;
   stageLabel: string;
   leadLabel: string;
@@ -846,26 +844,8 @@ export function ItemDetailPanel({
                 {section.noReporterLetter ?? "No reporter letter was stored for this submission."}
               </p>
             ) : decryptError ? (
-              <div className="stack-12">
-                <div className="alert alert-danger" role="alert">
-                  {decryptError}
-                </div>
-                {decryptDebug ? (
-                  <div className="card" style={{ padding: 12 }}>
-                    <div className="small-muted" style={{ marginBottom: 8 }}>
-                      Decrypt debug (temporary)
-                    </div>
-                    <pre className="code-block" style={{ margin: 0, whiteSpace: "pre-wrap", wordBreak: "break-word" }}>
-                      {(() => {
-                        try {
-                          return JSON.stringify(decryptDebug, null, 2);
-                        } catch {
-                          return String(decryptDebug);
-                        }
-                      })()}
-                    </pre>
-                  </div>
-                ) : null}
+              <div className="alert alert-danger" role="alert">
+                {decryptError}
               </div>
             ) : decryptPanelLoading ? (
               <div className="row-between" style={{ gap: 12, marginTop: 4 }}>

@@ -18,6 +18,8 @@ import { mayShowDecryptUi, mayViewSubmission, normalizeWorkspaceRole } from "@/a
 
 type RouteParams = { params: Promise<{ id: string }> };
 
+const isDev = process.env.NODE_ENV !== "production";
+
 function looksLikeEmail(v: string | null | undefined): boolean {
   const t = (v ?? "").trim();
   if (!t) return false;
@@ -43,7 +45,14 @@ function errMeta(err: unknown): { message: string; errorName: string; errorCode:
 
 function jsonStageFail(failedStage: string, err: unknown): NextResponse {
   const meta = errMeta(err);
-  console.error("[DECRYPT STAGE FAIL]", { failedStage, ...meta });
+  if (isDev) {
+    console.error("[DECRYPT STAGE FAIL]", { failedStage, ...meta });
+  } else {
+    console.error("[decrypt] stage_failed", { failedStage });
+  }
+  if (!isDev) {
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  }
   return NextResponse.json(
     {
       error: "Internal server error",
@@ -59,7 +68,7 @@ function jsonStageFail(failedStage: string, err: unknown): NextResponse {
 }
 
 export async function GET(request: NextRequest, context: RouteParams) {
-  console.log("[DECRYPT STAGE]", "start");
+  if (isDev) console.log("[DECRYPT STAGE]", "start");
 
   let id: string;
   try {
@@ -68,7 +77,7 @@ export async function GET(request: NextRequest, context: RouteParams) {
     return jsonStageFail("context.params", err);
   }
 
-  console.log("[DECRYPT STAGE]", "after_context_params");
+  if (isDev) console.log("[DECRYPT STAGE]", "after_context_params");
 
   let auth: Awaited<ReturnType<typeof requireActiveAdmin>>;
   try {
@@ -76,7 +85,7 @@ export async function GET(request: NextRequest, context: RouteParams) {
   } catch (err) {
     return jsonStageFail("requireActiveAdmin", err);
   }
-  console.log("[DECRYPT STAGE]", "after requireActiveAdmin");
+  if (isDev) console.log("[DECRYPT STAGE]", "after requireActiveAdmin");
   if (!auth.ok) return auth.response;
   const { admin } = auth;
 
@@ -86,34 +95,36 @@ export async function GET(request: NextRequest, context: RouteParams) {
   } catch (err) {
     return jsonStageFail("fetchWorkspaceRole", err);
   }
-  console.log("[DECRYPT STAGE]", "after fetchWorkspaceRole");
+  if (isDev) console.log("[DECRYPT STAGE]", "after fetchWorkspaceRole");
 
   if (!role) {
-    console.warn("[decrypt] permissionDecision", {
-      uid: admin.uid,
-      role: null,
-      submissionId: id,
-      permissionDecision: "deny_no_role",
-    });
-    return NextResponse.json(
-      {
-        error: "You don't have permission to perform this action.",
-        debug: {
-          uid: admin.uid,
-          email: admin.adminEmail,
-          workspaceRole: null,
-          normalizedRole: null,
-          caseId: id,
-          caseStatus: null,
-          assignedOwnerId: null,
-          assignedOwnerEmail: null,
-          mayViewSubmission: false,
-          mayShowDecryptUi: false,
-          reason: "no_workspace_role",
-        },
-      },
-      { status: 403 },
-    );
+    if (isDev) {
+      console.warn("[decrypt] permissionDecision", {
+        uid: admin.uid,
+        role: null,
+        submissionId: id,
+        permissionDecision: "deny_no_role",
+      });
+    }
+    const body = isDev
+      ? {
+          error: "You don't have permission to perform this action.",
+          debug: {
+            uid: admin.uid,
+            email: admin.adminEmail,
+            workspaceRole: null,
+            normalizedRole: null,
+            caseId: id,
+            caseStatus: null,
+            assignedOwnerId: null,
+            assignedOwnerEmail: null,
+            mayViewSubmission: false,
+            mayShowDecryptUi: false,
+            reason: "no_workspace_role",
+          },
+        }
+      : { error: "You don't have permission to perform this action." };
+    return NextResponse.json(body, { status: 403 });
   }
 
   let workspaceCase: Awaited<ReturnType<typeof loadWorkspaceCaseForSubmission>>;
@@ -122,7 +133,7 @@ export async function GET(request: NextRequest, context: RouteParams) {
   } catch (err) {
     return jsonStageFail("loadWorkspaceCaseForSubmission", err);
   }
-  console.log("[DECRYPT STAGE]", "after loadWorkspaceCaseForSubmission");
+  if (isDev) console.log("[DECRYPT STAGE]", "after loadWorkspaceCaseForSubmission");
 
   if (!workspaceCase) {
     return jsonNotFound();
@@ -134,7 +145,7 @@ export async function GET(request: NextRequest, context: RouteParams) {
   } catch (err) {
     return jsonStageFail("workspaceUserContextFromAdmin", err);
   }
-  console.log("[DECRYPT STAGE]", "after_workspaceUserContextFromAdmin");
+  if (isDev) console.log("[DECRYPT STAGE]", "after_workspaceUserContextFromAdmin");
 
   const assignedOwnerEmail = looksLikeEmail(workspaceCase.assignedOwnerName) ? workspaceCase.assignedOwnerName : null;
   const debugBase = {
@@ -152,38 +163,39 @@ export async function GET(request: NextRequest, context: RouteParams) {
 
   const decryptDenied = assertMayDecryptSubmission(role, workspaceCase, ctx);
   if (decryptDenied) {
-    console.warn("[decrypt] permissionDecision", {
-      uid: admin.uid,
-      role,
-      submissionId: id,
-      permissionDecision: "deny_assertMayDecryptSubmission",
-    });
+    if (isDev) {
+      console.warn("[decrypt] permissionDecision", {
+        uid: admin.uid,
+        role,
+        submissionId: id,
+        permissionDecision: "deny_assertMayDecryptSubmission",
+      });
+    }
     const reason = !debugBase.mayViewSubmission
       ? "mayViewSubmission=false"
       : !debugBase.mayShowDecryptUi
         ? "mayShowDecryptUi=false"
         : "assertMayDecryptSubmission_denied";
-    return NextResponse.json(
-      {
-        error: "You don't have permission to perform this action.",
-        debug: { ...debugBase, reason },
-      },
-      { status: 403 },
-    );
+    const body = isDev
+      ? { error: "You don't have permission to perform this action.", debug: { ...debugBase, reason } }
+      : { error: "You don't have permission to perform this action." };
+    return NextResponse.json(body, { status: 403 });
   }
-  console.log("[DECRYPT STAGE]", "after permission check");
+  if (isDev) console.log("[DECRYPT STAGE]", "after permission check");
 
   const encryptedPayload = workspaceCase.encryptedPayload;
   if (encryptedPayload === undefined || encryptedPayload === null) {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 
-  console.warn("[decrypt] decrypt_secret_state", {
-    ...getSubmissionPayloadSecretDiagnostics(),
-    submissionId: id,
-  });
+  if (isDev) {
+    console.warn("[decrypt] decrypt_secret_state", {
+      ...getSubmissionPayloadSecretDiagnostics(),
+      submissionId: id,
+    });
+  }
 
-  console.log("[DECRYPT STAGE]", "before payload decrypt");
+  if (isDev) console.log("[DECRYPT STAGE]", "before payload decrypt");
   let decrypted: unknown;
   try {
     decrypted = decryptEncryptedPayloadFieldToJson(encryptedPayload);
@@ -196,9 +208,9 @@ export async function GET(request: NextRequest, context: RouteParams) {
     }
     return jsonStageFail("decryptEncryptedPayloadFieldToJson", decryptErr);
   }
-  console.log("[DECRYPT STAGE]", "after payload decrypt");
+  if (isDev) console.log("[DECRYPT STAGE]", "after payload decrypt");
 
-  console.log("[DECRYPT STAGE]", "before audit log");
+  if (isDev) console.log("[DECRYPT STAGE]", "before audit log");
   try {
     await logSubmissionAudit({
       submissionId: id,
@@ -209,7 +221,7 @@ export async function GET(request: NextRequest, context: RouteParams) {
   } catch (err) {
     return jsonStageFail("logSubmissionAudit", err);
   }
-  console.log("[DECRYPT STAGE]", "after audit log");
+  if (isDev) console.log("[DECRYPT STAGE]", "after audit log");
 
   return NextResponse.json(decrypted);
 }
