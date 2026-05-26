@@ -406,6 +406,8 @@ export function ItemDetailPanel({
   role,
   editorDesk,
   managingEditorDesk,
+  isOpen,
+  onClose,
   scaffoldMessage,
   setScaffoldMessage,
   showDecrypt,
@@ -462,6 +464,10 @@ export function ItemDetailPanel({
   role: WorkspaceRole;
   editorDesk: boolean;
   managingEditorDesk: boolean;
+  /** Whether the panel is open (used for mobile/tablet slide-over). */
+  isOpen?: boolean;
+  /** Called when the user taps the close button on mobile/tablet. */
+  onClose?: () => void;
   scaffoldMessage: string | null;
   setScaffoldMessage: (v: string | null) => void;
   showDecrypt: boolean;
@@ -517,7 +523,11 @@ export function ItemDetailPanel({
   const action = labels.actionLabels ?? ({} as Partial<(typeof labels)["actionLabels"]>);
   const desk = labels.deskLabels ?? ({} as Partial<(typeof labels)["deskLabels"]>);
   const section = labels.detailSectionLabels ?? ({} as Partial<(typeof labels)["detailSectionLabels"]>);
-  const detailPanelClass = `detail-panel${managingEditorDesk ? " detail-panel--command" : ""}`;
+  const detailPanelClass = [
+    "detail-panel",
+    managingEditorDesk ? "detail-panel--command" : "",
+    isOpen ? "is-open" : "",
+  ].filter(Boolean).join(" ");
   const [busyAttachmentIds, setBusyAttachmentIds] = useState<Set<string>>(() => new Set());
   const [attachmentErrorById, setAttachmentErrorById] = useState<Record<string, string | null>>({});
   const [openSections, setOpenSections] = useState(DEFAULT_SECTION_OPEN);
@@ -675,7 +685,12 @@ export function ItemDetailPanel({
 
   if (!selected) {
     return (
-      <aside className={detailPanelClass}>
+      <aside className={detailPanelClass} style={{ position: "relative" }}>
+        {onClose && (
+          <button type="button" className="detail-panel-close" onClick={onClose} aria-label="Close panel">
+            ✕
+          </button>
+        )}
         <div className="detail-panel-header">
           <div className="header-title">
             {editorDesk
@@ -734,7 +749,14 @@ export function ItemDetailPanel({
           : labels.notesInternalTitle;
 
   return (
-    <aside className={detailPanelClass}>
+    <aside className={detailPanelClass} style={{ position: "relative" }}>
+      {/* Close button — only visible on tablet/mobile via CSS */}
+      {onClose && (
+        <button type="button" className="detail-panel-close" onClick={onClose} aria-label="Close panel">
+          ✕
+        </button>
+      )}
+
       <div className="detail-panel-header">
         <div className="header-title" dir="auto">
           {display.displayTitle}
@@ -776,6 +798,62 @@ export function ItemDetailPanel({
           </div>
         </div>
       </div>
+
+      {/* ── Pinned quick-action strip ── always visible, no scrolling needed ── */}
+      {showStatusPicker && allowedStatusTargets.length > 0 && workflowStatusDraft ? (
+        <div className="detail-action-pin">
+          <div className="detail-action-pin-label">{stageLabel}</div>
+          <div className="detail-action-pin-row">
+            <select
+              className="input"
+              value={workflowStatusDraft}
+              onChange={(e) => setWorkflowStatusDraft(e.target.value as CaseStatus)}
+              disabled={workflowBusy}
+              aria-label={stageLabel}
+            >
+              {allowedStatusTargets
+                .slice()
+                .sort((a, b) => {
+                  const order = labels.workflow.stageOrder;
+                  const ia = order.indexOf(a);
+                  const ib = order.indexOf(b);
+                  return (ia === -1 ? Infinity : ia) - (ib === -1 ? Infinity : ib);
+                })
+                .map((s) => (
+                  <option key={s} value={s}>
+                    {labels.caseStatusLabels[s]}
+                  </option>
+                ))}
+            </select>
+            <button
+              type="button"
+              className="btn btn-primary"
+              disabled={workflowBusy || workflowStatusDraft === selected.status}
+              onClick={onApplyWorkflowStatus}
+            >
+              {workflowBusy ? "Saving…" : (editorDesk || managingEditorDesk ? "Move" : "Apply")}
+            </button>
+          </div>
+          {workflowError ? (
+            <div className="alert alert-danger" role="alert" style={{ margin: 0 }}>
+              {workflowError}
+            </div>
+          ) : null}
+          {showAssign ? (
+            <div className="detail-action-pin-assign">
+              <span className="detail-action-pin-assign-name">{ownerDisplayLine(selected)}</span>
+              <button
+                type="button"
+                className="btn btn-secondary"
+                style={{ fontSize: 12, padding: "0 12px", height: 28, minHeight: 28 }}
+                onClick={() => setAssignPanelOpen(!assignPanelOpen)}
+              >
+                {assignPanelOpen ? "Cancel" : "Assign"}
+              </button>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
 
       <div className="detail-panel-body detail-panel-body--read">
         {scaffoldMessage ? (

@@ -1,6 +1,5 @@
 "use client";
 
-import type { CSSProperties } from "react";
 import type { WorkspaceCase } from "@/app/_lib/caseWorkspaceModel";
 import { PRIORITY_LABEL, priorityBadgeClass, ownerDisplayLine } from "@/app/_lib/caseWorkspaceModel";
 import type { DecryptedFilingReadout } from "@/app/_lib/decryptedSubmissionReadout";
@@ -54,7 +53,7 @@ export function ItemCard({
   const classes = [
     "report-card",
     "report-card--premium",
-    "report-card--editorial",
+    "report-card--clean",
     overdue ? "report-card--overdue" : "",
     editorDesk ? "report-card--queue" : "",
     managingEditorDesk ? "report-card--command" : "",
@@ -63,13 +62,8 @@ export function ItemCard({
     .filter(Boolean)
     .join(" ");
 
-  const coverStyle =
-    coverImageUrl && coverImageUrl.length > 0
-      ? ({ ["--report-cover" as string]: `url("${coverImageUrl}")` } as CSSProperties)
-      : undefined;
-
   return (
-    <button type="button" className={classes} style={coverStyle} onClick={onSelect}>
+    <button type="button" className={classes} onClick={onSelect}>
       <div className="report-card-stack">
         <div className="report-card-top">
           <div className="report-card-title" dir="auto">

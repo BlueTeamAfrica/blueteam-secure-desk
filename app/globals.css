@@ -3580,3 +3580,524 @@ a.exec-kpi:hover {
     min-width: 100%;
   }
 }
+
+/* ============================================================
+   RESPONSIVE REDESIGN — overlay sidebar + mobile bottom nav
+   Breakpoints: desktop ≥ 1024px | tablet 640–1023px | mobile < 640px
+   ============================================================ */
+
+/* ── Hamburger button ──────────────────────────────────────── */
+.sidebar-hamburger {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  padding: 0;
+  border: none;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+.sidebar-hamburger:hover {
+  background: color-mix(in oklab, var(--text) 8%, transparent);
+}
+.sidebar-hamburger-bar {
+  display: block;
+  width: 18px;
+  height: 2px;
+  background: currentColor;
+  border-radius: 2px;
+  position: relative;
+}
+.sidebar-hamburger-bar::before,
+.sidebar-hamburger-bar::after {
+  content: "";
+  display: block;
+  width: 18px;
+  height: 2px;
+  background: currentColor;
+  border-radius: 2px;
+  position: absolute;
+  left: 0;
+}
+.sidebar-hamburger-bar::before { top: -5px; }
+.sidebar-hamburger-bar::after  { top:  5px; }
+
+/* ── Sidebar backdrop (tablet / mobile) ────────────────────── */
+.sidebar-backdrop {
+  display: none;
+}
+
+/* ── Tablet & Mobile overlay sidebar (≤ 1023px) ────────────── */
+@media (max-width: 1023px) {
+  /* Hamburger visible */
+  .sidebar-hamburger {
+    display: flex;
+  }
+
+  /* Override the existing 900px horizontal sidebar */
+  .dashboard-shell {
+    flex-direction: row !important;
+  }
+
+  .sidebar {
+    position: fixed !important;
+    inset-block: 0 !important;
+    inset-inline-start: 0 !important;
+    z-index: 300;
+    width: var(--sidebar-width) !important;
+    min-height: 100dvh !important;
+    border-right: 1px solid var(--sidebar-border) !important;
+    border-bottom: none !important;
+    transform: translateX(-110%);
+    transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  [data-sidebar-open="true"] .sidebar {
+    transform: translateX(0);
+    box-shadow: 4px 0 32px rgba(0, 0, 0, 0.2);
+  }
+
+  /* Restore vertical sidebar-inner (undo the horizontal wrapping from 900px) */
+  .sidebar-inner {
+    flex-direction: column !important;
+    flex-wrap: nowrap !important;
+    align-items: stretch !important;
+    padding: var(--space-6) var(--space-5) !important;
+    gap: var(--space-6) !important;
+  }
+
+  .brand,
+  .sidebar-brand-card {
+    flex: unset !important;
+    width: 100%;
+  }
+
+  .status-nav {
+    flex-direction: column !important;
+    flex-wrap: nowrap !important;
+    width: 100% !important;
+    gap: 0 !important;
+  }
+
+  .status-nav-item {
+    flex: unset !important;
+    min-width: unset !important;
+    justify-content: flex-start !important;
+    width: 100%;
+  }
+
+  .status-count {
+    position: static !important;
+    margin-left: auto;
+  }
+
+  /* Backdrop when open */
+  [data-sidebar-open="true"] .sidebar-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(2px);
+    -webkit-backdrop-filter: blur(2px);
+    z-index: 299;
+    animation: backdropIn 0.2s ease;
+  }
+
+  /* dash-column: full width */
+  .dash-column {
+    width: 100%;
+    flex: 1;
+    min-width: 0;
+  }
+
+  /* Detail panel: slide-over from the right */
+  .case-workspace {
+    grid-template-columns: 1fr !important;
+    gap: var(--space-4) !important;
+  }
+
+  .case-workspace--managing-editor-desk .detail-panel.detail-panel--command {
+    position: fixed !important;
+    top: 0 !important;
+    max-height: 100dvh !important;
+  }
+
+  .detail-panel {
+    position: fixed !important;
+    inset-block: 0 !important;
+    inset-inline-end: 0 !important;
+    top: 0 !important;
+    z-index: 250;
+    width: min(480px, 100vw) !important;
+    max-height: 100dvh !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch;
+    border-radius: var(--radius-xl) 0 0 var(--radius-xl) !important;
+    transform: translateX(110%) !important;
+    transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    align-self: unset !important;
+    box-shadow: none;
+  }
+
+  .detail-panel.is-open {
+    transform: translateX(0) !important;
+    box-shadow: -6px 0 40px rgba(0, 0, 0, 0.2) !important;
+  }
+
+  /* Close button inside detail panel — shown on tablet/mobile */
+  .detail-panel-close {
+    display: flex;
+  }
+
+  /* Board height: full auto on tablet */
+  .case-workspace--managing-editor-desk .case-board {
+    max-height: none !important;
+    overflow-y: visible !important;
+  }
+
+  .case-workspace--managing-editor-desk {
+    --board-max-h: none;
+  }
+}
+
+@media (max-width: 639px) {
+  /* Full-width panel on phone */
+  .detail-panel {
+    width: 100vw !important;
+    border-radius: 0 !important;
+  }
+
+  /* Bottom nav padding */
+  .content {
+    padding-bottom: 72px !important;
+  }
+}
+
+/* ── Mobile bottom navigation ───────────────────────────────── */
+.mobile-bottom-nav {
+  display: none;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 56px;
+  z-index: 100;
+  background: color-mix(in oklab, var(--panel-secondary) 95%, transparent);
+  border-top: 1px solid var(--border);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+@media (max-width: 639px) {
+  .mobile-bottom-nav {
+    display: flex;
+  }
+}
+
+.bottom-nav-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  text-decoration: none;
+  color: var(--text-tertiary);
+  padding: 6px 4px 4px;
+  transition: color 0.15s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+.bottom-nav-item.is-active {
+  color: var(--accent);
+}
+.bottom-nav-item svg {
+  flex-shrink: 0;
+}
+
+.bottom-nav-label {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  line-height: 1;
+}
+
+/* ── Close button in detail panel (tablet / mobile) ─────────── */
+.detail-panel-close {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  position: absolute;
+  top: 14px;
+  right: 16px;
+  width: 30px;
+  height: 30px;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  background: color-mix(in oklab, var(--text) 6%, transparent);
+  color: var(--text);
+  font-size: 14px;
+  cursor: pointer;
+  z-index: 10;
+  flex-shrink: 0;
+  transition: background 0.15s ease;
+  font-family: inherit;
+}
+.detail-panel-close:hover {
+  background: color-mix(in oklab, var(--text) 12%, transparent);
+}
+
+/* ── Pinned quick-action strip in detail panel ───────────────── */
+.detail-action-pin {
+  padding: 14px var(--space-6) 12px;
+  border-bottom: 1px solid color-mix(in oklab, var(--border) 70%, transparent);
+  background: color-mix(in oklab, var(--accent) 4%, var(--panel-secondary));
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.detail-action-pin-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+  margin-bottom: 2px;
+}
+.detail-action-pin-label:lang(ar),
+.detail-action-pin-label:lang(ar-SA) {
+  text-transform: none;
+  letter-spacing: 0.04em;
+}
+
+.detail-action-pin-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.detail-action-pin-row .input {
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+  padding: 6px 10px;
+  height: 34px;
+}
+
+.detail-action-pin-row .btn {
+  flex-shrink: 0;
+  font-size: 12.5px;
+  padding: 0 14px;
+  height: 34px;
+  min-height: 34px;
+}
+
+.detail-action-pin-assign {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 12.5px;
+  color: var(--text-secondary);
+}
+
+.detail-action-pin-assign-name {
+  font-weight: 600;
+  color: var(--text);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── Desk stats strip (replaces hero + exec-overview) ────────── */
+.desk-stats-strip {
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  margin-bottom: var(--space-6);
+  background: var(--panel-secondary);
+  border: 1px solid color-mix(in oklab, var(--border) 82%, var(--text));
+  border-radius: var(--radius-xl);
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+  box-shadow: var(--card-shadow);
+}
+.desk-stats-strip::-webkit-scrollbar { display: none; }
+
+.desk-stat-pill {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  padding: 16px 18px;
+  text-decoration: none;
+  color: inherit;
+  border-radius: 0;
+  transition: background 0.15s ease;
+  flex-shrink: 0;
+  min-width: 80px;
+  text-align: center;
+  border-right: 1px solid color-mix(in oklab, var(--border) 55%, transparent);
+  position: relative;
+}
+.desk-stat-pill:first-child {
+  border-radius: var(--radius-xl) 0 0 var(--radius-xl);
+}
+.desk-stat-pill:last-child {
+  border-right: none;
+  border-radius: 0 var(--radius-xl) var(--radius-xl) 0;
+}
+.desk-stat-pill:hover {
+  background: color-mix(in oklab, var(--text) 5%, transparent);
+}
+.desk-stat-pill.is-active {
+  background: color-mix(in oklab, var(--accent) 8%, transparent);
+}
+.desk-stat-pill.is-active::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 10%;
+  width: 80%;
+  height: 2px;
+  background: var(--accent);
+  border-radius: 2px 2px 0 0;
+}
+
+.desk-stat-value {
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.04em;
+  line-height: 1;
+  color: var(--text);
+}
+.desk-stat-pill.is-active .desk-stat-value {
+  color: var(--accent);
+}
+
+.desk-stat-label {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+  white-space: nowrap;
+}
+.desk-stat-label:lang(ar),
+.desk-stat-label:lang(ar-SA) {
+  text-transform: none;
+  letter-spacing: 0.04em;
+  font-size: 10px;
+}
+
+@media (max-width: 640px) {
+  .desk-stat-pill {
+    min-width: 62px;
+    padding: 12px 10px;
+  }
+  .desk-stat-value {
+    font-size: 18px;
+  }
+  .desk-stats-strip {
+    margin-bottom: var(--space-4);
+  }
+}
+
+/* ── Clean report card (no editorial cover image) ────────────── */
+.report-card--clean {
+  min-height: unset;
+  color: var(--text);
+  background: var(--premium-sheet-gradient);
+}
+
+.report-card--clean::before,
+.report-card--clean::after {
+  display: none !important;
+}
+
+.report-card--clean .report-card-stack {
+  position: static;
+  z-index: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.report-card--clean .report-card-title {
+  color: var(--text);
+  font-size: clamp(1rem, 0.3vw + 0.95rem, 1.1rem);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1.28;
+  text-shadow: none;
+}
+
+.report-card--clean .report-card-filed-by {
+  margin: 10px 0 0;
+  font-size: 12.5px;
+  color: var(--text-secondary);
+  text-shadow: none;
+}
+
+.report-card--clean .report-card-filed-by-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+
+.report-card--clean .report-card-filed-by-name {
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.report-card--clean .report-card-context-line {
+  margin: 6px 0 0;
+  font-size: 12px;
+  color: var(--text-secondary);
+  text-shadow: none;
+}
+
+.report-card--clean .report-card-ref {
+  margin-top: 6px;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  color: var(--text-tertiary);
+  text-shadow: none;
+}
+
+.report-card--clean .report-card-assign {
+  margin-top: 8px;
+  font-size: 12.5px;
+  color: var(--text-secondary);
+}
+
+.report-card--clean .report-card-badges {
+  margin-top: 14px;
+  padding-top: 0;
+}
+
+/* Selected state for clean cards */
+.report-card--clean.is-selected {
+  border-color: var(--accent) !important;
+  box-shadow:
+    0 0 0 2px color-mix(in oklab, var(--accent) 25%, transparent),
+    var(--card-shadow-hover) !important;
+}
+
+@keyframes backdropIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}

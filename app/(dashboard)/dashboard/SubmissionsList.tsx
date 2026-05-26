@@ -258,7 +258,7 @@ export function SubmissionsList({
   role: WorkspaceRole | null;
 }) {
   const searchParams = useSearchParams();
-  const { labels, branding } = useDashboardBranding();
+  const { labels } = useDashboardBranding();
   const needsTriageHref =
     labels.workflow.sidebarStageViews.find((x) => x.key === "needs_triage")?.href ??
     "/dashboard?view=needs_triage";
@@ -370,10 +370,17 @@ export function SubmissionsList({
     return managingEditorOpsFromCases(roleFilteredCases, labels);
   }, [managingEditorDesk, roleFilteredCases, viewConfig?.showRunSheet, labels]);
 
-  const execOverview = useMemo(() => {
-    if (!role) return null;
-    return executiveOverviewFromCases(roleFilteredCases);
-  }, [role, roleFilteredCases]);
+  /** Per-stage counts across all role-visible cases — used in the stats strip. */
+  const stageCounts = useMemo(() => {
+    const counts: Partial<Record<CaseStatus, number>> = {};
+    for (const c of roleFilteredCases) {
+      counts[c.status] = (counts[c.status] ?? 0) + 1;
+    }
+    return counts;
+  }, [roleFilteredCases]);
+
+  /** Base path for the current tenant (e.g. "/dashboard" or "/sudanfacts"). */
+  const deskBasePath = needsTriageHref.split("?")[0] ?? "/dashboard";
 
   const selectedCase = useMemo(() => {
     if (!selectedId) return null;
@@ -1109,100 +1116,28 @@ export function SubmissionsList({
 
   return (
     <>
+      {/* Compact stage-count strip — replaces the old hero + exec-overview blocks */}
       {managingEditorDesk ? (
-        <>
-          <section className="me-desk-hero" aria-labelledby="me-desk-headline">
-            <div className="me-desk-hero-grid">
-              <div className="me-desk-hero-main">
-                <div className="me-desk-hero-intro">
-                  <p className="me-desk-kicker">{labels.managingEditorDesk}</p>
-                  <h1 id="me-desk-headline" className="me-desk-title">
-                    {labels.newsroomOperations}
-                  </h1>
-                  <p className="me-desk-subtitle">{labels.managingEditorDeskSubline}</p>
-                </div>
-                {managingEditorOps && viewConfig?.showRunSheet ? (
-                  <div className="me-desk-kpis" aria-label="Room pulse">
-                    <Link className="me-desk-kpi me-desk-kpi--active" href="/dashboard">
-                      <span className="me-desk-kpi-icon">
-                        <MeDeskKpiIcon kind="active" />
-                      </span>
-                      <span className="me-desk-kpi-body">
-                        <span className="me-desk-kpi-value">{managingEditorOps.activeTotal}</span>
-                        <span className="me-desk-kpi-label">{labels.activeReports}</span>
-                      </span>
-                    </Link>
-                    <Link className="me-desk-kpi me-desk-kpi--lead" href={needsTriageHref}>
-                      <span className="me-desk-kpi-icon">
-                        <MeDeskKpiIcon kind="lead" />
-                      </span>
-                      <span className="me-desk-kpi-body">
-                        <span className="me-desk-kpi-value">{managingEditorOps.unassignedCount}</span>
-                        <span className="me-desk-kpi-label">{labels.needsALead}</span>
-                      </span>
-                    </Link>
-                    <Link className="me-desk-kpi me-desk-kpi--review" href="/dashboard?view=in_review">
-                      <span className="me-desk-kpi-icon">
-                        <MeDeskKpiIcon kind="review" />
-                      </span>
-                      <span className="me-desk-kpi-body">
-                        <span className="me-desk-kpi-value">{managingEditorOps.inReviewCount}</span>
-                        <span className="me-desk-kpi-label">{labels.inReview}</span>
-                      </span>
-                    </Link>
-                    <Link className="me-desk-kpi me-desk-kpi--resolved" href="/dashboard?view=resolved">
-                      <span className="me-desk-kpi-icon">
-                        <MeDeskKpiIcon kind="resolved" />
-                      </span>
-                      <span className="me-desk-kpi-body">
-                        <span className="me-desk-kpi-value">{managingEditorOps.resolvedTodayCount}</span>
-                        <span className="me-desk-kpi-label">{labels.resolvedToday}</span>
-                      </span>
-                    </Link>
-                  </div>
-                ) : null}
-              </div>
-            </div>
-          </section>
-        </>
-      ) : null}
-
-      {execOverview ? (
-        <section className="exec-overview" aria-label="Executive overview">
-          <div className="exec-overview-header">
-            <div>
-              <div className="exec-overview-kicker">{labels.workspaceName}</div>
-              <div className="exec-overview-title">{branding.welcomeText}</div>
-            </div>
-          </div>
-          <div className="exec-overview-grid">
-            <Link href="/dashboard?view=new" className="exec-kpi exec-kpi--new">
-              <div className="exec-kpi-label">New Today</div>
-              <div className="exec-kpi-value">{execOverview.newToday}</div>
-              <div className="exec-kpi-hint">Filed since midnight (local)</div>
-            </Link>
-            <Link href="/dashboard?view=needs_triage" className="exec-kpi exec-kpi--awaiting">
-              <div className="exec-kpi-label">Awaiting Review</div>
-              <div className="exec-kpi-value">{execOverview.awaitingReview}</div>
-              <div className="exec-kpi-hint">{labels.caseStatusLabels.needs_triage}</div>
-            </Link>
-            <Link href="/dashboard?view=in_review" className="exec-kpi exec-kpi--review">
-              <div className="exec-kpi-label">In Review</div>
-              <div className="exec-kpi-value">{execOverview.inReview}</div>
-              <div className="exec-kpi-hint">{labels.caseStatusLabels.in_review}</div>
-            </Link>
-            <Link href="/dashboard?view=resolved" className="exec-kpi exec-kpi--resolved">
-              <div className="exec-kpi-label">Resolved</div>
-              <div className="exec-kpi-value">{execOverview.resolved}</div>
-              <div className="exec-kpi-hint">{labels.caseStatusLabels.resolved}</div>
-            </Link>
-            <div className="exec-kpi exec-kpi--avg" role="group" aria-label="Average response time">
-              <div className="exec-kpi-label">Average Response Time</div>
-              <div className="exec-kpi-value">{execOverview.avgResponseLabel}</div>
-              <div className="exec-kpi-hint">{execOverview.avgResponseHint}</div>
-            </div>
-          </div>
-        </section>
+        <nav className="desk-stats-strip" aria-label="Stage overview">
+          {labels.workflow.stageOrder.map((status) => {
+            const isActive = view === status;
+            const href = `${deskBasePath}?view=${status}`;
+            return (
+              <Link
+                key={status}
+                href={href}
+                className={`desk-stat-pill${isActive ? " is-active" : ""}`}
+              >
+                <span className="desk-stat-value">
+                  {stageCounts[status as CaseStatus] ?? 0}
+                </span>
+                <span className="desk-stat-label">
+                  {labels.caseStatusLabels[status as CaseStatus]}
+                </span>
+              </Link>
+            );
+          })}
+        </nav>
       ) : null}
 
       <div className={caseWorkspaceClass}>
@@ -1325,6 +1260,8 @@ export function SubmissionsList({
           if (!workflowStatusDraft) return;
           void updateCaseWorkflowStatus(workflowStatusDraft);
         }}
+        isOpen={!!selectedId}
+        onClose={() => setSelectedId(null)}
       />
     </div>
 
