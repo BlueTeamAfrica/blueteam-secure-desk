@@ -122,8 +122,8 @@ export async function POST(request: NextRequest, context: RouteParams) {
     // Failures here must never block the workflow response — OneDrive is auxiliary.
     try {
       await moveSubmissionToStageInOneDrive(id, target);
-    } catch {
-      /* OneDrive sync failure is non-fatal */
+    } catch (e) {
+      console.error("[OneDrive sync]", e instanceof Error ? e.message : String(e));
     }
 
     return NextResponse.json({ ok: true });

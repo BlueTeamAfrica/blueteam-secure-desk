@@ -1,7 +1,7 @@
 import "server-only";
 
 import { getOneDriveTokenSet, setOneDriveTokenSet } from "@/app/_lib/server/onedriveTokenStore";
-import { refreshAccessToken } from "@/app/_lib/server/onedriveOAuth";
+import { refreshAccessToken } from "@/app/_lib/server/microsoftDelegatedOAuth";
 
 /**
  * Returns a valid access token for the workspace-level OneDrive integration.
@@ -26,8 +26,20 @@ export async function getValidWorkspaceAccessToken(): Promise<string | null> {
 
   try {
     const refreshed = await refreshAccessToken(token.refresh_token);
-    await setOneDriveTokenSet(refreshed);
-    return refreshed.access_token;
+    // microsoftDelegatedOAuth returns camelCase; onedriveTokenStore expects snake_case.
+    const expiresAt = new Date(
+      Date.now() + Math.max(30, refreshed.expiresIn ?? 3600) * 1000,
+    ).toISOString();
+    const tokenSet = {
+      access_token: refreshed.accessToken,
+      refresh_token: refreshed.refreshToken ?? token.refresh_token,
+      expires_in: refreshed.expiresIn,
+      expires_at: expiresAt,
+      scope: refreshed.scope,
+      token_type: refreshed.tokenType,
+    };
+    await setOneDriveTokenSet(tokenSet);
+    return tokenSet.access_token;
   } catch {
     return null;
   }
