@@ -153,7 +153,7 @@ export default function SettingsPage() {
               <div className="stack-8" style={{ borderTop: "1px solid var(--border)", paddingTop: 12 }}>
                 <div className="small-muted">
                   Pull latest stage changes from OneDrive into Secure Desk. Runs automatically
-                  every 5 minutes — use this to sync immediately after a manual folder move.
+                  every hour — use this to sync immediately after a manual folder move.
                 </div>
                 <div className="action-row" style={{ flexWrap: "wrap" }}>
                   <button
