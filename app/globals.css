@@ -4101,3 +4101,112 @@ a.exec-kpi:hover {
   from { opacity: 0; }
   to   { opacity: 1; }
 }
+
+/* ============================================================
+   CARD STAGE COLORS — left accent border + tinted background
+   + corner triangle for overdue / critical / high priority
+   ============================================================ */
+
+/* Stage color palette (warm, works on beige) */
+:root {
+  --stage-new:          #4f7bbf;   /* Received    — slate blue   */
+  --stage-triage:       #c08010;   /* Raw         — warm amber   */
+  --stage-assigned:     #2a8a7a;   /* First Edit  — teal         */
+  --stage-in-review:    #7c5bbf;   /* Second Edit — violet       */
+  --stage-follow-up:    #b86828;   /* In Review   — warm orange  */
+  --stage-resolved:     #3a8c4a;   /* Reviewed    — forest green */
+  --stage-archived:     #9a607a;   /* Designed    — dusty rose   */
+  --stage-urgent:       #b83030;   /* Overdue/critical           */
+}
+
+/* Base rule: all clean cards get a left border */
+.report-card--clean {
+  border-left-width: 3px !important;
+  border-left-style: solid !important;
+  border-left-color: var(--card-border);
+  overflow: hidden;
+}
+
+/* Per-stage: border + faint tint */
+.report-card--clean[data-case-status="new"] {
+  border-left-color: var(--stage-new) !important;
+  background: color-mix(in oklab, var(--stage-new) 5%, var(--premium-sheet-gradient)) !important;
+}
+.report-card--clean[data-case-status="needs_triage"] {
+  border-left-color: var(--stage-triage) !important;
+  background: color-mix(in oklab, var(--stage-triage) 5%, var(--premium-sheet-gradient)) !important;
+}
+.report-card--clean[data-case-status="assigned"] {
+  border-left-color: var(--stage-assigned) !important;
+  background: color-mix(in oklab, var(--stage-assigned) 5%, var(--premium-sheet-gradient)) !important;
+}
+.report-card--clean[data-case-status="in_review"] {
+  border-left-color: var(--stage-in-review) !important;
+  background: color-mix(in oklab, var(--stage-in-review) 5%, var(--premium-sheet-gradient)) !important;
+}
+.report-card--clean[data-case-status="waiting_follow_up"] {
+  border-left-color: var(--stage-follow-up) !important;
+  background: color-mix(in oklab, var(--stage-follow-up) 5%, var(--premium-sheet-gradient)) !important;
+}
+.report-card--clean[data-case-status="resolved"] {
+  border-left-color: var(--stage-resolved) !important;
+  background: color-mix(in oklab, var(--stage-resolved) 5%, var(--premium-sheet-gradient)) !important;
+}
+.report-card--clean[data-case-status="archived"] {
+  border-left-color: var(--stage-archived) !important;
+  background: color-mix(in oklab, var(--stage-archived) 5%, var(--premium-sheet-gradient)) !important;
+}
+
+/* Deepen the border on hover */
+.report-card--clean:hover[data-case-status="new"]             { border-left-color: color-mix(in oklab, var(--stage-new) 80%, #000) !important; }
+.report-card--clean:hover[data-case-status="needs_triage"]    { border-left-color: color-mix(in oklab, var(--stage-triage) 80%, #000) !important; }
+.report-card--clean:hover[data-case-status="assigned"]        { border-left-color: color-mix(in oklab, var(--stage-assigned) 80%, #000) !important; }
+.report-card--clean:hover[data-case-status="in_review"]       { border-left-color: color-mix(in oklab, var(--stage-in-review) 80%, #000) !important; }
+.report-card--clean:hover[data-case-status="waiting_follow_up"]{ border-left-color: color-mix(in oklab, var(--stage-follow-up) 80%, #000) !important; }
+.report-card--clean:hover[data-case-status="resolved"]        { border-left-color: color-mix(in oklab, var(--stage-resolved) 80%, #000) !important; }
+.report-card--clean:hover[data-case-status="archived"]        { border-left-color: color-mix(in oklab, var(--stage-archived) 80%, #000) !important; }
+
+/* ── Corner triangle flag: overdue or critical/high priority ── */
+/* Uses ::after (::before is reserved for potential future use) */
+
+.report-card--clean.report-card--overdue::after,
+.report-card--clean[data-priority="critical"]::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 0;
+  height: 0;
+  border-style: solid;
+  border-width: 0 28px 28px 0;
+  border-color: transparent var(--stage-urgent) transparent transparent;
+  pointer-events: none;
+  z-index: 3;
+}
+
+/* High priority: smaller triangle, slightly muted */
+.report-card--clean[data-priority="high"]:not(.report-card--overdue)::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 0;
+  height: 0;
+  border-style: solid;
+  border-width: 0 20px 20px 0;
+  border-color: transparent color-mix(in oklab, var(--stage-urgent) 62%, transparent) transparent transparent;
+  pointer-events: none;
+  z-index: 3;
+}
+
+/* Selected state override: show accent border on all sides, not just left */
+.report-card--clean.is-selected {
+  border-color: var(--accent) !important;
+  box-shadow:
+    0 0 0 2px color-mix(in oklab, var(--accent) 22%, transparent),
+    var(--card-shadow-hover) !important;
+}
+
+/* Status badges already have their own brand colors via badge-new / badge-triage / etc.
+   No override needed — the left border + tint provides the stage signal. */
+

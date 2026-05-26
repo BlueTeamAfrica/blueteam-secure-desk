@@ -63,7 +63,13 @@ export function ItemCard({
     .join(" ");
 
   return (
-    <button type="button" className={classes} onClick={onSelect}>
+    <button
+      type="button"
+      className={classes}
+      data-case-status={submission.status}
+      data-priority={submission.priority}
+      onClick={onSelect}
+    >
       <div className="report-card-stack">
         <div className="report-card-top">
           <div className="report-card-title" dir="auto">
