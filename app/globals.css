@@ -4210,3 +4210,417 @@ a.exec-kpi:hover {
 /* Status badges already have their own brand colors via badge-new / badge-triage / etc.
    No override needed — the left border + tint provides the stage signal. */
 
+/* ============================================================
+   PREMIUM EDITORIAL REDESIGN
+   Dark sidebar · New RC card system · Stats strip polish
+   ============================================================ */
+
+/* ─────────────────────────────────────────────────────────────
+   DARK EDITORIAL SIDEBAR
+   ───────────────────────────────────────────────────────────── */
+
+.sidebar {
+  background: #16130e !important;
+  border-right-color: #2a261e !important;
+  color: #ddd8ce;
+}
+
+.sidebar .nav-section-label {
+  color: #5e5848 !important;
+  border-bottom-color: #2a261e !important;
+  letter-spacing: 0.15em;
+}
+
+/* Nav items */
+.sidebar .status-nav-item {
+  color: #9a9082 !important;
+  border-color: transparent !important;
+}
+.sidebar .status-nav-item:hover {
+  background: rgba(255, 255, 255, 0.06) !important;
+  color: #ddd8ce !important;
+}
+.sidebar .status-nav-item.is-active {
+  background: rgba(255, 255, 255, 0.09) !important;
+  border-color: rgba(154, 51, 44, 0.4) !important;
+  color: #f0ebe0 !important;
+  box-shadow: inset 3px 0 0 var(--accent) !important;
+  font-weight: 650;
+}
+.sidebar .status-nav-item.is-active:dir(rtl) {
+  box-shadow: inset -3px 0 0 var(--accent) !important;
+}
+
+/* Count badges */
+.sidebar .status-count {
+  background: rgba(255, 255, 255, 0.07) !important;
+  color: #6a6254 !important;
+  border: none !important;
+}
+.sidebar .status-count.is-nonzero {
+  background: rgba(255, 255, 255, 0.11) !important;
+  color: #b8b0a0 !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+.sidebar .status-nav-item.is-active .status-count {
+  background: color-mix(in oklab, var(--accent) 22%, transparent) !important;
+  color: color-mix(in oklab, var(--accent) 88%, #fef5e8) !important;
+  border-color: color-mix(in oklab, var(--accent) 38%, transparent) !important;
+}
+
+/* Brand area */
+.sidebar .sidebar-brand-card {
+  background: rgba(255, 255, 255, 0.04) !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+}
+.sidebar .sidebar-brand-workspace,
+.sidebar .brand-title {
+  color: #ede8de !important;
+}
+.sidebar .sidebar-brand-subtitle,
+.sidebar .brand-subtitle {
+  color: #6a6254 !important;
+}
+.sidebar .sidebar-brand-powered-label {
+  color: #4e4a40 !important;
+}
+.sidebar .sidebar-brand-powered-name {
+  color: #6a6254 !important;
+}
+.sidebar .brand-badge {
+  background: var(--accent) !important;
+  color: #fff !important;
+}
+/* Logo in dark sidebar */
+.sidebar .brand-logo-img {
+  filter: brightness(1.05) !important;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   NEW RC CARD SYSTEM
+   ───────────────────────────────────────────────────────────── */
+
+.rc {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  text-align: left;
+  font-family: inherit;
+  color: var(--text);
+  cursor: pointer;
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--card-border);
+  border-left-width: 4px;
+  background: var(--panel-secondary);
+  box-shadow: 0 1px 3px rgba(12, 11, 9, 0.06), 0 1px 2px rgba(12, 11, 9, 0.04);
+  overflow: hidden;
+  position: relative;
+  transition: box-shadow 0.18s ease, transform 0.18s ease, border-color 0.15s ease;
+  -webkit-tap-highlight-color: transparent;
+  outline: none;
+}
+
+.rc:hover {
+  box-shadow: 0 6px 20px rgba(12, 11, 9, 0.1), 0 2px 6px rgba(12, 11, 9, 0.06);
+  transform: translateY(-1px);
+}
+
+.rc:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.rc.is-selected {
+  border-color: var(--accent) !important;
+  background: color-mix(in oklab, var(--accent) 3%, var(--panel-secondary)) !important;
+  box-shadow:
+    0 0 0 3px color-mix(in oklab, var(--accent) 16%, transparent),
+    0 6px 20px rgba(12, 11, 9, 0.1) !important;
+}
+
+/* ── Stage accent colors ── */
+.rc[data-case-status="new"]               { border-left-color: var(--stage-new); background: color-mix(in oklab, var(--stage-new) 4%, var(--panel-secondary)); }
+.rc[data-case-status="needs_triage"]      { border-left-color: var(--stage-triage); background: color-mix(in oklab, var(--stage-triage) 4%, var(--panel-secondary)); }
+.rc[data-case-status="assigned"]          { border-left-color: var(--stage-assigned); background: color-mix(in oklab, var(--stage-assigned) 4%, var(--panel-secondary)); }
+.rc[data-case-status="in_review"]         { border-left-color: var(--stage-in-review); background: color-mix(in oklab, var(--stage-in-review) 4%, var(--panel-secondary)); }
+.rc[data-case-status="waiting_follow_up"] { border-left-color: var(--stage-follow-up); background: color-mix(in oklab, var(--stage-follow-up) 4%, var(--panel-secondary)); }
+.rc[data-case-status="resolved"]          { border-left-color: var(--stage-resolved); background: color-mix(in oklab, var(--stage-resolved) 4%, var(--panel-secondary)); }
+.rc[data-case-status="archived"]          { border-left-color: var(--stage-archived); background: color-mix(in oklab, var(--stage-archived) 4%, var(--panel-secondary)); }
+
+/* Hover: deepen the left border */
+.rc:hover[data-case-status="new"]               { border-left-color: color-mix(in oklab, var(--stage-new) 75%, #000); }
+.rc:hover[data-case-status="needs_triage"]      { border-left-color: color-mix(in oklab, var(--stage-triage) 75%, #000); }
+.rc:hover[data-case-status="assigned"]          { border-left-color: color-mix(in oklab, var(--stage-assigned) 75%, #000); }
+.rc:hover[data-case-status="in_review"]         { border-left-color: color-mix(in oklab, var(--stage-in-review) 75%, #000); }
+.rc:hover[data-case-status="waiting_follow_up"] { border-left-color: color-mix(in oklab, var(--stage-follow-up) 75%, #000); }
+.rc:hover[data-case-status="resolved"]          { border-left-color: color-mix(in oklab, var(--stage-resolved) 75%, #000); }
+.rc:hover[data-case-status="archived"]          { border-left-color: color-mix(in oklab, var(--stage-archived) 75%, #000); }
+
+/* ── Urgency corner flag ── */
+.rc.rc--overdue::after,
+.rc[data-priority="critical"]::after {
+  content: "";
+  position: absolute;
+  top: 0; right: 0;
+  border-style: solid;
+  border-width: 0 26px 26px 0;
+  border-color: transparent var(--stage-urgent) transparent transparent;
+  pointer-events: none;
+  z-index: 4;
+}
+.rc[data-priority="high"]:not(.rc--overdue)::after {
+  content: "";
+  position: absolute;
+  top: 0; right: 0;
+  border-style: solid;
+  border-width: 0 18px 18px 0;
+  border-color: transparent color-mix(in oklab, var(--stage-urgent) 52%, transparent) transparent transparent;
+  pointer-events: none;
+  z-index: 4;
+}
+
+/* ── Card header: stage label + ref ── */
+.rc-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 13px 16px 0;
+  gap: 8px;
+}
+
+.rc-stage {
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+  line-height: 1;
+}
+/* Stage label inherits the accent color */
+.rc[data-case-status="new"] .rc-stage             { color: var(--stage-new); }
+.rc[data-case-status="needs_triage"] .rc-stage    { color: var(--stage-triage); }
+.rc[data-case-status="assigned"] .rc-stage        { color: var(--stage-assigned); }
+.rc[data-case-status="in_review"] .rc-stage       { color: var(--stage-in-review); }
+.rc[data-case-status="waiting_follow_up"] .rc-stage { color: var(--stage-follow-up); }
+.rc[data-case-status="resolved"] .rc-stage        { color: var(--stage-resolved); }
+.rc[data-case-status="archived"] .rc-stage        { color: var(--stage-archived); }
+.rc-stage:lang(ar), .rc-stage:lang(ar-SA) { text-transform: none; letter-spacing: 0.06em; }
+
+.rc-ref {
+  font-size: 9.5px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  color: var(--text-tertiary);
+  opacity: 0.55;
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+}
+
+/* ── Body: title + byline ── */
+.rc-body {
+  padding: 10px 16px 12px;
+  flex: 1;
+  min-width: 0;
+}
+
+.rc-title {
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -0.022em;
+  line-height: 1.34;
+  color: var(--text);
+  margin: 0 0 8px;
+}
+
+.rc-byline {
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.4;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.rc-byline-sep {
+  color: var(--text-tertiary);
+  margin: 0 1px;
+}
+
+.rc-byline-loc {
+  color: var(--text-tertiary);
+}
+
+/* ── Footer: assignee + flags ── */
+.rc-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 9px 16px 12px;
+  gap: 8px;
+  border-top: 1px solid color-mix(in oklab, var(--border) 55%, transparent);
+}
+
+.rc-assignee {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  flex: 1;
+}
+
+.rc-avatar {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: color-mix(in oklab, var(--accent) 16%, var(--surface));
+  color: var(--accent);
+  font-size: 8.5px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  letter-spacing: 0.02em;
+  border: 1.5px solid color-mix(in oklab, var(--accent) 22%, transparent);
+  line-height: 1;
+}
+
+.rc-avatar--empty {
+  background: var(--surface);
+  color: var(--text-tertiary);
+  border-color: var(--border);
+  font-size: 10px;
+}
+
+.rc-assignee-name {
+  font-size: 12px;
+  color: var(--text-secondary);
+  font-weight: 500;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rc-flags {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.rc-flag {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  padding: 2px 7px;
+  border-radius: 100px;
+  white-space: nowrap;
+  line-height: 1.5;
+}
+.rc-flag:lang(ar), .rc-flag:lang(ar-SA) { text-transform: none; }
+
+.rc-flag--overdue,
+.rc-flag--critical {
+  background: color-mix(in oklab, var(--stage-urgent) 13%, transparent);
+  color: var(--stage-urgent);
+  border: 1px solid color-mix(in oklab, var(--stage-urgent) 22%, transparent);
+}
+.rc-flag--high {
+  background: color-mix(in oklab, var(--stage-follow-up) 12%, transparent);
+  color: var(--stage-follow-up);
+  border: 1px solid color-mix(in oklab, var(--stage-follow-up) 22%, transparent);
+}
+.rc-flag--due {
+  background: color-mix(in oklab, var(--text-tertiary) 9%, transparent);
+  color: var(--text-tertiary);
+  border: 1px solid color-mix(in oklab, var(--text-tertiary) 16%, transparent);
+}
+.rc-flag--unassigned {
+  background: color-mix(in oklab, var(--text-tertiary) 7%, transparent);
+  color: var(--text-tertiary);
+  border: 1px solid color-mix(in oklab, var(--text-tertiary) 14%, transparent);
+}
+
+/* ─────────────────────────────────────────────────────────────
+   CARD GRID — better breathing room
+   ───────────────────────────────────────────────────────────── */
+
+.report-grid {
+  gap: 16px !important;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   STATS STRIP — bolder, more command-center
+   ───────────────────────────────────────────────────────────── */
+
+.desk-stats-strip {
+  background: var(--panel-secondary) !important;
+  border: 1px solid var(--card-border) !important;
+  box-shadow: 0 1px 3px rgba(12, 11, 9, 0.06) !important;
+  margin-bottom: 20px !important;
+}
+
+.desk-stat-value {
+  font-size: 26px !important;
+  font-weight: 800 !important;
+  letter-spacing: -0.05em !important;
+}
+
+.desk-stat-label {
+  font-size: 9px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.11em !important;
+}
+
+.desk-stat-pill {
+  padding: 18px 20px !important;
+  min-width: 86px !important;
+}
+
+/* Active pill: accent text + underline */
+.desk-stat-pill.is-active .desk-stat-value {
+  color: var(--accent) !important;
+}
+.desk-stat-pill.is-active .desk-stat-label {
+  color: var(--accent) !important;
+  opacity: 0.75;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   TOPBAR — elevated feel
+   ───────────────────────────────────────────────────────────── */
+
+.topbar {
+  background: color-mix(in oklab, var(--panel-secondary) 92%, transparent) !important;
+  border-bottom: 1px solid color-mix(in oklab, var(--border) 70%, transparent) !important;
+  box-shadow: 0 1px 0 rgba(12, 11, 9, 0.04) !important;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   DETAIL PANEL — editorial briefing feel
+   ───────────────────────────────────────────────────────────── */
+
+.detail-panel-header {
+  background: color-mix(in oklab, var(--panel-secondary) 100%, transparent) !important;
+  border-bottom: 1px solid color-mix(in oklab, var(--border) 65%, transparent) !important;
+}
+
+.detail-panel-header .header-title {
+  font-size: 16px !important;
+  font-weight: 700 !important;
+  letter-spacing: -0.025em !important;
+  line-height: 1.3 !important;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   CONTENT AREA — slight padding reduction for more grid space
+   ───────────────────────────────────────────────────────────── */
+
+.dashboard-shell[data-desk-mode="managing-editor"] .content {
+  padding: 20px 28px 56px !important;
+}
+
+

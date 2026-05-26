@@ -1,11 +1,10 @@
 "use client";
 
 import type { WorkspaceCase } from "@/app/_lib/caseWorkspaceModel";
-import { PRIORITY_LABEL, priorityBadgeClass, ownerDisplayLine } from "@/app/_lib/caseWorkspaceModel";
+import { ownerDisplayLine } from "@/app/_lib/caseWorkspaceModel";
 import type { DecryptedFilingReadout } from "@/app/_lib/decryptedSubmissionReadout";
 import { mapSubmissionToItem } from "@/app/_lib/items/mapSubmissionToItem";
 import { getSubmissionDisplay } from "@/app/_lib/items/getSubmissionDisplay";
-import { ItemStatusBadge } from "@/components/items/ItemStatusBadge";
 import { useDashboardBranding } from "@/app/_components/dashboard/WorkspaceBrandingProvider";
 
 function isOverdue(submission: WorkspaceCase): boolean {
@@ -16,13 +15,20 @@ function isOverdue(submission: WorkspaceCase): boolean {
   return d.getTime() < Date.now();
 }
 
+function nameInitials(name: string | null | undefined): string {
+  if (!name?.trim()) return "";
+  const parts = name.trim().split(/\s+/);
+  if (parts.length === 1) return (parts[0]![0] ?? "").toUpperCase();
+  return ((parts[0]![0] ?? "") + (parts[parts.length - 1]![0] ?? "")).toUpperCase();
+}
+
 export function ItemCard({
   submission,
   decryptedFiling,
   selected,
   editorDesk,
   managingEditorDesk,
-  coverImageUrl,
+  coverImageUrl: _coverImageUrl, // kept for API compat
   onSelect,
 }: {
   submission: WorkspaceCase;
@@ -30,17 +36,14 @@ export function ItemCard({
   selected: boolean;
   editorDesk: boolean;
   managingEditorDesk: boolean;
-  /** Public path e.g. /editorial/foo.jpg — omit to use CSS fallback cover */
+  /** No longer used — kept for backward API compatibility */
   coverImageUrl?: string;
   onSelect: () => void;
 }) {
   const { labels } = useDashboardBranding();
   const item = mapSubmissionToItem({ submission, decryptedFiling });
   const display = getSubmissionDisplay({ submission, decryptedFiling });
-  const filedByLabel = labels.deskLabels?.filedByLabel ?? "Filed by";
-  const withLabel = labels.deskLabels?.withLabel ?? "With";
-  const priorityUrgent = labels.priorityLabels?.urgent ?? "Urgent";
-  const priorityHighAttention = labels.priorityLabels?.highAttention ?? "High attention";
+
   const overdue = isOverdue(submission);
   const dueLabel = (() => {
     if (!submission.dueDate) return null;
@@ -48,15 +51,22 @@ export function ItemCard({
     if (Number.isNaN(d.getTime())) return null;
     return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
   })();
+
   const unassigned = !submission.assignedOwnerName?.trim() && !submission.assignedOwnerId?.trim();
+  const stageLabel = labels.caseStatusLabels[submission.status] ?? submission.status;
+  const initials = nameInitials(submission.assignedOwnerName);
+  const assigneeName = ownerDisplayLine(submission);
+
+  const isCritical = submission.priority === "critical";
+  const isHigh = submission.priority === "high";
+  const priorityUrgent = labels.priorityLabels?.urgent ?? "Urgent";
+  const priorityHighAttention = labels.priorityLabels?.highAttention ?? "High";
 
   const classes = [
-    "report-card",
-    "report-card--premium",
-    "report-card--clean",
-    overdue ? "report-card--overdue" : "",
-    editorDesk ? "report-card--queue" : "",
-    managingEditorDesk ? "report-card--command" : "",
+    "rc",
+    overdue ? "rc--overdue" : "",
+    editorDesk ? "rc--queue" : "",
+    managingEditorDesk ? "rc--command" : "",
     selected ? "is-selected" : "",
   ]
     .filter(Boolean)
@@ -70,49 +80,58 @@ export function ItemCard({
       data-priority={submission.priority}
       onClick={onSelect}
     >
-      <div className="report-card-stack">
-        <div className="report-card-top">
-          <div className="report-card-title" dir="auto">
-            {display.displayTitle}
-          </div>
+      {/* ── Row 1: stage label + ref code ── */}
+      <div className="rc-header">
+        <span className="rc-stage">{stageLabel}</span>
+        <span className="rc-ref">{item.ref}</span>
+      </div>
+
+      {/* ── Row 2: title + byline ── */}
+      <div className="rc-body">
+        <div className="rc-title" dir="auto">
+          {display.displayTitle}
         </div>
-        <p className="report-card-filed-by" dir="auto">
-          <span className="report-card-filed-by-label">{filedByLabel}</span>{" "}
-          <span className="report-card-filed-by-name">{display.displayReporterName}</span>
-        </p>
-        {display.displayCardContextLine ? (
-          <p className="report-card-context-line" dir="auto">
-            {display.displayCardContextLine}
-          </p>
-        ) : null}
-        <p className="report-card-ref">Ref: {item.ref}</p>
-        <div className="report-card-assign">
-          <span className="report-card-assign-label">{withLabel}</span>
-          <span className="report-card-assign-name">{ownerDisplayLine(submission)}</span>
+        <div className="rc-byline" dir="auto">
+          {display.displayReporterName}
+          {display.displayReporterRegion ? (
+            <span className="rc-byline-sep"> · </span>
+          ) : null}
+          {display.displayReporterRegion ? (
+            <span className="rc-byline-loc">{display.displayReporterRegion}</span>
+          ) : null}
         </div>
-        <div className="report-card-badges">
-          <ItemStatusBadge status={item.status} />
-          {unassigned ? <span className="badge badge-neutral">Unassigned</span> : null}
-          {submission.priority === "normal" ? (
-            <span className="badge badge-route">{PRIORITY_LABEL.normal}</span>
-          ) : null}
-          {submission.priority === "low" ? (
-            <span className={priorityBadgeClass(submission.priority)}>
-              {PRIORITY_LABEL.low}
-            </span>
-          ) : submission.priority === "high" || submission.priority === "critical" ? (
-            <span className={priorityBadgeClass(submission.priority)}>
-              {submission.priority === "critical" ? priorityUrgent : priorityHighAttention}
-            </span>
-          ) : null}
-          {overdue ? (
-            <span className="badge badge-archived">Overdue</span>
-          ) : dueLabel ? (
-            <span className="badge badge-route">Due {dueLabel}</span>
-          ) : null}
+      </div>
+
+      {/* ── Row 3: footer — assignee + flags ── */}
+      <div className="rc-footer">
+        <div className="rc-assignee">
+          <span
+            className={`rc-avatar${unassigned ? " rc-avatar--empty" : ""}`}
+            aria-hidden="true"
+          >
+            {unassigned ? "?" : initials || "—"}
+          </span>
+          <span className="rc-assignee-name">{assigneeName}</span>
+        </div>
+
+        <div className="rc-flags">
+          {overdue && (
+            <span className="rc-flag rc-flag--overdue">Overdue</span>
+          )}
+          {!overdue && dueLabel && (
+            <span className="rc-flag rc-flag--due">Due {dueLabel}</span>
+          )}
+          {isCritical && (
+            <span className="rc-flag rc-flag--critical">{priorityUrgent}</span>
+          )}
+          {!isCritical && isHigh && (
+            <span className="rc-flag rc-flag--high">{priorityHighAttention}</span>
+          )}
+          {!overdue && !isCritical && !isHigh && unassigned && (
+            <span className="rc-flag rc-flag--unassigned">No lead</span>
+          )}
         </div>
       </div>
     </button>
   );
 }
-
