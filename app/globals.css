@@ -845,11 +845,12 @@ a:hover {
   min-height: 0;
 }
 
-/* Managing Editor — premium 2-column board (no overlap into lower sections). */
+/* Managing Editor — premium 2-column board. Detail column gets generous width. */
 .case-workspace--managing-editor-desk {
   --desk-column-gutter: var(--space-8);
   gap: var(--desk-column-gutter);
   padding-bottom: var(--space-6);
+  grid-template-columns: 3fr 2fr;
 }
 
 .case-workspace--managing-editor-desk .report-grid {
@@ -862,29 +863,24 @@ a:hover {
 
 /* (Reverted) No full-height inspector rail; inspector ends naturally. */
 
-/* Constrain sticky inspector so it doesn't create a huge board "tail". */
+/* No scroll traps — detail panel and card board expand naturally with page scroll. */
 .case-workspace--managing-editor-desk .detail-panel.detail-panel--command {
   top: calc(var(--topbar-height) + var(--space-8));
-  max-height: calc(100vh - var(--topbar-height) - var(--space-8) - var(--space-8));
-  overflow: hidden;
+  max-height: none;
+  overflow: visible;
 }
 
 .case-workspace--managing-editor-desk .detail-panel.detail-panel--command .detail-panel-body {
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
+  overflow-y: visible;
 }
 
-/* Board section terminates cleanly:
-   keep the 2-column workspace only as tall as the inspector viewport,
-   and let the cards board scroll within that region. */
 .case-workspace--managing-editor-desk {
-  --board-max-h: calc(100vh - var(--topbar-height) - var(--space-8) - var(--space-8));
+  --board-max-h: none;
 }
 
 .case-workspace--managing-editor-desk .case-board {
-  max-height: var(--board-max-h);
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
+  max-height: none;
+  overflow-y: visible;
   padding-bottom: var(--space-6);
 }
 
@@ -1708,10 +1704,7 @@ a:hover {
   border-bottom-color: color-mix(in oklab, var(--border) 48%, transparent);
 }
 
-.case-workspace--managing-editor-desk .detail-panel.detail-panel--command {
-  /* Same vertical inset as main content padding — inspector sits on the same plane as the board. */
-  top: calc(var(--topbar-height) + var(--space-8));
-}
+/* top inset is already set in the scroll-trap removal block above */
 
 .case-workspace--managing-editor-desk .detail-panel--command .btn {
   border-radius: 10px;

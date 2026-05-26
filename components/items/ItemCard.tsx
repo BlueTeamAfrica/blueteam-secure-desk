@@ -28,6 +28,7 @@ export function ItemCard({
   selected,
   editorDesk,
   managingEditorDesk,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   coverImageUrl: _coverImageUrl, // kept for API compat
   onSelect,
 }: {
