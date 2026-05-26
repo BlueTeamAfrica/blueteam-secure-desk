@@ -15,6 +15,7 @@ import {
   workspaceUserContextFromAdmin,
 } from "@/app/_lib/server/submissionCaseAccess";
 import { fetchWorkspaceRole } from "@/app/_lib/server/workspaceRole";
+import { moveSubmissionToStageInOneDrive } from "@/app/_lib/server/submissionOneDriveSyncServer";
 
 type RouteParams = { params: Promise<{ id: string }> };
 
@@ -115,6 +116,14 @@ export async function POST(request: NextRequest, context: RouteParams) {
       });
     } catch {
       /* audit failure must not block */
+    }
+
+    // Mirror the stage change in OneDrive (move existing file, or upload fresh).
+    // Failures here must never block the workflow response — OneDrive is auxiliary.
+    try {
+      await moveSubmissionToStageInOneDrive(id, target);
+    } catch {
+      /* OneDrive sync failure is non-fatal */
     }
 
     return NextResponse.json({ ok: true });

@@ -87,6 +87,12 @@ export type WorkspaceCase = {
   /** Original workflow / channel field. */
   workflowStatus: string | null;
   attachments: SubmissionAttachment[];
+  /** OneDrive Graph API item ID for the exported DOCX (null = not yet synced). */
+  onedriveItemId: string | null;
+  /** OneDrive web URL for the exported file (null = not yet synced). */
+  onedriveWebUrl: string | null;
+  /** Filename used in OneDrive (needed for move operations). */
+  onedriveFilename: string | null;
   raw: DocumentData;
 };
 
@@ -431,6 +437,9 @@ export function normalizeSubmissionToCase(id: string, data: DocumentData): Works
     processingStatus,
     workflowStatus,
     attachments,
+    onedriveItemId: str(data.onedriveItemId),
+    onedriveWebUrl: str(data.onedriveWebUrl),
+    onedriveFilename: str(data.onedriveFilename),
     raw: data,
   };
 }

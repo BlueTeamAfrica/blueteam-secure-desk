@@ -37,16 +37,16 @@ const labels: WorkspaceCoreLabels = {
     "Command center for the room — leads, stages, and filings in one sweep.",
   runSheet: "Run sheet",
   activeReports: "Inbox",
-  new: "Raw Materials",
-  needsTriage: "First Editing",
-  withLead: "Second Editing",
-  inReview: "Proofreading",
-  awaitingFollowUp: "Designed",
-  resolved: "Published",
-  archive: "Archive",
+  new: "Received",
+  needsTriage: "Raw",
+  withLead: "First Editing",
+  inReview: "Second Editing",
+  awaitingFollowUp: "In Review",
+  resolved: "Reviewed",
+  archive: "Designed",
   noLeadYet: "No lead yet",
   needsALead: "Needs a lead",
-  resolvedToday: "Published today",
+  resolvedToday: "Reviewed today",
   onTheBooks: "On the books",
   unclaimedPickTheseUpFirst: "Unclaimed — pick these up first",
   roleLabels: {
@@ -57,13 +57,13 @@ const labels: WorkspaceCoreLabels = {
     readonly: "Viewer",
   },
   caseStatusLabels: {
-    new: "Raw Materials",
-    needs_triage: "First Editing",
-    assigned: "Second Editing",
-    in_review: "Proofreading",
-    waiting_follow_up: "Designed",
-    resolved: "Published",
-    archived: "Archive",
+    new: "Received",
+    needs_triage: "Raw",
+    assigned: "First Editing",
+    in_review: "Second Editing",
+    waiting_follow_up: "In Review",
+    resolved: "Reviewed",
+    archived: "Designed",
   },
 };
 
@@ -167,38 +167,38 @@ const exportDocxLabels = {
 } satisfies import("@/app/_lib/org/types").WorkspaceExportDocxLabels;
 
 const hdrRawMaterials: EditorDeskHeaderPair = {
-  title: "Raw Materials",
-  subtitle: "New incoming material waiting for movement.",
+  title: "Received",
+  subtitle: "New incoming submissions waiting to be routed.",
 };
 
 const hdrFirstEditing: EditorDeskHeaderPair = {
+  title: "Raw",
+  subtitle: "New material waiting for first editing.",
+};
+
+const hdrYourQueue: EditorDeskHeaderPair = {
   title: "First Editing",
   subtitle: "Stories currently in the first editorial pass.",
 };
 
-const hdrYourQueue: EditorDeskHeaderPair = {
-  title: "Your queue",
-  subtitle: "Items currently on your desk.",
-};
-
 const hdrProofreading: EditorDeskHeaderPair = {
-  title: "Proofreading",
-  subtitle: "Copy and correction stage.",
+  title: "Second Editing",
+  subtitle: "Stories in the second editorial pass.",
 };
 
 const hdrDesigned: EditorDeskHeaderPair = {
-  title: "Designed",
-  subtitle: "Stories currently in design.",
+  title: "In Review",
+  subtitle: "Stories under review before final sign-off.",
 };
 
 const hdrPublished: EditorDeskHeaderPair = {
-  title: "Published",
-  subtitle: "Released pieces kept visible for reference.",
+  title: "Reviewed",
+  subtitle: "Reviewed pieces ready for design.",
 };
 
 const hdrArchive: EditorDeskHeaderPair = {
-  title: "Archive",
-  subtitle: "Past work retained for search and review.",
+  title: "Designed",
+  subtitle: "Designed pieces — final stage.",
 };
 
 const editorDeskHeaders: WorkspaceEditorDeskHeaders = {
@@ -219,6 +219,7 @@ const editorDeskHeaders: WorkspaceEditorDeskHeaders = {
     needs_triage: hdrFirstEditing,
     assigned: hdrYourQueue,
     "your-queue": hdrYourQueue,
+    edit2: hdrYourQueue,
     proof: hdrProofreading,
     proofreading: hdrProofreading,
     in_review: hdrProofreading,
@@ -284,9 +285,9 @@ const board: WorkspaceBoardCopy = {
     "Your list only shows submissions where you are the lead. If you expected work here, ask the desk to confirm the assignment — they may still be routing it.",
   intakeEmptyTitle: "Nothing in triage",
   intakeEmptyBeforeStates: "Intake only sees reports in ",
-  intakeEmptyStateNewLabel: "New",
+  intakeEmptyStateNewLabel: "Received",
   intakeEmptyOrWord: " or ",
-  intakeEmptyStateTriageLabel: "Needs Triage",
+  intakeEmptyStateTriageLabel: "Raw",
   intakeEmptyAfterStates: ". When submissions arrive in those states, they will appear here.",
   stageColumnTitleDesk: "Where it stands",
   stageColumnTitleDefault: "Case status",
@@ -339,16 +340,19 @@ export const factsdWorkspaceConfig: WorkspaceConfig = {
   integrations: {
     exportProvider: "manualDownload",
     oneDrive: {
-      enabled: false,
-      rootFolderName: "Atar Secure Desk",
+      // TEST: using SecureDesk-Test in Mohamed's personal OneDrive.
+      // Production: change rootFolderName to "Atar Editorial/Editorial - Arabic"
+      // (or the full path from Arif Sawi's drive root) and re-enable.
+      enabled: true,
+      rootFolderName: "SecureDesk-Test",
       stageFolderMap: {
-        new: "01 Raw Materials",
-        needs_triage: "02 First Editing",
-        assigned: "03 Second Editing",
-        in_review: "04 Proofreading",
-        waiting_follow_up: "05 Designed",
-        resolved: "06 Published",
-        archived: "07 Archive",
+        new: "incoming",
+        needs_triage: "raw",
+        assigned: "first edit",
+        in_review: "second edit",
+        waiting_follow_up: "in_review",
+        resolved: "reviewed",
+        archived: "designed",
       },
     },
   },

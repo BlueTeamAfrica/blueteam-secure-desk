@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { exchangeAuthCode } from "@/app/_lib/server/microsoftDelegatedOAuth";
 import { consumeAuthState, setPersonalOneDriveToken } from "@/app/_lib/server/personalOneDriveTokenStore";
+import { fetchWorkspaceRole } from "@/app/_lib/server/workspaceRole";
+import { setOneDriveTokenSet } from "@/app/_lib/server/onedriveTokenStore";
 
 export const runtime = "nodejs";
 
@@ -51,6 +53,25 @@ export async function GET(request: NextRequest) {
       accountEmail,
       providerUserId,
     });
+
+    // For owners and admins, promote this connection to the workspace-level token store.
+    // This allows background sync operations (auto-upload, stage moves, pull-sync) to use
+    // the connected account without requiring a per-request user session.
+    try {
+      const role = await fetchWorkspaceRole(pending.uid);
+      if (role === "owner" || role === "admin") {
+        await setOneDriveTokenSet({
+          access_token: token.accessToken,
+          refresh_token: token.refreshToken,
+          expires_at: expiresAt,
+          expires_in: token.expiresIn,
+          scope: token.scope,
+          token_type: token.tokenType,
+        });
+      }
+    } catch {
+      // Promotion failure is non-fatal — personal token was saved successfully.
+    }
 
     return NextResponse.redirect(new URL("/settings?onedrive=connected", url));
   } catch (e) {
