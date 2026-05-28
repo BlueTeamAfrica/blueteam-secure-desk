@@ -352,7 +352,7 @@ function apiErrorMessage(body: unknown): string | null {
   return typeof err === "string" && err.trim() ? err : null;
 }
 
-type DetailSectionKey = "reporter" | "filing" | "room" | "notes" | "attachments";
+type DetailSectionKey = "reporter" | "filing" | "room" | "notes" | "attachments" | "routing";
 
 const DEFAULT_SECTION_OPEN: Record<DetailSectionKey, boolean> = {
   reporter: false,
@@ -360,6 +360,7 @@ const DEFAULT_SECTION_OPEN: Record<DetailSectionKey, boolean> = {
   room: false,
   notes: false,
   attachments: false,
+  routing: false,
 };
 
 function DetailReadSection({
@@ -535,6 +536,7 @@ export function ItemDetailPanel({
   const [auditLoading, setAuditLoading] = useState(false);
   const [auditError, setAuditError] = useState<string | null>(null);
   const [auditEvents, setAuditEvents] = useState<SubmissionAuditEvent[]>([]);
+  const [showAllActivity, setShowAllActivity] = useState(false);
 
   const [priorityDraft, setPriorityDraft] = useState<WorkspaceCase["priority"]>("normal");
   const [priorityBusy, setPriorityBusy] = useState(false);
@@ -571,6 +573,7 @@ export function ItemDetailPanel({
 
   useEffect(() => {
     setOpenSections(DEFAULT_SECTION_OPEN);
+    setShowAllActivity(false);
   }, [fetchWithAuth, selected?.id]);
 
   useEffect(() => {
@@ -1017,15 +1020,19 @@ export function ItemDetailPanel({
           />
         </DetailReadSection>
 
-        <div className="detail-read-ambient">
-          <div className="detail-section-title">
-            {editorDesk
+        <DetailReadSection
+          sectionKey="routing"
+          title={
+            editorDesk
               ? (section.detailMetaTitleEditor ?? "Story file")
               : managingEditorDesk
                 ? (section.detailMetaTitleManagingEditor ?? "File & routing")
-                : (section.detailMetaTitleDefault ?? "Case details")}
-          </div>
-          <dl className="detail-dl">
+                : (section.detailMetaTitleDefault ?? "Case details")
+          }
+          isOpen={openSections.routing}
+          onToggle={() => toggleSection("routing")}
+        >
+          <dl className="detail-dl detail-dl--read">
             <div>
               <dt className="detail-dt">{section.detailMetaSubmitted ?? "Submitted"}</dt>
               <dd className="detail-dd">{formatWhen(selected.createdAt)}</dd>
@@ -1125,7 +1132,7 @@ export function ItemDetailPanel({
               </div>
             )}
           </div>
-        </div>
+        </DetailReadSection>
 
         <DetailReadSection
           sectionKey="attachments"
@@ -1513,57 +1520,6 @@ export function ItemDetailPanel({
             </div>
           ) : null}
 
-          {showStatusPicker && allowedStatusTargets.length > 0 && workflowStatusDraft ? (
-            <div className="stack-12 detail-read-actions-stack">
-              <label className="label" htmlFor="workflow-status-select">
-                {stageLabel}
-              </label>
-              <select
-                id="workflow-status-select"
-                className="input"
-                style={{ width: "100%", maxWidth: "100%" }}
-                value={workflowStatusDraft}
-                onChange={(e) => setWorkflowStatusDraft(e.target.value as CaseStatus)}
-                disabled={workflowBusy}
-              >
-                {allowedStatusTargets
-                  .slice()
-                  .sort((a, b) => {
-                    const order = labels.workflow.stageOrder;
-                    const ia = order.indexOf(a);
-                    const ib = order.indexOf(b);
-                    const aRank = ia === -1 ? Number.POSITIVE_INFINITY : ia;
-                    const bRank = ib === -1 ? Number.POSITIVE_INFINITY : ib;
-                    return aRank - bRank;
-                  })
-                  .map((s) => (
-                  <option key={s} value={s}>
-                    {labels.caseStatusLabels[s]}
-                  </option>
-                ))}
-              </select>
-              <div className="action-row" style={{ flexWrap: "wrap" }}>
-                <button
-                  type="button"
-                  className="btn btn-primary"
-                  disabled={workflowBusy || workflowStatusDraft === selected.status}
-                  onClick={onApplyWorkflowStatus}
-                >
-                  {workflowBusy
-                    ? "Saving…"
-                    : editorDesk || managingEditorDesk
-                      ? (action.applyStageChange ?? "Apply stage change")
-                      : (action.updateStatus ?? "Update status")}
-                </button>
-              </div>
-              {workflowError ? (
-                <div className="alert alert-danger" role="alert">
-                  {workflowError}
-                </div>
-              ) : null}
-            </div>
-          ) : null}
-
           {managingEditorDesk ? (
             <p className="small-muted detail-read-actions-hint">
               Resolve and archive update what downstream desks see. Priority flags are still a placeholder in this build.
@@ -1627,47 +1583,74 @@ export function ItemDetailPanel({
           ) : auditEvents.length === 0 ? (
             <p className="subtext" style={{ margin: 0 }}>{section.activityEmpty ?? "No activity yet."}</p>
           ) : (
-            <div className="stack-12" style={{ marginTop: 8 }}>
-              {collapseAuditEvents(auditEvents).map((ev) => {
-                const actorRaw = ev.adminEmail ?? ev.adminUid;
-                const who = displayNameFromEmailOrId(actorRaw);
-                const whoRole = roleLabelFromEmailOrId(actorRaw, labels);
-                const subLine = whoRole ? `${who} · ${whoRole}` : who;
+            (() => {
+              const collapsed = collapseAuditEvents(auditEvents);
+              const visible = showAllActivity ? collapsed : collapsed.slice(0, 5);
+              const hiddenCount = collapsed.length - visible.length;
+              return (
+                <div className="stack-12" style={{ marginTop: 8 }}>
+                  {visible.map((ev) => {
+                    const actorRaw = ev.adminEmail ?? ev.adminUid;
+                    const who = displayNameFromEmailOrId(actorRaw);
+                    const whoRole = roleLabelFromEmailOrId(actorRaw, labels);
+                    const subLine = whoRole ? `${who} · ${whoRole}` : who;
 
-                const baseLine = auditActionLineFromEvent(
-                  {
-                    id: ev.id,
-                    action: ev.action,
-                    adminUid: ev.adminUid,
-                    adminEmail: ev.adminEmail,
-                    createdAt: ev.latestAt,
-                    details: ev.details,
-                  },
-                  labels,
-                );
+                    const baseLine = auditActionLineFromEvent(
+                      {
+                        id: ev.id,
+                        action: ev.action,
+                        adminUid: ev.adminUid,
+                        adminEmail: ev.adminEmail,
+                        createdAt: ev.latestAt,
+                        details: ev.details,
+                      },
+                      labels,
+                    );
 
-                const actionLine =
-                  ev.count <= 1
-                    ? baseLine
-                    : ev.action === "decrypt"
-                      ? `Reviewed ${ev.count} times`
-                      : `${baseLine} (${ev.count}×)`;
+                    const actionLine =
+                      ev.count <= 1
+                        ? baseLine
+                        : ev.action === "decrypt"
+                          ? `Reviewed ${ev.count} times`
+                          : `${baseLine} (${ev.count}×)`;
 
-                const when = formatAuditWhen(ev.latestAt);
-                const metaLine = ev.count <= 1 ? `${when} · ${subLine}` : `Latest ${when} · ${subLine}`;
+                    const when = formatAuditWhen(ev.latestAt);
+                    const metaLine = ev.count <= 1 ? `${when} · ${subLine}` : `Latest ${when} · ${subLine}`;
 
-                return (
-                  <div key={ev.id} className="detail-activity-row">
-                    <div className="detail-activity-action" dir="auto">
-                      {actionLine}
-                    </div>
-                    <div className="detail-activity-meta">
-                      {metaLine}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+                    return (
+                      <div key={ev.id} className="detail-activity-row">
+                        <div className="detail-activity-action" dir="auto">
+                          {actionLine}
+                        </div>
+                        <div className="detail-activity-meta">
+                          {metaLine}
+                        </div>
+                      </div>
+                    );
+                  })}
+                  {hiddenCount > 0 && (
+                    <button
+                      type="button"
+                      className="btn btn-ghost"
+                      style={{ width: "100%", marginTop: 4, fontSize: "0.75rem" }}
+                      onClick={() => setShowAllActivity(true)}
+                    >
+                      Show {hiddenCount} more
+                    </button>
+                  )}
+                  {showAllActivity && collapsed.length > 5 && (
+                    <button
+                      type="button"
+                      className="btn btn-ghost"
+                      style={{ width: "100%", marginTop: 4, fontSize: "0.75rem" }}
+                      onClick={() => setShowAllActivity(false)}
+                    >
+                      Show less
+                    </button>
+                  )}
+                </div>
+              );
+            })()
           )}
         </div>
         </div>{/* /dp-actions */}
