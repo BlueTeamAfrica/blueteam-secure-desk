@@ -910,6 +910,7 @@ export function SubmissionsList({
     "case-workspace",
     editorDesk ? "case-workspace--editor-desk" : "",
     managingEditorDesk ? "case-workspace--managing-editor-desk" : "",
+    selectedId ? "has-selection" : "",
   ]
     .filter(Boolean)
     .join(" ");

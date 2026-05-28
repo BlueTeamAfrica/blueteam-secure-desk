@@ -856,6 +856,7 @@ export function ItemDetailPanel({
       ) : null}
 
       <div className="detail-panel-body detail-panel-body--read">
+        <div className="dp-content">
         {scaffoldMessage ? (
           <p className="subtext detail-read-ambient" style={{ margin: 0 }}>
             {scaffoldMessage}
@@ -1207,7 +1208,9 @@ export function ItemDetailPanel({
             </div>
           )}
         </DetailReadSection>
+        </div>{/* /dp-content */}
 
+        <div className="dp-actions">
         <div className="detail-read-actions">
           <div className="detail-section-title">
             {editorDesk
@@ -1667,6 +1670,7 @@ export function ItemDetailPanel({
             </div>
           )}
         </div>
+        </div>{/* /dp-actions */}
       </div>
     </aside>
   );

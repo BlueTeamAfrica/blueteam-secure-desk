@@ -4616,4 +4616,183 @@ a.exec-kpi:hover {
   padding: 20px 28px 56px !important;
 }
 
+/* ═══════════════════════════════════════════════════════════════════════
+   MASTER-DETAIL LAYOUT
+   When a case is selected (has-selection): card list collapses to a
+   narrow 280px sidebar; the detail panel expands to the full remaining
+   width. Inside the detail, content (left) and actions (right) split
+   into a 2-column grid.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* dp-content / dp-actions are always in the HTML but transparent by default
+   so existing single-column layout is unaffected. */
+.dp-content,
+.dp-actions {
+  display: contents;
+}
+
+/* ── Workspace grid: collapse card list, expand detail ── */
+.case-workspace--managing-editor-desk.has-selection {
+  grid-template-columns: 280px 1fr;
+}
+
+/* ── Card list in narrow mode: single column, compact cards ── */
+.case-workspace--managing-editor-desk.has-selection .report-grid {
+  grid-template-columns: 1fr;
+  gap: 7px;
+}
+
+.case-workspace--managing-editor-desk.has-selection .rc {
+  padding: 10px 13px 9px;
+  gap: 0;
+}
+
+.case-workspace--managing-editor-desk.has-selection .rc-header {
+  margin-bottom: 4px;
+}
+
+.case-workspace--managing-editor-desk.has-selection .rc-stage {
+  font-size: 9px;
+  letter-spacing: 0.06em;
+}
+
+.case-workspace--managing-editor-desk.has-selection .rc-ref {
+  font-size: 9px;
+}
+
+.case-workspace--managing-editor-desk.has-selection .rc-title {
+  font-size: 12.5px;
+  line-height: 1.35;
+  -webkit-line-clamp: 2;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.case-workspace--managing-editor-desk.has-selection .rc-byline {
+  font-size: 11px;
+  margin-top: 3px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Hide assignee + flags row in narrow list — detail panel shows all that */
+.case-workspace--managing-editor-desk.has-selection .rc-footer {
+  display: none;
+}
+
+/* ── Detail panel body: switch to 2-column grid ── */
+.case-workspace--managing-editor-desk.has-selection .detail-panel--command .detail-panel-body--read {
+  display: grid;
+  grid-template-columns: 1fr 300px;
+  gap: 0;
+  padding: 0;
+  flex: 1;
+}
+
+/* Make wrapper divs real blocks in master-detail mode */
+.case-workspace--managing-editor-desk.has-selection .detail-panel--command .dp-content {
+  display: block;
+  padding: var(--space-5) var(--space-5) var(--space-8) var(--space-6);
+  min-width: 0;
+  border-right: 1px solid color-mix(in oklab, var(--border) 60%, transparent);
+}
+
+.case-workspace--managing-editor-desk.has-selection .detail-panel--command .dp-actions {
+  display: flex;
+  flex-direction: column;
+  padding: var(--space-5) var(--space-6) var(--space-8) var(--space-5);
+  min-width: 0;
+  gap: var(--space-4);
+}
+
+/* Actions column: compact action groups */
+.case-workspace--managing-editor-desk.has-selection .detail-panel--command .dp-actions .detail-read-actions {
+  margin-top: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
+.case-workspace--managing-editor-desk.has-selection .detail-panel--command .dp-actions .detail-section-title {
+  font-size: 10px;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  font-weight: 700;
+  color: var(--text-tertiary);
+  margin-bottom: var(--space-3);
+}
+
+.case-workspace--managing-editor-desk.has-selection .detail-panel--command .dp-actions .detail-action-groups {
+  gap: var(--space-4);
+}
+
+.case-workspace--managing-editor-desk.has-selection .detail-panel--command .dp-actions .action-row {
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.case-workspace--managing-editor-desk.has-selection .detail-panel--command .dp-actions .action-row .btn,
+.case-workspace--managing-editor-desk.has-selection .detail-panel--command .dp-actions .btn {
+  width: 100%;
+  min-width: 0;
+  justify-content: center;
+}
+
+.case-workspace--managing-editor-desk.has-selection .detail-panel--command .dp-actions .detail-read-actions-save {
+  margin-top: 0;
+}
+
+.case-workspace--managing-editor-desk.has-selection .detail-panel--command .dp-actions .detail-read-actions-hint {
+  margin-top: var(--space-2);
+}
+
+.case-workspace--managing-editor-desk.has-selection .detail-panel--command .dp-actions .detail-read-actions-stack {
+  margin-top: 0;
+}
+
+/* Activity section divider in the actions column */
+.case-workspace--managing-editor-desk.has-selection .detail-panel--command .dp-actions .detail-read-ambient {
+  padding-top: var(--space-4);
+  margin-top: var(--space-2);
+  border-top: 1px solid color-mix(in oklab, var(--border) 55%, transparent);
+}
+
+/* Priority & due date fields full-width in narrow actions column */
+.case-workspace--managing-editor-desk.has-selection .detail-panel--command .dp-actions .row-between {
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--space-2);
+}
+
+.case-workspace--managing-editor-desk.has-selection .detail-panel--command .dp-actions .row-between .btn {
+  width: 100%;
+}
+
+/* Tablet/mobile: has-selection layout doesn't apply — slide-over handles it */
+@media (max-width: 1023px) {
+  .case-workspace--managing-editor-desk.has-selection {
+    grid-template-columns: 1fr !important;
+  }
+  .case-workspace--managing-editor-desk.has-selection .report-grid {
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)) !important;
+    gap: 22px !important;
+  }
+  .case-workspace--managing-editor-desk.has-selection .rc {
+    padding: unset;
+  }
+  .case-workspace--managing-editor-desk.has-selection .rc-footer {
+    display: flex;
+  }
+  .case-workspace--managing-editor-desk.has-selection .detail-panel--command .detail-panel-body--read {
+    display: flex !important;
+    flex-direction: column !important;
+    padding: var(--space-5) var(--space-6) var(--space-8) !important;
+  }
+  .case-workspace--managing-editor-desk.has-selection .detail-panel--command .dp-content,
+  .case-workspace--managing-editor-desk.has-selection .detail-panel--command .dp-actions {
+    display: contents !important;
+  }
+}
+
 
