@@ -6,7 +6,7 @@
   --border: #c4baa8;
   --text: #0c0b09;
   --muted: #4a453c;
-  --accent: #9a332c;
+  --accent: #c0392b;
   --info: #1e4f8a;
   --info-surface: color-mix(in oklab, var(--info) 12%, var(--surface));
   --review: #5b2a86;
@@ -4213,30 +4213,31 @@ a.exec-kpi:hover {
    ───────────────────────────────────────────────────────────── */
 
 .sidebar {
-  background: #16130e !important;
-  border-right-color: #2a261e !important;
+  background: linear-gradient(180deg, #1c1812 0%, #100e0b 100%) !important;
+  border-right-color: #28231a !important;
   color: #ddd8ce;
 }
 
 .sidebar .nav-section-label {
-  color: #5e5848 !important;
-  border-bottom-color: #2a261e !important;
+  color: #5a5345 !important;
+  border-bottom-color: #28231a !important;
   letter-spacing: 0.15em;
 }
 
 /* Nav items */
 .sidebar .status-nav-item {
-  color: #9a9082 !important;
+  color: #8c8476 !important;
   border-color: transparent !important;
+  border-radius: 10px !important;
 }
 .sidebar .status-nav-item:hover {
-  background: rgba(255, 255, 255, 0.06) !important;
-  color: #ddd8ce !important;
+  background: rgba(255, 255, 255, 0.07) !important;
+  color: #e0dbd1 !important;
 }
 .sidebar .status-nav-item.is-active {
-  background: rgba(255, 255, 255, 0.09) !important;
-  border-color: rgba(154, 51, 44, 0.4) !important;
-  color: #f0ebe0 !important;
+  background: rgba(192, 57, 43, 0.14) !important;
+  border-color: rgba(192, 57, 43, 0.28) !important;
+  color: #f4ede2 !important;
   box-shadow: inset 3px 0 0 var(--accent) !important;
   font-weight: 650;
 }
@@ -4247,46 +4248,54 @@ a.exec-kpi:hover {
 /* Count badges */
 .sidebar .status-count {
   background: rgba(255, 255, 255, 0.07) !important;
-  color: #6a6254 !important;
+  color: #635d52 !important;
   border: none !important;
 }
 .sidebar .status-count.is-nonzero {
   background: rgba(255, 255, 255, 0.11) !important;
-  color: #b8b0a0 !important;
+  color: #b2aa9a !important;
   border: 1px solid rgba(255, 255, 255, 0.1) !important;
 }
 .sidebar .status-nav-item.is-active .status-count {
-  background: color-mix(in oklab, var(--accent) 22%, transparent) !important;
-  color: color-mix(in oklab, var(--accent) 88%, #fef5e8) !important;
-  border-color: color-mix(in oklab, var(--accent) 38%, transparent) !important;
+  background: color-mix(in oklab, var(--accent) 24%, transparent) !important;
+  color: color-mix(in oklab, var(--accent) 92%, #fef5e8) !important;
+  border-color: color-mix(in oklab, var(--accent) 36%, transparent) !important;
 }
 
 /* Brand area */
 .sidebar .sidebar-brand-card {
-  background: rgba(255, 255, 255, 0.04) !important;
-  border-color: rgba(255, 255, 255, 0.08) !important;
+  background: rgba(255, 255, 255, 0.03) !important;
+  border: 1px solid rgba(255, 255, 255, 0.07) !important;
+  border-radius: 16px !important;
 }
 .sidebar .sidebar-brand-workspace,
 .sidebar .brand-title {
   color: #ede8de !important;
+  font-weight: 700 !important;
+}
+.sidebar .sidebar-brand-role {
+  color: #7a7264 !important;
 }
 .sidebar .sidebar-brand-subtitle,
 .sidebar .brand-subtitle {
   color: #6a6254 !important;
 }
 .sidebar .sidebar-brand-powered-label {
-  color: #4e4a40 !important;
+  color: #4a4638 !important;
+  letter-spacing: 0.1em !important;
 }
 .sidebar .sidebar-brand-powered-name {
-  color: #6a6254 !important;
+  color: #7a7264 !important;
+  font-weight: 600 !important;
 }
 .sidebar .brand-badge {
   background: var(--accent) !important;
   color: #fff !important;
 }
-/* Logo in dark sidebar */
+/* Logo — invert to white on dark background */
+.sidebar .sidebar-logo-img,
 .sidebar .brand-logo-img {
-  filter: brightness(1.05) !important;
+  filter: invert(1) brightness(0.92) !important;
 }
 
 /* ─────────────────────────────────────────────────────────────
