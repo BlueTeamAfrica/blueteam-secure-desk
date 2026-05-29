@@ -7,11 +7,11 @@
   --text: #0c0b09;
   --muted: #4a453c;
   --accent: #c0392b;
-  --info: #1e4f8a;
+  --info: #2980b9;
   --info-surface: color-mix(in oklab, var(--info) 12%, var(--surface));
-  --review: #5b2a86;
+  --review: #0f766e;
   --review-surface: color-mix(in oklab, var(--review) 12%, var(--surface));
-  --followup: #9a5418;
+  --followup: #c87316;
   --followup-surface: color-mix(in oklab, var(--followup) 12%, var(--surface));
 
   /* Structure aliases (same layout, editorial light theme) */
@@ -25,11 +25,11 @@
   --text-tertiary: color-mix(in oklab, var(--muted) 72%, var(--text));
   --accent-hover: color-mix(in oklab, var(--accent) 72%, #101318);
   --accent-surface: color-mix(in oklab, var(--accent) 11%, var(--surface));
-  --success: #2a5c52;
+  --success: #1e7e44;
   --success-surface: color-mix(in oklab, var(--success) 12%, var(--surface));
-  --warning: #7a551c;
+  --warning: #c87316;
   --warning-surface: color-mix(in oklab, var(--warning) 12%, var(--surface));
-  --danger: #8f2a24;
+  --danger: #922b21;
   --danger-surface: color-mix(in oklab, var(--danger) 10%, var(--surface));
   --on-accent: #fffcf7;
   --ring: color-mix(in oklab, var(--accent) 28%, transparent);
@@ -4148,14 +4148,14 @@ a.exec-kpi:hover {
 
 /* Stage color palette (warm, works on beige) */
 :root {
-  --stage-new:          #4f7bbf;   /* Received    — slate blue   */
-  --stage-triage:       #c08010;   /* Raw         — warm amber   */
-  --stage-assigned:     #2a8a7a;   /* First Edit  — teal         */
-  --stage-in-review:    #7c5bbf;   /* Second Edit — violet       */
-  --stage-follow-up:    #b86828;   /* In Review   — warm orange  */
-  --stage-resolved:     #3a8c4a;   /* Reviewed    — forest green */
-  --stage-archived:     #9a607a;   /* Designed    — dusty rose   */
-  --stage-urgent:       #b83030;   /* Overdue/critical           */
+  --stage-new:          #2980b9;   /* Received    — Sudan Facts blue  */
+  --stage-triage:       #e67e22;   /* Raw         — Sudan Facts orange */
+  --stage-assigned:     #0d9488;   /* First Edit  — Sudan Facts teal  */
+  --stage-in-review:    #0f766e;   /* Second Edit — deep teal         */
+  --stage-follow-up:    #c87316;   /* In Review   — warm amber        */
+  --stage-resolved:     #27ae60;   /* Reviewed    — Sudan Facts green */
+  --stage-archived:     #566573;   /* Designed    — neutral slate     */
+  --stage-urgent:       #c0392b;   /* Overdue/critical — Sudan Facts red */
 }
 
 /* Base rule: all clean cards get a left border */
@@ -4713,26 +4713,26 @@ a.exec-kpi:hover {
 
 /* ── Per-stage gradient colors — pipeline progression: blue → indigo → violet → teal → green ── */
 /*    Each hue step tracks where the story sits in the editorial flow.                          */
-.desk-stat-pill[data-stage="total"]              { background: linear-gradient(135deg, #0f172a 0%, #334155 100%) !important; box-shadow: 0 4px 16px rgba(51, 65, 85, 0.45) !important; }   /* Slate — master overview */
-.desk-stat-pill[data-stage="new"]                { background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%) !important; box-shadow: 0 4px 16px rgba(59, 130, 246, 0.38) !important; }   /* Blue — just received */
-.desk-stat-pill[data-stage="needs_triage"]       { background: linear-gradient(135deg, #1e40af 0%, #6366f1 100%) !important; box-shadow: 0 4px 16px rgba(99, 102, 241, 0.38) !important; }   /* Blue→indigo — being sorted */
-.desk-stat-pill[data-stage="assigned"]           { background: linear-gradient(135deg, #3730a3 0%, #818cf8 100%) !important; box-shadow: 0 4px 16px rgba(129, 140, 248, 0.38) !important; }  /* Indigo — assigned, active work */
-.desk-stat-pill[data-stage="in_review"]          { background: linear-gradient(135deg, #4c1d95 0%, #a78bfa 100%) !important; box-shadow: 0 4px 16px rgba(167, 139, 250, 0.38) !important; }  /* Violet — deep editorial */
-.desk-stat-pill[data-stage="waiting_follow_up"]  { background: linear-gradient(135deg, #134e4a 0%, #2dd4bf 100%) !important; box-shadow: 0 4px 16px rgba(45, 212, 191, 0.38) !important; }  /* Teal — transitioning to done */
-.desk-stat-pill[data-stage="resolved"]           { background: linear-gradient(135deg, #065f46 0%, #34d399 100%) !important; box-shadow: 0 4px 16px rgba(52, 211, 153, 0.38) !important; }   /* Emerald — approved/reviewed */
-.desk-stat-pill[data-stage="archived"]           { background: linear-gradient(135deg, #14532d 0%, #4ade80 100%) !important; box-shadow: 0 4px 16px rgba(74, 222, 128, 0.38) !important; }   /* Green — published/final */
-.desk-stat-pill[data-stage="urgent"]             { background: linear-gradient(135deg, #7f1d1d 0%, #ef4444 100%) !important; box-shadow: 0 4px 16px rgba(239, 68, 68, 0.40) !important; }    /* Red — urgent, always distinct */
+.desk-stat-pill[data-stage="total"]              { background: linear-gradient(135deg, #1c2833 0%, #2d3436 100%) !important; box-shadow: 0 4px 16px rgba(45, 52, 54, 0.45) !important; }    /* Charcoal — master overview */
+.desk-stat-pill[data-stage="new"]                { background: linear-gradient(135deg, #1a5276 0%, #2980b9 100%) !important; box-shadow: 0 4px 16px rgba(41, 128, 185, 0.38) !important; }   /* Sudan Facts blue — just received */
+.desk-stat-pill[data-stage="needs_triage"]       { background: linear-gradient(135deg, #784212 0%, #e67e22 100%) !important; box-shadow: 0 4px 16px rgba(230, 126, 34, 0.38) !important; }   /* Sudan Facts orange — needs attention */
+.desk-stat-pill[data-stage="assigned"]           { background: linear-gradient(135deg, #0a4a45 0%, #0d9488 100%) !important; box-shadow: 0 4px 16px rgba(13, 148, 136, 0.38) !important; }   /* Sudan Facts teal — in active work */
+.desk-stat-pill[data-stage="in_review"]          { background: linear-gradient(135deg, #084c4c 0%, #0f766e 100%) !important; box-shadow: 0 4px 16px rgba(15, 118, 110, 0.38) !important; }   /* Deep teal — deep editorial */
+.desk-stat-pill[data-stage="waiting_follow_up"]  { background: linear-gradient(135deg, #7e5109 0%, #d4870e 100%) !important; box-shadow: 0 4px 16px rgba(212, 135, 14, 0.38) !important; }   /* Amber — paused/waiting */
+.desk-stat-pill[data-stage="resolved"]           { background: linear-gradient(135deg, #1e5631 0%, #27ae60 100%) !important; box-shadow: 0 4px 16px rgba(39, 174, 96, 0.38) !important; }    /* Sudan Facts green — approved */
+.desk-stat-pill[data-stage="archived"]           { background: linear-gradient(135deg, #145a32 0%, #1e8449 100%) !important; box-shadow: 0 4px 16px rgba(30, 132, 73, 0.38) !important; }    /* Deep green — published/final */
+.desk-stat-pill[data-stage="urgent"]             { background: linear-gradient(135deg, #7b241c 0%, #c0392b 100%) !important; box-shadow: 0 4px 16px rgba(192, 57, 43, 0.40) !important; }    /* Sudan Facts red — urgent */
 
 /* Hover: deepen each stage's own shadow */
-.desk-stat-pill[data-stage="total"]:hover              { box-shadow: 0 8px 28px rgba(51, 65, 85, 0.55) !important; }
-.desk-stat-pill[data-stage="new"]:hover                { box-shadow: 0 8px 28px rgba(59, 130, 246, 0.50) !important; }
-.desk-stat-pill[data-stage="needs_triage"]:hover       { box-shadow: 0 8px 28px rgba(99, 102, 241, 0.50) !important; }
-.desk-stat-pill[data-stage="assigned"]:hover           { box-shadow: 0 8px 28px rgba(129, 140, 248, 0.50) !important; }
-.desk-stat-pill[data-stage="in_review"]:hover          { box-shadow: 0 8px 28px rgba(167, 139, 250, 0.50) !important; }
-.desk-stat-pill[data-stage="waiting_follow_up"]:hover  { box-shadow: 0 8px 28px rgba(45, 212, 191, 0.50) !important; }
-.desk-stat-pill[data-stage="resolved"]:hover           { box-shadow: 0 8px 28px rgba(52, 211, 153, 0.50) !important; }
-.desk-stat-pill[data-stage="archived"]:hover           { box-shadow: 0 8px 28px rgba(74, 222, 128, 0.50) !important; }
-.desk-stat-pill[data-stage="urgent"]:hover             { box-shadow: 0 8px 28px rgba(239, 68, 68, 0.52) !important; }
+.desk-stat-pill[data-stage="total"]:hover              { box-shadow: 0 8px 28px rgba(45, 52, 54, 0.55) !important; }
+.desk-stat-pill[data-stage="new"]:hover                { box-shadow: 0 8px 28px rgba(41, 128, 185, 0.50) !important; }
+.desk-stat-pill[data-stage="needs_triage"]:hover       { box-shadow: 0 8px 28px rgba(230, 126, 34, 0.50) !important; }
+.desk-stat-pill[data-stage="assigned"]:hover           { box-shadow: 0 8px 28px rgba(13, 148, 136, 0.50) !important; }
+.desk-stat-pill[data-stage="in_review"]:hover          { box-shadow: 0 8px 28px rgba(15, 118, 110, 0.50) !important; }
+.desk-stat-pill[data-stage="waiting_follow_up"]:hover  { box-shadow: 0 8px 28px rgba(212, 135, 14, 0.50) !important; }
+.desk-stat-pill[data-stage="resolved"]:hover           { box-shadow: 0 8px 28px rgba(39, 174, 96, 0.50) !important; }
+.desk-stat-pill[data-stage="archived"]:hover           { box-shadow: 0 8px 28px rgba(30, 132, 73, 0.50) !important; }
+.desk-stat-pill[data-stage="urgent"]:hover             { box-shadow: 0 8px 28px rgba(192, 57, 43, 0.52) !important; }
 
 /* ─────────────────────────────────────────────────────────────
    TOPBAR — elevated feel
