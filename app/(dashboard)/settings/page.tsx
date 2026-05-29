@@ -25,6 +25,9 @@ export default function SettingsPage() {
   } | null>(null);
   const [pullSyncError, setPullSyncError] = useState<string | null>(null);
 
+  const [diagBusy, setDiagBusy] = useState(false);
+  const [diagResult, setDiagResult] = useState<Record<string, unknown> | null>(null);
+
   const idTokenFn = useMemo(() => {
     return async () => {
       const user = getFirebaseAuth().currentUser;
@@ -153,7 +156,7 @@ export default function SettingsPage() {
               <div className="stack-8" style={{ borderTop: "1px solid var(--border)", paddingTop: 12 }}>
                 <div className="small-muted">
                   Pull latest stage changes from OneDrive into Secure Desk. Runs automatically
-                  every hour — use this to sync immediately after a manual folder move.
+                  every 15 minutes via GitHub Actions — use this to sync immediately.
                 </div>
                 <div className="action-row" style={{ flexWrap: "wrap" }}>
                   <button
@@ -215,6 +218,58 @@ export default function SettingsPage() {
                 ) : null}
               </div>
             ) : null}
+
+            {/* Diagnostic panel — visible to owner/admin whether connected or not */}
+            <div className="stack-8" style={{ borderTop: "1px solid var(--border)", paddingTop: 12 }}>
+              <div className="small-muted">
+                If sync is not working, run diagnostics to see exactly what is misconfigured.
+              </div>
+              <div className="action-row">
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  disabled={diagBusy}
+                  onClick={() => {
+                    setDiagResult(null);
+                    setDiagBusy(true);
+                    (async () => {
+                      try {
+                        const user = getFirebaseAuth().currentUser;
+                        if (!user) throw new Error("Not signed in");
+                        const token = await user.getIdToken(true);
+                        const res = await fetch("/api/admin/onedrive/test", {
+                          headers: { Authorization: `Bearer ${token}` },
+                        });
+                        const data = await res.json().catch(() => ({ error: "Could not parse response" }));
+                        setDiagResult(data as Record<string, unknown>);
+                      } catch (e) {
+                        setDiagResult({ error: e instanceof Error ? e.message : "Request failed" });
+                      } finally {
+                        setDiagBusy(false);
+                      }
+                    })();
+                  }}
+                >
+                  {diagBusy ? "Running…" : "Diagnose connection"}
+                </button>
+              </div>
+              {diagResult ? (
+                <div style={{
+                  background: "var(--bg)",
+                  border: "1px solid var(--border)",
+                  borderRadius: "var(--radius-sm)",
+                  padding: "12px 14px",
+                  fontSize: 12,
+                  fontFamily: "var(--font-mono)",
+                  whiteSpace: "pre-wrap",
+                  wordBreak: "break-all",
+                  maxHeight: 320,
+                  overflowY: "auto",
+                }}>
+                  {JSON.stringify(diagResult, null, 2)}
+                </div>
+              ) : null}
+            </div>
           </div>
         ) : (
           <div className="small-muted" style={{ marginTop: 10 }}>
