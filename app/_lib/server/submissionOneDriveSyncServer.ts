@@ -269,8 +269,10 @@ export async function pullSyncFromOneDrive(): Promise<{
   const rootFolder = safeExportName(cfg.rootFolderName, { maxLen: 128 });
   const errors: string[] = [];
 
-  // Step 1: list all stage folders and build itemId → CaseStatus map.
+  // Step 1: list all stage folders, build two lookup maps.
   const itemIdToStatus = new Map<string, CaseStatus>();
+  // Normalized filename → list of matches (may have >1 if names collide across folders).
+  const normalNameToItems = new Map<string, Array<{ itemId: string; status: CaseStatus }>>();
 
   for (const [status, folderName] of Object.entries(cfg.stageFolderMap) as [CaseStatus, string][]) {
     const safeName = safeExportName(folderName, { maxLen: 60 });
@@ -279,6 +281,17 @@ export async function pullSyncFromOneDrive(): Promise<{
       const children = await graphListFolderChildren({ accessToken, folderPath });
       for (const child of children) {
         itemIdToStatus.set(child.id, status);
+
+        // Build normalized-filename fallback map.
+        // This allows matching files that were moved or copied in OneDrive
+        // even when the stored onedriveItemId no longer matches (e.g. a copy
+        // creates a new ID, but the filename is preserved).
+        const norm = stripDatePrefix(child.name);
+        if (norm) {
+          const bucket = normalNameToItems.get(norm) ?? [];
+          bucket.push({ itemId: child.id, status });
+          normalNameToItems.set(norm, bucket);
+        }
       }
     } catch (e) {
       errors.push(`Could not read folder "${folderPath}": ${e instanceof Error ? e.message : String(e)}`);
@@ -289,38 +302,84 @@ export async function pullSyncFromOneDrive(): Promise<{
     return { ok: false, checked: 0, updated: 0, errors };
   }
 
-  // Step 2: find all Firestore submissions with a onedriveItemId.
+  // Step 2: find all Firestore submissions that have any OneDrive metadata.
   const db = getAdminFirestore();
-  const snap = await db
-    .collection("submissions")
-    .where("onedriveItemId", "!=", null)
-    .select("onedriveItemId", "caseStatus", "processingStatus")
-    .get();
+
+  const [idSnap, nameSnap] = await Promise.all([
+    db.collection("submissions")
+      .where("onedriveItemId", "!=", null)
+      .select("onedriveItemId", "onedriveFilename", "caseStatus", "processingStatus")
+      .get(),
+    db.collection("submissions")
+      .where("onedriveFilename", "!=", null)
+      .select("onedriveItemId", "onedriveFilename", "caseStatus", "processingStatus")
+      .get(),
+  ]);
+
+  // Merge and deduplicate by document ID.
+  const docMap = new Map<string, (typeof idSnap.docs)[number]>();
+  for (const doc of [...idSnap.docs, ...nameSnap.docs]) {
+    docMap.set(doc.id, doc);
+  }
 
   let checked = 0;
   let updated = 0;
 
-  for (const doc of snap.docs) {
+  for (const doc of docMap.values()) {
     const data = doc.data();
-    const itemId = typeof data.onedriveItemId === "string" ? data.onedriveItemId : null;
-    if (!itemId) continue;
+    const storedItemId = typeof data.onedriveItemId === "string" ? data.onedriveItemId : null;
+    const storedFilename = typeof data.onedriveFilename === "string" ? data.onedriveFilename : null;
 
-    const oneDriveStatus = itemIdToStatus.get(itemId);
-    if (!oneDriveStatus) continue; // File not found in any stage folder — maybe deleted or still uploading.
+    let matchedStatus: CaseStatus | undefined;
+    let matchedItemId: string | undefined;
 
-    // Determine current Firestore stage.
+    // Primary: item-ID match (fastest, most reliable).
+    if (storedItemId) {
+      const s = itemIdToStatus.get(storedItemId);
+      if (s) {
+        matchedStatus = s;
+        matchedItemId = storedItemId;
+      }
+    }
+
+    // Fallback: filename match for copies or re-uploads (new ID, same name).
+    // Only used when ID-match failed. Skipped if multiple files share the same
+    // normalized name (ambiguous — could be two separate reports).
+    if (!matchedStatus && storedFilename) {
+      const norm = stripDatePrefix(storedFilename);
+      if (norm) {
+        const candidates = normalNameToItems.get(norm);
+        if (candidates?.length === 1) {
+          matchedStatus = candidates[0].status;
+          matchedItemId = candidates[0].itemId;
+        }
+      }
+    }
+
+    if (!matchedStatus) continue; // File not found in any stage folder.
+
     const currentStatus = (typeof data.caseStatus === "string" ? data.caseStatus : null) as CaseStatus | null;
-    if (currentStatus === oneDriveStatus) continue; // Already in sync.
+    const stageChanged = currentStatus !== matchedStatus;
+    const idChanged = storedItemId !== matchedItemId;
+
+    if (!stageChanged && !idChanged) continue; // Already in sync.
 
     checked++;
 
     try {
-      await db.collection("submissions").doc(doc.id).update({
-        caseStatus: oneDriveStatus,
-        processingStatus: oneDriveStatus,
+      const patch: Record<string, unknown> = {
         updatedAt: FieldValue.serverTimestamp(),
         onedrivePullSyncedAt: FieldValue.serverTimestamp(),
-      });
+      };
+      if (stageChanged) {
+        patch.caseStatus = matchedStatus;
+        patch.processingStatus = matchedStatus;
+      }
+      // Re-link onedriveItemId when the file was copied/re-uploaded (new ID).
+      if (idChanged && matchedItemId) {
+        patch.onedriveItemId = matchedItemId;
+      }
+      await db.collection("submissions").doc(doc.id).update(patch);
       updated++;
     } catch (e) {
       errors.push(
@@ -330,4 +389,13 @@ export async function pullSyncFromOneDrive(): Promise<{
   }
 
   return { ok: true, checked, updated, errors };
+}
+
+/**
+ * Strip the leading date prefix ("YYYY-MM-DD_") from a filename and lowercase it.
+ * This gives a stable normalized key for matching across different export dates.
+ * e.g. "2024-01-15_CASE-XYZ_Title.docx" → "case-xyz_title.docx"
+ */
+function stripDatePrefix(filename: string): string {
+  return filename.replace(/^\d{4}-\d{2}-\d{2}_/, "").toLowerCase();
 }

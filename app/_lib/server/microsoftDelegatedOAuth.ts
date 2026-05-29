@@ -77,14 +77,16 @@ export async function refreshAccessToken(refreshToken: string): Promise<{
   scope?: string;
   tokenType?: string;
 }> {
-  const { clientId, clientSecret, redirectUri, tenantId } = getMicrosoftDelegatedConfig();
+  // redirect_uri is NOT required for refresh token grants (RFC 6749 §6).
+  // Including it would break cross-environment refreshes (e.g. token was
+  // established from localhost, refresh runs on Vercel production).
+  const { clientId, clientSecret, tenantId } = getMicrosoftDelegatedConfig();
   const url = `https://login.microsoftonline.com/${encodeURIComponent(tenantId)}/oauth2/v2.0/token`;
   const body = new URLSearchParams();
   body.set("client_id", clientId);
   body.set("client_secret", clientSecret);
   body.set("grant_type", "refresh_token");
   body.set("refresh_token", refreshToken);
-  body.set("redirect_uri", redirectUri);
 
   const res = await fetch(url, {
     method: "POST",
