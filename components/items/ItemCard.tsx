@@ -81,10 +81,17 @@ export function ItemCard({
       data-priority={submission.priority}
       onClick={onSelect}
     >
-      {/* ── Row 1: stage label + ref code ── */}
+      {/* ── Row 1: stage label + ref + expand chevron ── */}
       <div className="rc-header">
         <span className="rc-stage">{stageLabel}</span>
-        <span className="rc-ref">{item.ref}</span>
+        <div className="rc-header-end">
+          <span className="rc-ref">{item.ref}</span>
+          <span className={`rc-chevron${selected ? " rc-chevron--open" : ""}`} aria-hidden="true">
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M2 4l4 4 4-4"/>
+            </svg>
+          </span>
+        </div>
       </div>
 
       {/* ── Row 2: title + byline ── */}

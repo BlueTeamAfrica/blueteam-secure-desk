@@ -837,20 +837,13 @@ a:hover {
 }
 
 .case-workspace {
-  display: grid;
-  grid-template-columns: 1fr min(var(--detail-width), 38vw);
-  gap: var(--space-6);
-  align-items: start;
-  /* Keep the 2-column board as a self-contained phase. */
+  /* Accordion layout: single column — inline expansion handles detail */
+  display: block;
   min-height: 0;
 }
 
-/* Managing Editor — premium 2-column board. Detail column gets generous width. */
 .case-workspace--managing-editor-desk {
-  --desk-column-gutter: var(--space-8);
-  gap: var(--desk-column-gutter);
   padding-bottom: var(--space-6);
-  grid-template-columns: 3fr 2fr;
 }
 
 .case-workspace--managing-editor-desk .report-grid {
@@ -4841,48 +4834,164 @@ a.exec-kpi:hover {
   opacity: 0.8;
 }
 
-/* Tablet/mobile: has-selection layout doesn't apply — slide-over handles it */
-@media (max-width: 1023px) {
-  .case-workspace--managing-editor-desk.has-selection {
-    grid-template-columns: 1fr !important;
+/* ═══════════════════════════════════════════════════════════════════════
+   ACCORDION CARD EXPANSION
+   Cards always visible. Clicking a card expands an inline detail panel
+   below it (accordion). Existing side-panel logic/props preserved.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* Single-column accordion list */
+.case-accordion {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-bottom: var(--space-6);
+}
+
+/* ── Card row wrapper ── */
+.card-row {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Chevron indicator on card header */
+.rc-header-end {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.rc-chevron {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-tertiary);
+  transition: transform 0.2s ease, color 0.15s ease;
+  opacity: 0.6;
+}
+
+.rc-chevron--open {
+  transform: rotate(180deg);
+  color: var(--accent);
+  opacity: 1;
+}
+
+/* ── Desktop: inline embedded panel ── */
+@media (min-width: 1024px) {
+
+  /* Connected card top when expanded */
+  .card-row--expanded .rc {
+    border-bottom-left-radius: 0 !important;
+    border-bottom-right-radius: 0 !important;
+    border-bottom-color: transparent !important;
+    box-shadow:
+      0 0 0 2px var(--accent),
+      0 -2px 8px rgba(12, 11, 9, 0.05) !important;
   }
-  .case-workspace--managing-editor-desk.has-selection .report-grid {
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)) !important;
-    gap: 22px !important;
+
+  /* Expansion panel: slides in below the card */
+  .card-detail-expand {
+    border: 2px solid var(--accent);
+    border-top: none;
+    border-radius: 0 0 var(--radius-xl) var(--radius-xl);
+    background: var(--panel-secondary);
+    overflow: hidden;
+    animation: card-expand-in 0.24s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+    box-shadow: 0 8px 32px rgba(12, 11, 9, 0.1);
   }
-  .case-workspace--managing-editor-desk.has-selection .rc {
-    gap: unset;
-    border-radius: var(--radius-xl);
+
+  @keyframes card-expand-in {
+    from { opacity: 0; transform: translateY(-6px); }
+    to   { opacity: 1; transform: translateY(0); }
   }
-  .case-workspace--managing-editor-desk.has-selection .rc-header {
-    padding: 13px 16px 0;
-    margin-bottom: 0;
+
+  /* Override sticky/floating panel: inline block */
+  .card-detail-expand .detail-panel {
+    position: static !important;
+    top: unset !important;
+    border: none !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    max-height: none !important;
+    overflow: visible !important;
+    align-self: unset !important;
+    background: transparent !important;
+    width: 100% !important;
   }
-  .case-workspace--managing-editor-desk.has-selection .rc-body {
-    padding: 10px 16px 12px;
+
+  /* Header: separator from card above */
+  .card-detail-expand .detail-panel-header {
+    border-radius: 0 !important;
+    border-top: 1px solid color-mix(in oklab, var(--border) 65%, transparent) !important;
   }
-  .case-workspace--managing-editor-desk.has-selection .rc-title {
-    white-space: normal;
-    overflow: visible;
-    text-overflow: clip;
-    display: block;
-    font-weight: 700;
-    margin-bottom: 8px;
+
+  /* Body: 2-column layout (content left, actions right) */
+  .card-detail-expand .detail-panel-body--read {
+    display: grid !important;
+    grid-template-columns: 1fr 300px !important;
+    gap: 0 !important;
+    padding: 0 !important;
   }
-  .case-workspace--managing-editor-desk.has-selection .rc-byline {
-    display: block;
+
+  /* Activate dp-content / dp-actions as real block containers */
+  .card-detail-expand .dp-content {
+    display: block !important;
+    padding: var(--space-5) var(--space-5) var(--space-8) var(--space-6) !important;
+    min-width: 0;
+    border-right: 1px solid color-mix(in oklab, var(--border) 55%, transparent) !important;
+    overflow-x: hidden;
   }
-  .case-workspace--managing-editor-desk.has-selection .rc-footer {
-    display: flex;
-  }
-  .case-workspace--managing-editor-desk.has-selection .detail-panel--command .detail-panel-body--read {
+
+  .card-detail-expand .dp-actions {
     display: flex !important;
     flex-direction: column !important;
-    padding: var(--space-5) var(--space-6) var(--space-8) !important;
+    padding: var(--space-5) var(--space-6) var(--space-8) var(--space-5) !important;
+    min-width: 0;
+    gap: var(--space-4) !important;
   }
-  .case-workspace--managing-editor-desk.has-selection .detail-panel--command .dp-content,
-  .case-workspace--managing-editor-desk.has-selection .detail-panel--command .dp-actions {
-    display: contents !important;
+
+  /* Actions column: full-width buttons */
+  .card-detail-expand .dp-actions .action-row {
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+
+  .card-detail-expand .dp-actions .action-row .btn,
+  .card-detail-expand .dp-actions > .btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .card-detail-expand .dp-actions .row-between {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-2);
+  }
+
+  /* Close button: hide on desktop — card click collapses */
+  .card-detail-expand .detail-panel-close {
+    display: none !important;
+  }
+}
+
+/* ── Mobile: card-detail-expand is invisible wrapper; slide-over handles panel ── */
+@media (max-width: 1023px) {
+  .card-row--expanded .rc {
+    border-bottom-left-radius: var(--radius-xl) !important;
+    border-bottom-right-radius: var(--radius-xl) !important;
+    border-bottom-color: var(--card-border) !important;
+    box-shadow: 0 6px 20px rgba(12, 11, 9, 0.1) !important;
+  }
+
+  /* No visual chrome — panel slides over as fixed layer */
+  .card-detail-expand {
+    overflow: visible;
+    border: none;
+    background: transparent;
+    box-shadow: none;
+    border-radius: 0;
+    animation: none;
   }
 }
 

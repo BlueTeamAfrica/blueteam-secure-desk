@@ -928,7 +928,6 @@ export function SubmissionsList({
     "case-workspace",
     editorDesk ? "case-workspace--editor-desk" : "",
     managingEditorDesk ? "case-workspace--managing-editor-desk" : "",
-    selectedId ? "has-selection" : "",
   ]
     .filter(Boolean)
     .join(" ");
@@ -1020,85 +1019,92 @@ export function SubmissionsList({
             </p>
           </div>
         ) : (
-          <div className="report-grid">
-            {filteredCases.map((c) => (
-              <ItemCard
-                key={c.id}
-                submission={c}
-                decryptedFiling={filingByCaseId[c.id]}
-                selected={c.id === selectedId}
-                editorDesk={editorDesk}
-                managingEditorDesk={managingEditorDesk}
-                coverImageUrl={editorialCoverByCaseId.get(c.id)}
-                onSelect={() => setSelectedId(c.id)}
-              />
-            ))}
+          <div className="case-accordion">
+            {filteredCases.map((c) => {
+              const isExpanded = c.id === selectedId;
+              return (
+                <div key={c.id} className={`card-row${isExpanded ? " card-row--expanded" : ""}`}>
+                  <ItemCard
+                    submission={c}
+                    decryptedFiling={filingByCaseId[c.id]}
+                    selected={isExpanded}
+                    editorDesk={editorDesk}
+                    managingEditorDesk={managingEditorDesk}
+                    coverImageUrl={editorialCoverByCaseId.get(c.id)}
+                    onSelect={() => setSelectedId(isExpanded ? null : c.id)}
+                  />
+                  {isExpanded && (
+                    <div className="card-detail-expand">
+                      <ItemDetailPanel
+                        selected={selected}
+                        selectedCaseFiling={selectedCaseFiling}
+                        role={role}
+                        editorDesk={editorDesk}
+                        managingEditorDesk={managingEditorDesk}
+                        scaffoldMessage={scaffoldMessage}
+                        setScaffoldMessage={setScaffoldMessage}
+                        showDecrypt={showDecrypt}
+                        decryptError={decryptError}
+                        decryptPanelLoading={decryptPanelLoading}
+                        stageLabel={stageLabel}
+                        leadLabel={leadLabel}
+                        priorityLabel={priorityLabel}
+                        notesEnabled={notesEnabled}
+                        noteDraft={noteDraft}
+                        setNoteDraft={setNoteDraft}
+                        actionPending={actionPending}
+                        actionError={actionError}
+                        onSaveNote={() => runAction("save_reviewer_note", noteDraft)}
+                        showAssign={showAssign}
+                        assignPanelOpen={assignPanelOpen}
+                        setAssignPanelOpen={setAssignPanelOpen}
+                        membersLoading={membersLoading}
+                        membersError={membersError}
+                        workspaceMembers={workspaceMembers}
+                        assigneeUidDraft={assigneeUidDraft}
+                        setAssigneeUidDraft={setAssigneeUidDraft}
+                        assignBusy={assignBusy}
+                        assignError={assignError}
+                        onConfirmAssignOwner={() => void confirmAssignOwner()}
+                        showPriorityScaffold={showPriorityScaffold}
+                        showResolveArchive={showResolveArchive}
+                        onResolve={() => void updateCaseWorkflowStatus("resolved")}
+                        onArchive={() => void updateCaseWorkflowStatus("archived")}
+                        showDelete={showDelete}
+                        deleteConfirmOpen={deleteConfirmOpen}
+                        setDeleteConfirmOpen={setDeleteConfirmPanelOpen}
+                        deleteBusy={deleteBusy}
+                        deleteError={deleteError}
+                        onDeletePermanently={() => void deleteSubmissionPermanently()}
+                        showExportDocx={showExportDocx}
+                        exportDocxBusy={exportDocxBusy}
+                        exportDocxError={exportDocxError}
+                        onExportDocx={() => void exportSelectedDocx()}
+                        showExportOneDrive={showExportOneDrive}
+                        exportOneDriveBusy={exportOneDriveBusy}
+                        exportOneDriveError={exportOneDriveError}
+                        onExportOneDrive={() => void exportSelectedToOneDrive()}
+                        showStatusPicker={showStatusPicker}
+                        allowedStatusTargets={allowedStatusTargets}
+                        workflowStatusDraft={workflowStatusDraft}
+                        setWorkflowStatusDraft={(v) => setWorkflowStatusDraft(v)}
+                        workflowBusy={workflowBusy}
+                        workflowError={workflowError}
+                        onApplyWorkflowStatus={() => {
+                          if (!workflowStatusDraft) return;
+                          void updateCaseWorkflowStatus(workflowStatusDraft);
+                        }}
+                        isOpen={isExpanded}
+                        onClose={() => setSelectedId(null)}
+                      />
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         )}
       </div>
-
-      <ItemDetailPanel
-        selected={selected}
-        selectedCaseFiling={selectedCaseFiling}
-        role={role}
-        editorDesk={editorDesk}
-        managingEditorDesk={managingEditorDesk}
-        scaffoldMessage={scaffoldMessage}
-        setScaffoldMessage={setScaffoldMessage}
-        showDecrypt={showDecrypt}
-        decryptError={decryptError}
-        decryptPanelLoading={decryptPanelLoading}
-        stageLabel={stageLabel}
-        leadLabel={leadLabel}
-        priorityLabel={priorityLabel}
-        notesEnabled={notesEnabled}
-        noteDraft={noteDraft}
-        setNoteDraft={setNoteDraft}
-        actionPending={actionPending}
-        actionError={actionError}
-        onSaveNote={() => runAction("save_reviewer_note", noteDraft)}
-        showAssign={showAssign}
-        assignPanelOpen={assignPanelOpen}
-        setAssignPanelOpen={setAssignPanelOpen}
-        membersLoading={membersLoading}
-        membersError={membersError}
-        workspaceMembers={workspaceMembers}
-        assigneeUidDraft={assigneeUidDraft}
-        setAssigneeUidDraft={setAssigneeUidDraft}
-        assignBusy={assignBusy}
-        assignError={assignError}
-        onConfirmAssignOwner={() => void confirmAssignOwner()}
-        showPriorityScaffold={showPriorityScaffold}
-        showResolveArchive={showResolveArchive}
-        onResolve={() => void updateCaseWorkflowStatus("resolved")}
-        onArchive={() => void updateCaseWorkflowStatus("archived")}
-        showDelete={showDelete}
-        deleteConfirmOpen={deleteConfirmOpen}
-        setDeleteConfirmOpen={setDeleteConfirmPanelOpen}
-        deleteBusy={deleteBusy}
-        deleteError={deleteError}
-        onDeletePermanently={() => void deleteSubmissionPermanently()}
-        showExportDocx={showExportDocx}
-        exportDocxBusy={exportDocxBusy}
-        exportDocxError={exportDocxError}
-        onExportDocx={() => void exportSelectedDocx()}
-        showExportOneDrive={showExportOneDrive}
-        exportOneDriveBusy={exportOneDriveBusy}
-        exportOneDriveError={exportOneDriveError}
-        onExportOneDrive={() => void exportSelectedToOneDrive()}
-        showStatusPicker={showStatusPicker}
-        allowedStatusTargets={allowedStatusTargets}
-        workflowStatusDraft={workflowStatusDraft}
-        setWorkflowStatusDraft={(v) => setWorkflowStatusDraft(v)}
-        workflowBusy={workflowBusy}
-        workflowError={workflowError}
-        onApplyWorkflowStatus={() => {
-          if (!workflowStatusDraft) return;
-          void updateCaseWorkflowStatus(workflowStatusDraft);
-        }}
-        isOpen={!!selectedId}
-        onClose={() => setSelectedId(null)}
-      />
     </div>
 
       {/* Run Sheet and Unclaimed sections removed — layout is cards + detail only */}
