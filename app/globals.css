@@ -4652,12 +4652,19 @@ a.exec-kpi:hover {
 }
 
 .case-workspace--managing-editor-desk.has-selection .rc {
-  padding: 10px 13px 9px;
+  /* No extra padding — child elements control their own; only collapse gap */
   gap: 0;
+  border-radius: var(--radius-md);
 }
 
+/* Override child paddings so cards are wire-style compact (~52px tall) */
 .case-workspace--managing-editor-desk.has-selection .rc-header {
-  margin-bottom: 4px;
+  padding: 9px 13px 0;
+  margin-bottom: 0;
+}
+
+.case-workspace--managing-editor-desk.has-selection .rc-body {
+  padding: 3px 13px 9px;
 }
 
 .case-workspace--managing-editor-desk.has-selection .rc-stage {
@@ -4669,21 +4676,21 @@ a.exec-kpi:hover {
   font-size: 9px;
 }
 
+/* Single-line title — no wrap, no 2-line clamp */
 .case-workspace--managing-editor-desk.has-selection .rc-title {
-  font-size: 12.5px;
-  line-height: 1.35;
-  -webkit-line-clamp: 2;
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-.case-workspace--managing-editor-desk.has-selection .rc-byline {
-  font-size: 11px;
-  margin-top: 3px;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.3;
+  margin-bottom: 0;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  display: block;
+}
+
+/* Hide byline — detail panel shows reporter name */
+.case-workspace--managing-editor-desk.has-selection .rc-byline {
+  display: none;
 }
 
 /* Hide assignee + flags row in narrow list — detail panel shows all that */
@@ -4778,6 +4785,62 @@ a.exec-kpi:hover {
   width: 100%;
 }
 
+/* ─────────────────────────────────────────────────────────────
+   TOPBAR — command bar upgrades
+   ───────────────────────────────────────────────────────────── */
+
+/* Strengthen workspace name for managing editor */
+.topbar-me-brand-text {
+  font-size: 15px !important;
+  font-weight: 700 !important;
+  color: var(--text) !important;
+  letter-spacing: -0.025em !important;
+}
+
+/* Live case count badge next to brand name */
+.topbar-live-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 18px;
+  padding: 0 6px;
+  border-radius: 9px;
+  background: color-mix(in oklab, var(--accent) 11%, var(--surface));
+  color: var(--accent);
+  font-size: 10.5px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0;
+  border: 1px solid color-mix(in oklab, var(--accent) 18%, transparent);
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   KPI STRIP — "All" total pill + urgent indicator pill
+   ───────────────────────────────────────────────────────────── */
+
+/* Total pill: bolder separator from stage pills */
+.desk-stat-pill--total {
+  border-right-width: 2px !important;
+  border-right-color: color-mix(in oklab, var(--border) 72%, var(--text)) !important;
+}
+
+/* Urgent pill: non-clickable, red count */
+.desk-stat-pill--urgent {
+  cursor: default;
+  user-select: none;
+}
+.desk-stat-pill--urgent .desk-stat-value,
+.desk-stat-value--urgent {
+  color: var(--stage-urgent) !important;
+}
+.desk-stat-pill--urgent .desk-stat-label {
+  color: var(--stage-urgent) !important;
+  opacity: 0.8;
+}
+
 /* Tablet/mobile: has-selection layout doesn't apply — slide-over handles it */
 @media (max-width: 1023px) {
   .case-workspace--managing-editor-desk.has-selection {
@@ -4788,7 +4851,26 @@ a.exec-kpi:hover {
     gap: 22px !important;
   }
   .case-workspace--managing-editor-desk.has-selection .rc {
-    padding: unset;
+    gap: unset;
+    border-radius: var(--radius-xl);
+  }
+  .case-workspace--managing-editor-desk.has-selection .rc-header {
+    padding: 13px 16px 0;
+    margin-bottom: 0;
+  }
+  .case-workspace--managing-editor-desk.has-selection .rc-body {
+    padding: 10px 16px 12px;
+  }
+  .case-workspace--managing-editor-desk.has-selection .rc-title {
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+    display: block;
+    font-weight: 700;
+    margin-bottom: 8px;
+  }
+  .case-workspace--managing-editor-desk.has-selection .rc-byline {
+    display: block;
   }
   .case-workspace--managing-editor-desk.has-selection .rc-footer {
     display: flex;

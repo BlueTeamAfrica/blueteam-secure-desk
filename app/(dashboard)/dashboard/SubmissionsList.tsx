@@ -179,6 +179,24 @@ export function SubmissionsList({
     return counts;
   }, [roleFilteredCases]);
 
+  /** Non-archived active case count — shown as "All" in the strip + topbar badge. */
+  const totalActive = useMemo(
+    () => roleFilteredCases.filter((c) => c.status !== "archived").length,
+    [roleFilteredCases],
+  );
+
+  /** Critical or high-priority cases that aren't resolved/archived. */
+  const urgentCount = useMemo(
+    () =>
+      roleFilteredCases.filter(
+        (c) =>
+          (c.priority === "critical" || c.priority === "high") &&
+          c.status !== "archived" &&
+          c.status !== "resolved",
+      ).length,
+    [roleFilteredCases],
+  );
+
   /** Base path for the current tenant (e.g. "/dashboard" or "/sudanfacts"). */
   const deskBasePath = needsTriageHref.split("?")[0] ?? "/dashboard";
 
@@ -920,6 +938,15 @@ export function SubmissionsList({
       {/* Compact stage-count strip — replaces the old hero + exec-overview blocks */}
       {managingEditorDesk ? (
         <nav className="desk-stats-strip" aria-label="Stage overview">
+          {/* All-cases pill — links to inbox, active when view === "inbox" */}
+          <Link
+            href={deskBasePath}
+            className={`desk-stat-pill desk-stat-pill--total${view === "inbox" ? " is-active" : ""}`}
+          >
+            <span className="desk-stat-value">{totalActive}</span>
+            <span className="desk-stat-label">{labels.inbox ?? "All"}</span>
+          </Link>
+
           {labels.workflow.stageOrder.map((status) => {
             const isActive = view === status;
             const href = `${deskBasePath}?view=${status}`;
@@ -938,6 +965,14 @@ export function SubmissionsList({
               </Link>
             );
           })}
+
+          {/* Urgent KPI pill — display-only, red when non-zero */}
+          {urgentCount > 0 && (
+            <span className="desk-stat-pill desk-stat-pill--urgent" aria-label={`${urgentCount} urgent cases`}>
+              <span className="desk-stat-value">{urgentCount}</span>
+              <span className="desk-stat-label">Urgent</span>
+            </span>
+          )}
         </nav>
       ) : null}
 

@@ -10,6 +10,7 @@ import { CaseQueueProvider } from "@/app/_components/dashboard/CaseQueueContext"
 import { useAuth } from "@/app/_components/auth/AuthContext";
 import { getEditorDeskHeaderFor } from "@/app/_lib/org/getWorkspaceConfig";
 import { WorkspaceBrandingProvider, useDashboardBranding } from "@/app/_components/dashboard/WorkspaceBrandingProvider";
+import { useCaseQueue } from "@/app/_components/dashboard/CaseQueueContext";
 
 function SidebarFallback() {
   const { labels } = useDashboardBranding();
@@ -74,6 +75,18 @@ function MobileBottomNav() {
         </Link>
       )}
     </nav>
+  );
+}
+
+/** Reads the live queue count — must render inside CaseQueueProvider. */
+function TopbarLiveBadge() {
+  const { rows } = useCaseQueue();
+  const count = rows.filter((r) => r.status !== "archived").length;
+  if (count === 0) return null;
+  return (
+    <span className="topbar-live-badge" aria-label={`${count} active cases`}>
+      {count}
+    </span>
   );
 }
 
@@ -233,7 +246,7 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
                     </Suspense>
                   </>
                 ) : state.status === "signedInWorkspace" && (state.role === "owner" || state.role === "admin") ? (
-                  <div className="topbar-me-brand" aria-hidden="true">
+                  <div className="topbar-me-brand">
                     {branding.logoUrl ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img src={branding.logoUrl} alt="" className="topbar-me-logo" />
@@ -241,6 +254,7 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
                       <span className="topbar-me-brand-mark" />
                     )}
                     <span className="topbar-me-brand-text">{labels.workspaceName}</span>
+                    <TopbarLiveBadge />
                   </div>
                 ) : (
                   <>
