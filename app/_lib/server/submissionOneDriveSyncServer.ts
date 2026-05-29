@@ -1,7 +1,7 @@
 import "server-only";
 
 import { FieldValue } from "firebase-admin/firestore";
-import type { CaseStatus } from "@/app/_lib/caseWorkspaceModel";
+import type { CaseStatus, SubmissionAttachment } from "@/app/_lib/caseWorkspaceModel";
 import { extractDecryptedFiling } from "@/app/_lib/decryptedSubmissionReadout";
 import { getSubmissionDisplay } from "@/app/_lib/items/getSubmissionDisplay";
 import { mapSubmissionToItem } from "@/app/_lib/items/mapSubmissionToItem";
@@ -13,10 +13,13 @@ import {
   asciiFallbackExportFilename,
   buildExportDocxFilename,
   buildSubmissionDocxBuffer,
+  buildSubmissionFolderName,
 } from "@/app/_lib/server/buildSubmissionDocx";
 import { loadWorkspaceCaseForSubmission } from "@/app/_lib/server/submissionCaseAccess";
+import { getSupabaseAdmin } from "@/app/_lib/server/supabaseAdmin";
 import { getValidWorkspaceAccessToken } from "@/app/_lib/server/workspaceOneDriveToken";
 import {
+  graphEnsureFolder,
   graphListFolderChildren,
   graphMoveItemToFolder,
   graphUploadFile,
@@ -47,6 +50,67 @@ function buildStageFolderPath(status: CaseStatus): string {
   return `${root}/${folder}`;
 }
 
+/**
+ * Build the drive path for a submission's subfolder.
+ * e.g. "SecureDesk-Test/raw/CASE-WCVXC"
+ *
+ * All files for a submission (DOCX + attachments) live inside this subfolder.
+ * Moving a stage = moving this subfolder, which carries all contents with it.
+ */
+function buildSubmissionFolderPath(status: CaseStatus, folderName: string): string {
+  const safeName = safeExportName(folderName, { maxLen: 60 });
+  return `${buildStageFolderPath(status)}/${safeName}`;
+}
+
+/**
+ * Download attachment bytes from Supabase Storage.
+ * Returns null if the download fails (e.g. file deleted, Supabase unavailable).
+ */
+async function downloadAttachmentFromSupabase(storagePath: string): Promise<Uint8Array | null> {
+  try {
+    const { client, bucket } = getSupabaseAdmin();
+    const { data, error } = await client.storage.from(bucket).download(storagePath);
+    if (error || !data) return null;
+    const ab = await data.arrayBuffer();
+    return new Uint8Array(ab);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Upload all attachments for a submission into an existing OneDrive subfolder.
+ * Skips attachments that fail to download or have no storagePath.
+ * Returns the count of successfully uploaded attachments.
+ */
+async function uploadAttachmentsToFolder(args: {
+  accessToken: string;
+  folderPath: string;
+  attachments: SubmissionAttachment[];
+}): Promise<number> {
+  let uploaded = 0;
+  for (const att of args.attachments) {
+    if (!att.storagePath?.trim()) continue;
+    // Use original filename; sanitize for OneDrive path safety only.
+    const safeName = safeExportName(att.name || att.id || "attachment", { maxLen: 120 });
+    const filePath = `${args.folderPath}/${safeName}`;
+    const bytes = await downloadAttachmentFromSupabase(att.storagePath);
+    if (!bytes) continue; // download failed — skip silently
+    try {
+      await graphUploadFile({
+        accessToken: args.accessToken,
+        drivePath: filePath,
+        bytes,
+        mimeType: att.mimeType ?? "application/octet-stream",
+      });
+      uploaded++;
+    } catch {
+      // Individual attachment upload failure must not block the rest.
+    }
+  }
+  return uploaded;
+}
+
 /** Build the full drive path for a file: folderPath/filename */
 function buildFileDrivePath(status: CaseStatus, filename: string): string {
   return `${buildStageFolderPath(status)}/${filename}`;
@@ -59,13 +123,18 @@ export type OneDriveSyncResult =
   | { ok: false; reason: string };
 
 /**
- * Push a submission DOCX to OneDrive.
+ * Push a submission to OneDrive: creates a subfolder named by case reference,
+ * uploads the metadata DOCX (named with the report title) and all attachments
+ * (with their original filenames) into that subfolder.
  *
- * - If the submission already has an `onedriveItemId`, skips (already synced).
- *   Pass `force: true` to re-upload and overwrite.
- * - If OneDrive is not connected or not enabled, returns `{ ok: false }`.
- * - Decrypts the payload server-side (no UI permission gate needed here —
- *   the DOCX is intended for the editorial team's shared drive).
+ * Folder structure:
+ *   {root}/{stage}/{CASE-REF}/
+ *     {Title}.docx          ← metadata summary
+ *     original-name.jpg     ← reporter attachments as-is
+ *     audio-clip.mp3
+ *
+ * - If already synced (onedriveItemId set), skips unless `force: true`.
+ * - Decrypts the payload server-side (no UI permission gate needed here).
  */
 export async function pushSubmissionToOneDrive(
   submissionId: string,
@@ -90,7 +159,7 @@ export async function pushSubmissionToOneDrive(
     return { ok: true, action: "skipped", webUrl: workspaceCase.onedriveWebUrl };
   }
 
-  // Decrypt payload server-side — the editorial team is the audience for this export.
+  // Decrypt payload — needed for title, body, and attachments stored in the payload.
   let decryptedFiling: ReturnType<typeof extractDecryptedFiling> | undefined;
   const enc = workspaceCase.encryptedPayload?.trim();
   if (enc) {
@@ -105,35 +174,47 @@ export async function pushSubmissionToOneDrive(
   const display = getSubmissionDisplay({ submission: workspaceCase, decryptedFiling });
   const item = mapSubmissionToItem({ submission: workspaceCase, decryptedFiling });
 
+  // ── Subfolder ────────────────────────────────────────────────────────────────
+  const folderName = buildSubmissionFolderName(display);
+  const folderPath = buildSubmissionFolderPath(workspaceCase.status, folderName);
+  const folder = await graphEnsureFolder({ accessToken, folderPath });
+
+  // ── DOCX (metadata summary) ──────────────────────────────────────────────────
+  const docxFilename = buildExportDocxFilename(display) || asciiFallbackExportFilename(display);
   const buffer = await buildSubmissionDocxBuffer({
     submission: workspaceCase,
     display,
     item,
     generatedAtIso: new Date().toISOString(),
   });
-
-  const filename = buildExportDocxFilename(display) || asciiFallbackExportFilename(display);
-  const drivePath = buildFileDrivePath(workspaceCase.status, filename);
-
-  const uploaded = await graphUploadFile({
+  await graphUploadFile({
     accessToken,
-    drivePath,
+    drivePath: `${folderPath}/${docxFilename}`,
     bytes: new Uint8Array(buffer),
     mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
   });
 
-  // Persist OneDrive metadata back to Firestore.
+  // ── Attachments ──────────────────────────────────────────────────────────────
+  // Prefer decrypted filing attachments (most complete); fall back to Firestore-level.
+  const attachments =
+    (decryptedFiling?.attachments?.length ?? 0) > 0
+      ? (decryptedFiling?.attachments ?? [])
+      : (workspaceCase.attachments ?? []);
+
+  await uploadAttachmentsToFolder({ accessToken, folderPath, attachments });
+
+  // ── Persist subfolder ID to Firestore so future moves track the whole folder ──
   await getAdminFirestore()
     .collection("submissions")
     .doc(submissionId)
     .update({
-      onedriveItemId: uploaded.id,
-      onedriveWebUrl: uploaded.webUrl ?? null,
-      onedriveFilename: uploaded.name,
+      onedriveItemId: folder.id,        // tracks the subfolder, not just the DOCX
+      onedriveWebUrl: folder.webUrl ?? null,
+      onedriveFilename: folderName,     // subfolder name = stable case reference
       onedriveLastSyncedAt: FieldValue.serverTimestamp(),
     });
 
-  return { ok: true, action: "uploaded", webUrl: uploaded.webUrl };
+  return { ok: true, action: "uploaded", webUrl: folder.webUrl };
 }
 
 /**
@@ -162,9 +243,8 @@ export async function moveSubmissionToStageInOneDrive(
 
   const { onedriveItemId, onedriveFilename } = workspaceCase;
 
-  // No existing OneDrive item — upload fresh to the new stage folder.
+  // No existing OneDrive item — fresh upload: create subfolder + DOCX + attachments.
   if (!onedriveItemId) {
-    // Build the submission in its new stage context.
     let decryptedFiling: ReturnType<typeof extractDecryptedFiling> | undefined;
     const enc = workspaceCase.encryptedPayload?.trim();
     if (enc) {
@@ -178,45 +258,55 @@ export async function moveSubmissionToStageInOneDrive(
 
     const display = getSubmissionDisplay({ submission: workspaceCase, decryptedFiling });
     const item = mapSubmissionToItem({ submission: workspaceCase, decryptedFiling });
+
+    const folderName = buildSubmissionFolderName(display);
+    const folderPath = buildSubmissionFolderPath(toStatus, folderName);
+    const folder = await graphEnsureFolder({ accessToken, folderPath });
+
+    const docxFilename = buildExportDocxFilename(display) || asciiFallbackExportFilename(display);
     const buffer = await buildSubmissionDocxBuffer({
       submission: workspaceCase,
       display,
       item,
       generatedAtIso: new Date().toISOString(),
     });
-
-    const filename = buildExportDocxFilename(display) || asciiFallbackExportFilename(display);
-    const drivePath = buildFileDrivePath(toStatus, filename);
-
-    const uploaded = await graphUploadFile({
+    await graphUploadFile({
       accessToken,
-      drivePath,
+      drivePath: `${folderPath}/${docxFilename}`,
       bytes: new Uint8Array(buffer),
       mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
     });
+
+    const attachments =
+      (decryptedFiling?.attachments?.length ?? 0) > 0
+        ? (decryptedFiling?.attachments ?? [])
+        : (workspaceCase.attachments ?? []);
+    await uploadAttachmentsToFolder({ accessToken, folderPath, attachments });
 
     await getAdminFirestore()
       .collection("submissions")
       .doc(submissionId)
       .update({
-        onedriveItemId: uploaded.id,
-        onedriveWebUrl: uploaded.webUrl ?? null,
-        onedriveFilename: uploaded.name,
+        onedriveItemId: folder.id,
+        onedriveWebUrl: folder.webUrl ?? null,
+        onedriveFilename: folderName,
         onedriveLastSyncedAt: FieldValue.serverTimestamp(),
       });
 
-    return { ok: true, action: "uploaded", webUrl: uploaded.webUrl };
+    return { ok: true, action: "uploaded", webUrl: folder.webUrl };
   }
 
-  // Existing item — move it to the new stage folder.
-  const filename = onedriveFilename ?? `${submissionId.slice(-6)}-export.docx`;
+  // Existing item (subfolder or legacy DOCX file) — move to new stage folder.
+  // Graph API PATCH works identically for files and folders; moving a folder
+  // carries all its contents (DOCX + attachments) automatically.
+  const itemName = onedriveFilename ?? `${submissionId.slice(-6)}`;
   const newFolderPath = buildStageFolderPath(toStatus);
 
   const moved = await graphMoveItemToFolder({
     accessToken,
     itemId: onedriveItemId,
     newFolderPath,
-    filename,
+    filename: itemName,
   });
 
   await getAdminFirestore()

@@ -75,16 +75,25 @@ export function sanitizeDocxFilenameSegment(s: string, maxLen: number): string {
 }
 
 export function buildExportDocxFilename(display: SubmissionDisplay): string {
-  const isoDate = new Date().toISOString().slice(0, 10);
-  const titleSlug = sanitizeDocxFilenameSegment(getSubmissionExportTitle(display), 56);
-  const refSlug = sanitizeDocxFilenameSegment(display.displayRef || "ref", 32);
-  return `${isoDate}_${refSlug}_${titleSlug}.docx`;
+  // Named with the report title so editors see a meaningful name in OneDrive.
+  const titleSlug = sanitizeDocxFilenameSegment(getSubmissionExportTitle(display), 80);
+  return `${titleSlug}.docx`;
 }
 
 export function asciiFallbackExportFilename(display: SubmissionDisplay): string {
-  const isoDate = new Date().toISOString().slice(0, 10);
-  const ref = sanitizeDocxFilenameSegment(display.displayRef.replace(/[^a-zA-Z0-9-]/g, "") || "CASE", 24);
-  return `${isoDate}_${ref}-export.docx`;
+  const ref = sanitizeDocxFilenameSegment(display.displayRef.replace(/[^a-zA-Z0-9-]/g, "") || "CASE", 40);
+  return `${ref}.docx`;
+}
+
+/**
+ * Stable OneDrive subfolder name for a submission — used as the parent
+ * folder that holds the DOCX + all attachments for this case.
+ * Based on the case reference so it is unique and does not change if
+ * the title is updated.
+ */
+export function buildSubmissionFolderName(display: SubmissionDisplay): string {
+  const ref = sanitizeDocxFilenameSegment(display.displayRef || "CASE", 60);
+  return ref;
 }
 
 export async function buildSubmissionDocxBuffer(args: {

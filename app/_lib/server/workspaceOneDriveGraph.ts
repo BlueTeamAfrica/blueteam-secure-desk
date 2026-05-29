@@ -271,8 +271,9 @@ export async function graphListFolderChildren(args: {
       for (const raw of value) {
         if (typeof raw !== "object" || raw === null) continue;
         const it = raw as Record<string, unknown>;
-        // Only include actual files (items that have the "file" facet).
-        if (!it.file) continue;
+        // Include files AND subfolders. Subfolders group DOCX + attachments per
+        // submission; files remain for backward-compat with pre-subfolder exports.
+        if (!it.file && !it.folder) continue;
         if (typeof it.id !== "string") continue;
         results.push({
           id: it.id,
