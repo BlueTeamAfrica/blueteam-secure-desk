@@ -61,7 +61,7 @@
   --transition-elevate: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.12s ease;
 
   /* Page + cards (white-label / theme hooks) */
-  --page-bg: #e8e4d8;
+  --page-bg: #f4f0e6;
   --panel-primary: #fffef9;
   --panel-secondary: #ffffff;
   --card-bg: var(--panel-primary);
@@ -2000,8 +2000,8 @@ a:hover {
 }
 
 .sidebar--editor-desk {
-  --sidebar-bg: color-mix(in oklab, var(--surface) 48%, var(--bg-deep));
-  --sidebar-border: color-mix(in oklab, var(--border) 75%, transparent);
+  --sidebar-bg: #111111;
+  --sidebar-border: #1e1e1e;
 }
 
 .sidebar--editor-desk .status-nav-item.is-active {
@@ -2049,8 +2049,8 @@ a:hover {
 }
 
 .sidebar--managing-editor-desk {
-  --sidebar-bg: color-mix(in oklab, var(--surface) 58%, var(--bg-deep));
-  --sidebar-border: color-mix(in oklab, var(--border) 82%, var(--text));
+  --sidebar-bg: #111111;
+  --sidebar-border: #1e1e1e;
 }
 
 .sidebar--managing-editor-desk .brand-badge {
@@ -2081,15 +2081,9 @@ a:hover {
 .sidebar--managing-editor-desk .brand {
   padding: var(--space-4) var(--space-4) var(--space-4);
   border-radius: var(--radius-lg);
-  background: linear-gradient(
-    185deg,
-    color-mix(in oklab, var(--bg-elevated) 72%, var(--surface)) 0%,
-    color-mix(in oklab, var(--surface) 55%, transparent) 100%
-  );
-  border: 1px solid color-mix(in oklab, var(--border) 78%, var(--text));
-  box-shadow:
-    0 1px 0 color-mix(in oklab, #fff 52%, transparent) inset,
-    0 6px 18px color-mix(in oklab, var(--text) 4%, transparent);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: none;
   min-height: 176px;
 }
 
@@ -2097,12 +2091,12 @@ a:hover {
   font-size: 16px;
   letter-spacing: -0.032em;
   font-weight: 700;
-  color: var(--text);
+  color: #ffffff;
 }
 
 .sidebar--managing-editor-desk .brand-subtitle {
   font-size: 12.5px;
-  color: color-mix(in oklab, var(--text-tertiary) 90%, var(--text-secondary));
+  color: #666666;
   margin-top: 4px;
 }
 
@@ -2111,6 +2105,7 @@ a:hover {
   margin-bottom: 12px;
   letter-spacing: 0.11em;
   font-weight: 600;
+  color: #505050;
 }
 
 .sidebar--managing-editor-desk .status-nav {
@@ -2124,6 +2119,7 @@ a:hover {
   font-weight: 500;
   min-height: 40px;
   border: 1px solid transparent;
+  color: #909090;
 }
 
 .sidebar--managing-editor-desk .status-nav-item > span:first-child {
@@ -2133,9 +2129,9 @@ a:hover {
 
 .sidebar--managing-editor-desk .status-nav-item.is-active {
   font-weight: 650;
-  color: var(--text);
-  border-color: color-mix(in oklab, var(--accent) 22%, var(--border));
-  background: var(--panel-secondary);
+  color: #ffffff;
+  border-color: rgba(192, 57, 43, 0.28);
+  background: rgba(192, 57, 43, 0.14);
   box-shadow: inset 3px 0 0 var(--accent);
 }
 
@@ -2149,15 +2145,16 @@ a:hover {
   font-size: 11px;
   font-weight: 650;
   padding: 4px 10px;
-  border: 1px solid color-mix(in oklab, var(--border) 88%, transparent);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  color: #aaaaaa;
   font-variant-numeric: tabular-nums;
   min-width: 2rem;
 }
 
 .sidebar--managing-editor-desk .status-nav-item.is-active .status-count {
-  border-color: color-mix(in oklab, var(--accent) 28%, var(--border));
-  background: color-mix(in oklab, var(--accent-surface) 88%, var(--bg-elevated));
-  color: color-mix(in oklab, var(--accent) 85%, var(--text));
+  border-color: color-mix(in oklab, var(--accent) 36%, transparent);
+  background: color-mix(in oklab, var(--accent) 24%, transparent);
+  color: color-mix(in oklab, var(--accent) 92%, #ffffff);
   font-weight: 700;
 }
 
@@ -4206,31 +4203,31 @@ a.exec-kpi:hover {
    ───────────────────────────────────────────────────────────── */
 
 .sidebar {
-  background: linear-gradient(180deg, #1c1812 0%, #100e0b 100%) !important;
-  border-right-color: #28231a !important;
-  color: #ddd8ce;
+  background: #111111 !important;
+  border-right-color: #1e1e1e !important;
+  color: #e2e2e2;
 }
 
 .sidebar .nav-section-label {
-  color: #5a5345 !important;
-  border-bottom-color: #28231a !important;
+  color: #505050 !important;
+  border-bottom-color: #222222 !important;
   letter-spacing: 0.15em;
 }
 
 /* Nav items */
 .sidebar .status-nav-item {
-  color: #8c8476 !important;
+  color: #909090 !important;
   border-color: transparent !important;
   border-radius: 10px !important;
 }
 .sidebar .status-nav-item:hover {
   background: rgba(255, 255, 255, 0.07) !important;
-  color: #e0dbd1 !important;
+  color: #e8e8e8 !important;
 }
 .sidebar .status-nav-item.is-active {
   background: rgba(192, 57, 43, 0.14) !important;
   border-color: rgba(192, 57, 43, 0.28) !important;
-  color: #f4ede2 !important;
+  color: #ffffff !important;
   box-shadow: inset 3px 0 0 var(--accent) !important;
   font-weight: 650;
 }
@@ -4240,45 +4237,45 @@ a.exec-kpi:hover {
 
 /* Count badges */
 .sidebar .status-count {
-  background: rgba(255, 255, 255, 0.07) !important;
-  color: #635d52 !important;
+  background: rgba(255, 255, 255, 0.06) !important;
+  color: #505050 !important;
   border: none !important;
 }
 .sidebar .status-count.is-nonzero {
-  background: rgba(255, 255, 255, 0.11) !important;
-  color: #b2aa9a !important;
-  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  background: rgba(255, 255, 255, 0.10) !important;
+  color: #aaaaaa !important;
+  border: 1px solid rgba(255, 255, 255, 0.09) !important;
 }
 .sidebar .status-nav-item.is-active .status-count {
   background: color-mix(in oklab, var(--accent) 24%, transparent) !important;
-  color: color-mix(in oklab, var(--accent) 92%, #fef5e8) !important;
+  color: color-mix(in oklab, var(--accent) 92%, #ffffff) !important;
   border-color: color-mix(in oklab, var(--accent) 36%, transparent) !important;
 }
 
 /* Brand area */
 .sidebar .sidebar-brand-card {
-  background: rgba(255, 255, 255, 0.03) !important;
-  border: 1px solid rgba(255, 255, 255, 0.07) !important;
+  background: rgba(255, 255, 255, 0.04) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
   border-radius: 16px !important;
 }
 .sidebar .sidebar-brand-workspace,
 .sidebar .brand-title {
-  color: #ede8de !important;
+  color: #ffffff !important;
   font-weight: 700 !important;
 }
 .sidebar .sidebar-brand-role {
-  color: #7a7264 !important;
+  color: #888888 !important;
 }
 .sidebar .sidebar-brand-subtitle,
 .sidebar .brand-subtitle {
-  color: #6a6254 !important;
+  color: #666666 !important;
 }
 .sidebar .sidebar-brand-powered-label {
-  color: #4a4638 !important;
+  color: #404040 !important;
   letter-spacing: 0.1em !important;
 }
 .sidebar .sidebar-brand-powered-name {
-  color: #7a7264 !important;
+  color: #777777 !important;
   font-weight: 600 !important;
 }
 .sidebar .brand-badge {
@@ -4288,7 +4285,7 @@ a.exec-kpi:hover {
 /* Logo — invert to white on dark background */
 .sidebar .sidebar-logo-img,
 .sidebar .brand-logo-img {
-  filter: invert(1) brightness(0.92) !important;
+  filter: invert(1) brightness(0.90) !important;
 }
 
 /* ─────────────────────────────────────────────────────────────
