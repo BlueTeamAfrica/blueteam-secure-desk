@@ -9,7 +9,7 @@ name: OneDrive Pull Sync
 
 on:
   schedule:
-    - cron: '*/15 * * * *'
+    - cron: '*/5 * * * *'
   workflow_dispatch: # allow manual trigger from GitHub Actions UI
 
 jobs:
