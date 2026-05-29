@@ -57,20 +57,18 @@ export async function GET(request: NextRequest) {
     // For owners and admins, promote this connection to the workspace-level token store.
     // This allows background sync operations (auto-upload, stage moves, pull-sync) to use
     // the connected account without requiring a per-request user session.
-    try {
-      const role = await fetchWorkspaceRole(pending.uid);
-      if (role === "owner" || role === "admin") {
-        await setOneDriveTokenSet({
-          access_token: token.accessToken,
-          refresh_token: token.refreshToken,
-          expires_at: expiresAt,
-          expires_in: token.expiresIn,
-          scope: token.scope,
-          token_type: token.tokenType,
-        });
-      }
-    } catch {
-      // Promotion failure is non-fatal — personal token was saved successfully.
+    // IMPORTANT: if this fails (e.g. INTEGRATIONS_TOKEN_SECRET not set in env), we must
+    // redirect to an error — not silently succeed — because the sync will be broken.
+    const role = await fetchWorkspaceRole(pending.uid);
+    if (role === "owner" || role === "admin") {
+      await setOneDriveTokenSet({
+        access_token: token.accessToken,
+        refresh_token: token.refreshToken,
+        expires_at: expiresAt,
+        expires_in: token.expiresIn,
+        scope: token.scope,
+        token_type: token.tokenType,
+      });
     }
 
     return NextResponse.redirect(new URL("/settings?onedrive=connected", url));

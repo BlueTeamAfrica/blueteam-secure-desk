@@ -24,7 +24,15 @@ export async function GET(request: NextRequest) {
 
   const report: Record<string, unknown> = {};
 
-  // Step 1: env var present?
+  // Step 1: required env vars
+  report.env = {
+    INTEGRATIONS_TOKEN_SECRET: !!process.env.INTEGRATIONS_TOKEN_SECRET,
+    MICROSOFT_CLIENT_ID: !!process.env.MICROSOFT_CLIENT_ID,
+    MICROSOFT_CLIENT_SECRET: !!process.env.MICROSOFT_CLIENT_SECRET,
+    MICROSOFT_REDIRECT_URI: process.env.MICROSOFT_REDIRECT_URI ?? "(not set)",
+    MICROSOFT_TENANT_ID: process.env.MICROSOFT_TENANT_ID ?? "(not set)",
+  };
+  // Legacy flag kept for compatibility
   report.INTEGRATIONS_TOKEN_SECRET_set = !!process.env.INTEGRATIONS_TOKEN_SECRET;
 
   // Step 2: workspace config
