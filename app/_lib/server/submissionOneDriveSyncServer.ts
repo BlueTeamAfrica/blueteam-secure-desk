@@ -116,6 +116,64 @@ function buildFileDrivePath(status: CaseStatus, filename: string): string {
   return `${buildStageFolderPath(status)}/${filename}`;
 }
 
+/**
+ * Regenerate and re-upload the metadata DOCX inside an existing submission subfolder.
+ *
+ * Called after every move (dashboard→OneDrive direction) and after every
+ * stage change detected by pull-sync (OneDrive→dashboard direction) so the
+ * DOCX always reflects current submission data.
+ *
+ * Non-fatal: any failure is swallowed so it never blocks the move/sync.
+ * Only applies to subfolder-style exports (folderName without .docx extension).
+ */
+async function refreshDocxInFolder(args: {
+  accessToken: string;
+  submissionId: string;
+  status: CaseStatus;
+  folderName: string;
+}): Promise<void> {
+  // Legacy DOCX-style exports (onedriveFilename ends with .docx) don't have
+  // a subfolder — skip regeneration for those.
+  if (args.folderName.toLowerCase().endsWith(".docx")) return;
+
+  const workspaceCase = await loadWorkspaceCaseForSubmission(args.submissionId);
+  if (!workspaceCase) return;
+
+  let decryptedFiling: ReturnType<typeof extractDecryptedFiling> | undefined;
+  const enc = workspaceCase.encryptedPayload?.trim();
+  if (enc) {
+    try {
+      const json = decryptEncryptedPayloadFieldToJson(enc);
+      decryptedFiling = extractDecryptedFiling(json);
+    } catch { /* skip */ }
+  }
+
+  const display = getSubmissionDisplay({ submission: workspaceCase, decryptedFiling });
+  const item = mapSubmissionToItem({ submission: workspaceCase, decryptedFiling });
+  const docxFilename = buildExportDocxFilename(display) || asciiFallbackExportFilename(display);
+  const folderPath = buildSubmissionFolderPath(args.status, args.folderName);
+
+  const buffer = await buildSubmissionDocxBuffer({
+    submission: workspaceCase,
+    display,
+    item,
+    generatedAtIso: new Date().toISOString(),
+  });
+
+  await graphUploadFile({
+    accessToken: args.accessToken,
+    drivePath: `${folderPath}/${docxFilename}`,
+    bytes: new Uint8Array(buffer),
+    mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  });
+
+  // Stamp last-synced so callers can detect freshness.
+  await getAdminFirestore()
+    .collection("submissions")
+    .doc(args.submissionId)
+    .update({ onedriveLastSyncedAt: FieldValue.serverTimestamp() });
+}
+
 // ─── Public API ─────────────────────────────────────────────────────────────
 
 export type OneDriveSyncResult =
@@ -319,6 +377,16 @@ export async function moveSubmissionToStageInOneDrive(
       onedriveLastSyncedAt: FieldValue.serverTimestamp(),
     });
 
+  // Regenerate the DOCX with current data at the new location.
+  try {
+    await refreshDocxInFolder({
+      accessToken,
+      submissionId,
+      status: toStatus,
+      folderName: moved.name,
+    });
+  } catch { /* non-fatal */ }
+
   return { ok: true, action: "moved", webUrl: moved.webUrl };
 }
 
@@ -471,6 +539,19 @@ export async function pullSyncFromOneDrive(): Promise<{
       }
       await db.collection("submissions").doc(doc.id).update(patch);
       updated++;
+
+      // Regenerate the DOCX with current data so the file in OneDrive reflects
+      // the latest submission content after the stage change.
+      if (stageChanged && storedFilename && matchedStatus) {
+        try {
+          await refreshDocxInFolder({
+            accessToken,
+            submissionId: doc.id,
+            status: matchedStatus,
+            folderName: storedFilename,
+          });
+        } catch { /* non-fatal — DOCX refresh failure must not block sync */ }
+      }
     } catch (e) {
       errors.push(
         `Could not update submission ${doc.id}: ${e instanceof Error ? e.message : String(e)}`,
