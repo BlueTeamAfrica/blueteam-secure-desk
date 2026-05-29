@@ -3985,15 +3985,20 @@ a.exec-kpi:hover {
 }
 
 @media (max-width: 640px) {
+  .desk-stats-strip {
+    grid-template-columns: repeat(auto-fill, minmax(86px, 1fr)) !important;
+    gap: 8px !important;
+    margin-bottom: var(--space-4) !important;
+  }
   .desk-stat-pill {
-    min-width: 62px;
-    padding: 12px 10px;
+    padding: 12px 12px 10px !important;
   }
   .desk-stat-value {
-    font-size: 18px;
+    font-size: 22px !important;
   }
-  .desk-stats-strip {
-    margin-bottom: var(--space-4);
+  .desk-stat-label {
+    font-size: 9px !important;
+    margin-top: 5px !important;
   }
 }
 
@@ -4304,7 +4309,7 @@ a.exec-kpi:hover {
   border: 1px solid var(--card-border);
   border-left-width: 4px;
   background: var(--panel-secondary);
-  box-shadow: 0 1px 3px rgba(12, 11, 9, 0.06), 0 1px 2px rgba(12, 11, 9, 0.04);
+  box-shadow: 0 2px 6px rgba(12, 11, 9, 0.07), 0 1px 2px rgba(12, 11, 9, 0.04);
   overflow: hidden;
   position: relative;
   transition: box-shadow 0.18s ease, transform 0.18s ease, border-color 0.15s ease;
@@ -4313,7 +4318,7 @@ a.exec-kpi:hover {
 }
 
 .rc:hover {
-  box-shadow: 0 6px 20px rgba(12, 11, 9, 0.1), 0 2px 6px rgba(12, 11, 9, 0.06);
+  box-shadow: 0 8px 24px rgba(12, 11, 9, 0.11), 0 2px 6px rgba(12, 11, 9, 0.06);
   transform: translateY(-1px);
 }
 
@@ -4548,37 +4553,85 @@ a.exec-kpi:hover {
    STATS STRIP — bolder, more command-center
    ───────────────────────────────────────────────────────────── */
 
+/* ── KPI CARD GRID — replaces the joined horizontal pill bar ── */
 .desk-stats-strip {
-  background: var(--panel-secondary) !important;
-  border: 1px solid var(--card-border) !important;
-  box-shadow: 0 1px 3px rgba(12, 11, 9, 0.06) !important;
-  margin-bottom: 20px !important;
-}
-
-.desk-stat-value {
-  font-size: 26px !important;
-  font-weight: 800 !important;
-  letter-spacing: -0.05em !important;
-}
-
-.desk-stat-label {
-  font-size: 9px !important;
-  font-weight: 700 !important;
-  letter-spacing: 0.11em !important;
+  display: grid !important;
+  grid-template-columns: repeat(auto-fill, minmax(108px, 1fr)) !important;
+  gap: 10px !important;
+  padding: 0 !important;
+  overflow: visible !important;
+  background: transparent !important;
+  border: none !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  margin-bottom: 24px !important;
+  scrollbar-width: unset !important;
 }
 
 .desk-stat-pill {
-  padding: 18px 20px !important;
-  min-width: 86px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: flex-start !important;
+  justify-content: flex-start !important;
+  gap: 0 !important;
+  padding: 16px 16px 14px !important;
+  min-width: unset !important;
+  text-align: left !important;
+  text-decoration: none !important;
+  color: var(--text) !important;
+  background: var(--panel-secondary) !important;
+  border: 1px solid var(--card-border) !important;
+  border-right: 1px solid var(--card-border) !important;
+  border-radius: var(--radius-lg) !important;
+  box-shadow: 0 1px 3px rgba(12, 11, 9, 0.05), 0 1px 2px rgba(12, 11, 9, 0.04) !important;
+  cursor: pointer !important;
+  transition: box-shadow 0.18s ease, border-color 0.18s ease !important;
+  position: relative !important;
 }
 
-/* Active pill: accent text + underline */
+.desk-stat-pill:first-child { border-radius: var(--radius-lg) !important; }
+.desk-stat-pill:last-child  { border-right: 1px solid var(--card-border) !important; border-radius: var(--radius-lg) !important; }
+
+.desk-stat-pill:hover {
+  box-shadow: 0 4px 16px rgba(12, 11, 9, 0.10) !important;
+  border-color: var(--card-border-strong) !important;
+  background: var(--panel-secondary) !important;
+}
+
+.desk-stat-pill.is-active {
+  border-left: 3px solid var(--accent) !important;
+  background: color-mix(in oklab, var(--panel-secondary) 94%, var(--accent-surface)) !important;
+}
+
+/* Remove old bottom underline indicator */
+.desk-stat-pill.is-active::after {
+  display: none !important;
+}
+
+.desk-stat-value {
+  font-size: 30px !important;
+  font-weight: 800 !important;
+  letter-spacing: -0.05em !important;
+  line-height: 1 !important;
+  color: var(--text) !important;
+}
+
+.desk-stat-label {
+  font-size: 10px !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.08em !important;
+  text-transform: uppercase !important;
+  color: var(--text-secondary) !important;
+  margin-top: 7px !important;
+  opacity: 1 !important;
+}
+
 .desk-stat-pill.is-active .desk-stat-value {
   color: var(--accent) !important;
 }
 .desk-stat-pill.is-active .desk-stat-label {
-  color: var(--accent) !important;
-  opacity: 0.75;
+  color: color-mix(in oklab, var(--accent) 80%, var(--text-secondary)) !important;
+  opacity: 1 !important;
 }
 
 /* ─────────────────────────────────────────────────────────────
@@ -4811,24 +4864,25 @@ a.exec-kpi:hover {
    KPI STRIP — "All" total pill + urgent indicator pill
    ───────────────────────────────────────────────────────────── */
 
-/* Total pill: bolder separator from stage pills */
+/* Total pill: same card, no special separator needed in grid layout */
 .desk-stat-pill--total {
-  border-right-width: 2px !important;
-  border-right-color: color-mix(in oklab, var(--border) 72%, var(--text)) !important;
+  border-right: 1px solid var(--card-border) !important;
 }
 
-/* Urgent pill: non-clickable, red count */
+/* Urgent pill: non-clickable, accent-tinted card */
 .desk-stat-pill--urgent {
-  cursor: default;
+  cursor: default !important;
   user-select: none;
+  background: color-mix(in oklab, var(--panel-secondary) 90%, color-mix(in oklab, var(--accent) 8%, transparent)) !important;
+  border-color: color-mix(in oklab, var(--accent) 22%, var(--card-border)) !important;
 }
 .desk-stat-pill--urgent .desk-stat-value,
 .desk-stat-value--urgent {
-  color: var(--stage-urgent) !important;
+  color: var(--accent) !important;
 }
 .desk-stat-pill--urgent .desk-stat-label {
-  color: var(--stage-urgent) !important;
-  opacity: 0.8;
+  color: color-mix(in oklab, var(--accent) 80%, var(--text-secondary)) !important;
+  opacity: 1 !important;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════
@@ -4841,7 +4895,7 @@ a.exec-kpi:hover {
 .case-accordion {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
   padding-bottom: var(--space-6);
 }
 
