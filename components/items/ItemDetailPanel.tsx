@@ -560,6 +560,26 @@ export function ItemDetailPanel({
         </div>
       ) : null}
 
+      {/* Assignment panel — renders directly below the header/pin strip, never requires scrolling */}
+      {assignPanelOpen && showAssign ? (
+        <div className="detail-assign-inline">
+          <ItemAssignmentPanel
+            open={true}
+            managingEditorDesk={managingEditorDesk}
+            role={role}
+            membersLoading={membersLoading}
+            membersError={membersError}
+            workspaceMembers={workspaceMembers}
+            assigneeUidDraft={assigneeUidDraft}
+            assignBusy={assignBusy}
+            assignError={assignError}
+            onChangeAssigneeUid={setAssigneeUidDraft}
+            onConfirm={onConfirmAssignOwner}
+            onCancel={() => setAssignPanelOpen(false)}
+          />
+        </div>
+      ) : null}
+
       <div className="detail-panel-body detail-panel-body--read">
         <div className="dp-content">
         {scaffoldMessage ? (
@@ -1116,22 +1136,6 @@ export function ItemDetailPanel({
                 </div>
               </div>
             ) : null}
-
-            {/* Assignment panel — opens inline directly below the Assign button */}
-            <ItemAssignmentPanel
-              open={assignPanelOpen && showAssign}
-              managingEditorDesk={managingEditorDesk}
-              role={role}
-              membersLoading={membersLoading}
-              membersError={membersError}
-              workspaceMembers={workspaceMembers}
-              assigneeUidDraft={assigneeUidDraft}
-              assignBusy={assignBusy}
-              assignError={assignError}
-              onChangeAssigneeUid={setAssigneeUidDraft}
-              onConfirm={onConfirmAssignOwner}
-              onCancel={() => setAssignPanelOpen(false)}
-            />
             {showResolveArchive ? (
               <div className="detail-action-group">
                 <div className="action-row">
