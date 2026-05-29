@@ -5,7 +5,6 @@ import { PRIORITY_LABEL, ownerDisplayLine } from "@/app/_lib/caseWorkspaceModel"
 import type { CachedCaseFiling } from "@/app/_lib/decryptedSubmissionReadout";
 import { getSubmissionDisplay } from "@/app/_lib/items/getSubmissionDisplay";
 import type { WorkspaceRole } from "@/app/_lib/rbac";
-import { getOrgLabels } from "@/app/_lib/org/getOrgLabels";
 import { ItemAssignmentPanel } from "@/components/items/ItemAssignmentPanel";
 import { ItemStatusBadge } from "@/components/items/ItemStatusBadge";
 import { getFirebaseAuth } from "@/app/_lib/firebase/auth";
@@ -19,15 +18,6 @@ type WorkspaceMemberRow = {
   email: string | null;
   displayName: string | null;
   role: string;
-};
-
-type SubmissionAuditEvent = {
-  id: string;
-  action: string;
-  adminUid: string | null;
-  adminEmail: string | null;
-  createdAt: string | null;
-  details: Record<string, unknown> | null;
 };
 
 type ExportPackagePreviewResponse = {
@@ -67,23 +57,6 @@ function relativeTimeShort(iso: string | null): string {
   return rtf.format(diffDay, "day");
 }
 
-function formatAuditWhen(iso: string | null): string {
-  if (!iso) return "—";
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return "—";
-
-  const now = new Date();
-  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const startOfYesterday = new Date(startOfToday);
-  startOfYesterday.setDate(startOfYesterday.getDate() - 1);
-
-  const time = d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
-  if (d >= startOfToday) return `Today ${time}`;
-  if (d >= startOfYesterday && d < startOfToday) return `Yesterday ${time}`;
-  // If not today/yesterday, keep it compact.
-  return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
-}
-
 function yyyyMmDdFromIso(iso: string | null): string {
   if (!iso) return "";
   const d = new Date(iso);
@@ -100,226 +73,6 @@ function isOverdue(selected: WorkspaceCase): boolean {
   const d = new Date(selected.dueDate);
   if (Number.isNaN(d.getTime())) return false;
   return d.getTime() < Date.now();
-}
-
-function auditActionLabel(action: string, labels: ReturnType<typeof getOrgLabels>): string {
-  const a = labels.actionLabels;
-  if (action === "decrypt") {
-    const variants = ["Viewed this report", "Reviewed this filing", "Opened the report"] as const;
-    // Stable-ish variant per submission/action without additional state.
-    const idx = action.length % variants.length;
-    return variants[idx]!;
-  }
-  if (action === "save_reviewer_note") return "Added note";
-  if (action === "mark_in_review" || action === "mark_verified") return "Updated review status";
-  if (action === "download_attachment") return a.download || "Downloaded attachment";
-  if (action === "export_docx") return a.exportDocx || "Exported Word";
-  if (action === "delete") return a.delete || "Deleted report";
-  if (action === "update_priority") return "Priority updated";
-  if (action === "update_due_date") return "Due date updated";
-  // These are rendered with richer lines (see below); keep a fallback.
-  if (action === "assign_owner") return a.setLead || a.assign || "Assigned";
-  if (action === "update_case_status") return a.applyStageChange || "Moved stage";
-  return action.replace(/_/g, " ");
-}
-
-function isAuditEventNewer(a: SubmissionAuditEvent, b: SubmissionAuditEvent): number {
-  const ta = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-  const tb = b.createdAt ? new Date(b.createdAt).getTime() : 0;
-  // Newest first
-  return tb - ta;
-}
-
-function stableVariantIndex(s: string, mod: number): number {
-  let acc = 0;
-  for (let i = 0; i < s.length; i += 1) acc = (acc + s.charCodeAt(i)) % 1_000_000;
-  return mod <= 0 ? 0 : acc % mod;
-}
-
-function auditActionLineFromEvent(ev: SubmissionAuditEvent, labels: ReturnType<typeof getOrgLabels>): string {
-  const assigneeLine = assigneeLineFromDetails(ev.details);
-  const attachmentLine = attachmentLineFromDetails(ev.details);
-
-  if (ev.action === "assign_owner") {
-    const whoAssigned = assigneeLine ? displayNameFromEmailOrId(assigneeLine) : "someone";
-    return `Assigned to ${whoAssigned}`;
-  }
-  if (ev.action === "update_case_status") {
-    const from = (() => {
-      if (!ev.details) return null;
-      const v = safeString(ev.details.from);
-      return v ? statusLabelFromId(v, labels) : null;
-    })();
-    const to = (() => {
-      if (!ev.details) return null;
-      const v = safeString(ev.details.to);
-      return v ? statusLabelFromId(v, labels) : null;
-    })();
-    if (from && to) return `Moved from ${from} to ${to}`;
-    return to ? `Moved to ${to}` : "Moved stage";
-  }
-  if (ev.action === "mark_in_review") return "Reviewed progress";
-  if (ev.action === "mark_verified") return "Reviewed and verified";
-  if (ev.action === "save_reviewer_note") return "Updated review notes";
-  if (ev.action === "download_attachment") {
-    return attachmentLine ? `Downloaded ${attachmentLine}` : "Downloaded attachment";
-  }
-  if (ev.action === "decrypt") {
-    const variants = ["Reviewed this filing", "Checked the filing", "Opened the report"] as const;
-    const idx = stableVariantIndex(ev.id || ev.createdAt || "decrypt", variants.length);
-    return variants[idx]!;
-  }
-  if (ev.action === "update_priority") {
-    const from = ev.details ? safeString(ev.details.from) : null;
-    const to = ev.details ? safeString(ev.details.to) : null;
-    if (from && to) return `Priority changed from ${PRIORITY_LABEL[from as keyof typeof PRIORITY_LABEL] ?? from} to ${PRIORITY_LABEL[to as keyof typeof PRIORITY_LABEL] ?? to}`;
-    if (to) return `Priority set to ${PRIORITY_LABEL[to as keyof typeof PRIORITY_LABEL] ?? to}`;
-    return "Priority updated";
-  }
-  if (ev.action === "update_due_date") {
-    const to = ev.details ? safeString(ev.details.to) : null;
-    if (!to) return "Cleared due date";
-    const d = new Date(to);
-    const when = Number.isNaN(d.getTime()) ? to : d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
-    return `Due date set to ${when}`;
-  }
-  if (ev.action === "export_docx") return labels.actionLabels.exportDocx || "Exported Word (.docx)";
-  if (ev.action === "delete") return labels.actionLabels.delete || "Deleted report";
-
-  return auditActionLabel(ev.action, labels);
-}
-
-function groupKeyForAuditEvent(ev: SubmissionAuditEvent): string {
-  const actor = (ev.adminEmail ?? ev.adminUid ?? "").trim().toLowerCase();
-  if (ev.action === "update_case_status") {
-    const from = ev.details ? safeString(ev.details.from) : null;
-    const to = ev.details ? safeString(ev.details.to) : null;
-    return `${ev.action}|${actor}|${from ?? ""}->${to ?? ""}`;
-  }
-  if (ev.action === "assign_owner") {
-    const assigneeUid = ev.details ? safeString(ev.details.assigneeUid) : null;
-    const assignedOwnerName = ev.details ? safeString(ev.details.assignedOwnerName) : null;
-    return `${ev.action}|${actor}|${assigneeUid ?? ""}|${assignedOwnerName ?? ""}`;
-  }
-  if (ev.action === "download_attachment") {
-    const attachmentId = ev.details ? safeString(ev.details.attachmentId) : null;
-    const name = ev.details ? safeString(ev.details.name) : null;
-    return `${ev.action}|${actor}|${attachmentId ?? ""}|${name ?? ""}`;
-  }
-  if (ev.action === "update_priority") {
-    const from = ev.details ? safeString(ev.details.from) : null;
-    const to = ev.details ? safeString(ev.details.to) : null;
-    return `${ev.action}|${actor}|${from ?? ""}->${to ?? ""}`;
-  }
-  if (ev.action === "update_due_date") {
-    const to = ev.details ? safeString(ev.details.to) : null;
-    return `${ev.action}|${actor}|${to ?? ""}`;
-  }
-  return `${ev.action}|${actor}`;
-}
-
-type CollapsedAuditEvent = {
-  id: string;
-  action: string;
-  adminUid: string | null;
-  adminEmail: string | null;
-  latestAt: string | null;
-  oldestAt: string | null;
-  details: Record<string, unknown> | null;
-  count: number;
-};
-
-function collapseAuditEvents(events: SubmissionAuditEvent[]): CollapsedAuditEvent[] {
-  const sorted = [...events].sort(isAuditEventNewer);
-  const out: CollapsedAuditEvent[] = [];
-  for (const ev of sorted) {
-    const key = groupKeyForAuditEvent(ev);
-    const prev = out.length > 0 ? out[out.length - 1] : null;
-    const prevKey = prev
-      ? groupKeyForAuditEvent({
-          id: prev.id,
-          action: prev.action,
-          adminUid: prev.adminUid,
-          adminEmail: prev.adminEmail,
-          createdAt: prev.latestAt,
-          details: prev.details,
-        })
-      : null;
-
-    if (prev && prevKey === key) {
-      prev.count += 1;
-      // Keep newest timestamp in latestAt; update oldestAt as we extend the group.
-      prev.oldestAt = ev.createdAt ?? prev.oldestAt;
-      continue;
-    }
-    out.push({
-      id: ev.id,
-      action: ev.action,
-      adminUid: ev.adminUid,
-      adminEmail: ev.adminEmail,
-      latestAt: ev.createdAt,
-      oldestAt: ev.createdAt,
-      details: ev.details,
-      count: 1,
-    });
-  }
-  return out;
-}
-
-function displayNameFromEmailOrId(raw: string | null): string {
-  const t = (raw ?? "").trim();
-  if (!t) return "Staff";
-  const looksLikeEmail = t.includes("@") && !t.includes(" ");
-  if (!looksLikeEmail) return t;
-  const local = t.slice(0, t.indexOf("@")).replace(/[._-]+/g, " ").trim();
-  if (!local) return t;
-  return local
-    .split(/\s+/g)
-    .map((w) => (w ? w[0]!.toUpperCase() + w.slice(1) : w))
-    .join(" ");
-}
-
-function statusLabelFromId(statusId: string, labels: ReturnType<typeof getOrgLabels>): string {
-  return (labels.caseStatusLabels as Record<string, string | undefined>)[statusId] ?? statusId;
-}
-
-function roleLabelFromEmailOrId(
-  actorRaw: string | null,
-  labels: ReturnType<typeof getOrgLabels>,
-): string | null {
-  const t = (actorRaw ?? "").trim().toLowerCase();
-  if (!t) return null;
-  // Lightweight heuristic: if the email contains "owner/admin/reviewer/intake/readonly" tokens, show label.
-  // (We don't fetch team roster here; UI-only.)
-  const map = labels.roleLabels as Record<string, string | undefined>;
-  if (t.includes("owner")) return map.owner ?? null;
-  if (t.includes("admin")) return map.admin ?? null;
-  if (t.includes("reviewer") || t.includes("editor")) return map.reviewer ?? null;
-  if (t.includes("intake") || t.includes("proof")) return map.intake ?? null;
-  if (t.includes("readonly") || t.includes("viewer")) return map.readonly ?? null;
-  return null;
-}
-
-function safeString(v: unknown): string | null {
-  if (typeof v !== "string") return null;
-  const t = v.trim();
-  return t ? t : null;
-}
-
-function assigneeLineFromDetails(details: Record<string, unknown> | null): string | null {
-  if (!details) return null;
-  const name = safeString(details.assignedOwnerName);
-  if (name) return name;
-  const uid = safeString(details.assigneeUid);
-  return uid;
-}
-
-function attachmentLineFromDetails(details: Record<string, unknown> | null): string | null {
-  if (!details) return null;
-  const name = safeString(details.name);
-  if (name) return name;
-  const id = safeString(details.attachmentId);
-  return id ? `Attachment ${id}` : null;
 }
 
 function formatBytes(size: number | null): string {
@@ -533,10 +286,6 @@ export function ItemDetailPanel({
   const [attachmentErrorById, setAttachmentErrorById] = useState<Record<string, string | null>>({});
   const [openSections, setOpenSections] = useState(DEFAULT_SECTION_OPEN);
 
-  const [auditLoading, setAuditLoading] = useState(false);
-  const [auditError, setAuditError] = useState<string | null>(null);
-  const [auditEvents, setAuditEvents] = useState<SubmissionAuditEvent[]>([]);
-  const [showAllActivity, setShowAllActivity] = useState(false);
 
   const [priorityDraft, setPriorityDraft] = useState<WorkspaceCase["priority"]>("normal");
   const [priorityBusy, setPriorityBusy] = useState(false);
@@ -573,7 +322,6 @@ export function ItemDetailPanel({
 
   useEffect(() => {
     setOpenSections(DEFAULT_SECTION_OPEN);
-    setShowAllActivity(false);
   }, [fetchWithAuth, selected?.id]);
 
   useEffect(() => {
@@ -589,52 +337,6 @@ export function ItemDetailPanel({
     setAttachmentErrorById({});
   }, [fetchWithAuth, selected?.id]);
 
-  useEffect(() => {
-    if (!selected?.id) {
-      setAuditLoading(false);
-      setAuditError(null);
-      setAuditEvents([]);
-      return;
-    }
-    let cancelled = false;
-    void (async () => {
-      setAuditLoading(true);
-      setAuditError(null);
-      try {
-        const res = await fetchWithAuth(`/api/admin/submissions/${selected.id}/audit`, {
-          method: "GET",
-        });
-        const body = (await res.json().catch(() => null)) as unknown;
-        if (!res.ok) {
-          if (res.status === 401) {
-            setAuditError("You’re signed in, but activity could not be loaded (authorization failed).");
-            return;
-          }
-          const msg = (() => {
-            if (!body || typeof body !== "object") return null;
-            if (!("error" in body)) return null;
-            const err = (body as { error?: unknown }).error;
-            return typeof err === "string" && err.trim() ? err : null;
-          })();
-          setAuditError(msg ?? "Could not load activity.");
-          return;
-        }
-        const eventsRaw =
-          body && typeof body === "object" && body !== null && "events" in body
-            ? (body as { events?: unknown }).events
-            : null;
-        const list = Array.isArray(eventsRaw) ? (eventsRaw as SubmissionAuditEvent[]) : [];
-        if (!cancelled) setAuditEvents(list);
-      } catch {
-        if (!cancelled) setAuditError("Network error while loading activity.");
-      } finally {
-        if (!cancelled) setAuditLoading(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [fetchWithAuth, selected?.id]);
 
   useEffect(() => {
     if (!selected?.id) {
@@ -1570,89 +1272,6 @@ export function ItemDetailPanel({
           ) : null}
         </div>
 
-        <div className="detail-read-ambient">
-          <div className="detail-section-title">
-            Activity
-          </div>
-          {auditLoading ? (
-            <p className="subtext" style={{ margin: 0 }}>{section.activityLoading ?? "Loading activity…"}</p>
-          ) : auditError ? (
-            <div className="alert alert-danger" role="alert" style={{ marginTop: 12 }}>
-              {auditError}
-            </div>
-          ) : auditEvents.length === 0 ? (
-            <p className="subtext" style={{ margin: 0 }}>{section.activityEmpty ?? "No activity yet."}</p>
-          ) : (
-            (() => {
-              const collapsed = collapseAuditEvents(auditEvents);
-              const visible = showAllActivity ? collapsed : collapsed.slice(0, 5);
-              const hiddenCount = collapsed.length - visible.length;
-              return (
-                <div className="stack-12" style={{ marginTop: 8 }}>
-                  {visible.map((ev) => {
-                    const actorRaw = ev.adminEmail ?? ev.adminUid;
-                    const who = displayNameFromEmailOrId(actorRaw);
-                    const whoRole = roleLabelFromEmailOrId(actorRaw, labels);
-                    const subLine = whoRole ? `${who} · ${whoRole}` : who;
-
-                    const baseLine = auditActionLineFromEvent(
-                      {
-                        id: ev.id,
-                        action: ev.action,
-                        adminUid: ev.adminUid,
-                        adminEmail: ev.adminEmail,
-                        createdAt: ev.latestAt,
-                        details: ev.details,
-                      },
-                      labels,
-                    );
-
-                    const actionLine =
-                      ev.count <= 1
-                        ? baseLine
-                        : ev.action === "decrypt"
-                          ? `Reviewed ${ev.count} times`
-                          : `${baseLine} (${ev.count}×)`;
-
-                    const when = formatAuditWhen(ev.latestAt);
-                    const metaLine = ev.count <= 1 ? `${when} · ${subLine}` : `Latest ${when} · ${subLine}`;
-
-                    return (
-                      <div key={ev.id} className="detail-activity-row">
-                        <div className="detail-activity-action" dir="auto">
-                          {actionLine}
-                        </div>
-                        <div className="detail-activity-meta">
-                          {metaLine}
-                        </div>
-                      </div>
-                    );
-                  })}
-                  {hiddenCount > 0 && (
-                    <button
-                      type="button"
-                      className="btn btn-ghost"
-                      style={{ width: "100%", marginTop: 4, fontSize: "0.75rem" }}
-                      onClick={() => setShowAllActivity(true)}
-                    >
-                      Show {hiddenCount} more
-                    </button>
-                  )}
-                  {showAllActivity && collapsed.length > 5 && (
-                    <button
-                      type="button"
-                      className="btn btn-ghost"
-                      style={{ width: "100%", marginTop: 4, fontSize: "0.75rem" }}
-                      onClick={() => setShowAllActivity(false)}
-                    >
-                      Show less
-                    </button>
-                  )}
-                </div>
-              );
-            })()
-          )}
-        </div>
         </div>{/* /dp-actions */}
       </div>
     </aside>
