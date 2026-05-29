@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { FieldValue } from "firebase-admin/firestore";
 import { extractDecryptedFiling } from "@/app/_lib/decryptedSubmissionReadout";
 import { getSubmissionDisplay } from "@/app/_lib/items/getSubmissionDisplay";
 import { mapSubmissionToItem } from "@/app/_lib/items/mapSubmissionToItem";
@@ -7,6 +8,7 @@ import { safeExportName } from "@/app/_lib/integrations/safeExportName";
 import { mayShowDecryptUi } from "@/app/_lib/rbac";
 import { requireActiveAdmin } from "@/app/_lib/server/adminApiAuth";
 import { decryptEncryptedPayloadFieldToJson } from "@/app/_lib/server/decryptEncryptedPayload";
+import { getAdminFirestore } from "@/app/_lib/server/firebaseAdmin";
 import { getOneDriveTokenSet, setOneDriveTokenSet } from "@/app/_lib/server/onedriveTokenStore";
 import { refreshAccessToken } from "@/app/_lib/server/onedriveOAuth";
 import { logSubmissionAudit } from "@/app/_lib/server/logSubmissionAudit";
@@ -34,7 +36,11 @@ function safeString(v: unknown): string | null {
   return t ? t : null;
 }
 
-async function putDocxToOneDrive(args: { accessToken: string; path: string; bytes: Uint8Array }) {
+async function putDocxToOneDrive(args: {
+  accessToken: string;
+  path: string;
+  bytes: Uint8Array;
+}): Promise<{ id: string; webUrl: string | null; name: string }> {
   const url = `https://graph.microsoft.com/v1.0/me/drive/root:/${args.path}:/content`;
   const res = await fetch(url, {
     method: "PUT",
@@ -55,7 +61,17 @@ async function putDocxToOneDrive(args: { accessToken: string; path: string; byte
     }
     throw new Error(msg);
   }
-  return text;
+  let item: Record<string, unknown> = {};
+  try {
+    item = text ? (JSON.parse(text) as Record<string, unknown>) : {};
+  } catch {
+    /* ignore — id/webUrl will be null */
+  }
+  return {
+    id: typeof item.id === "string" ? item.id : "",
+    webUrl: typeof item.webUrl === "string" ? item.webUrl : null,
+    name: typeof item.name === "string" ? item.name : args.path.split("/").pop() ?? "",
+  };
 }
 
 export async function POST(request: NextRequest) {
@@ -125,7 +141,24 @@ export async function POST(request: NextRequest) {
     const finalName = filename || fallback;
     const path = `${encodeURIComponent(root)}/${encodeURIComponent(folder)}/${encodeURIComponent(finalName)}`;
 
-    await putDocxToOneDrive({ accessToken: token.access_token, path, bytes: new Uint8Array(buffer) });
+    const uploaded = await putDocxToOneDrive({ accessToken: token.access_token, path, bytes: new Uint8Array(buffer) });
+
+    // Persist OneDrive item metadata so pull-sync and stage-move can track this file.
+    if (uploaded.id) {
+      try {
+        await getAdminFirestore()
+          .collection("submissions")
+          .doc(submissionId)
+          .update({
+            onedriveItemId: uploaded.id,
+            onedriveWebUrl: uploaded.webUrl ?? null,
+            onedriveFilename: uploaded.name || finalName,
+            onedriveLastSyncedAt: FieldValue.serverTimestamp(),
+          });
+      } catch {
+        /* non-fatal — file uploaded successfully, metadata save failed */
+      }
+    }
 
     try {
       await logSubmissionAudit({
@@ -139,7 +172,7 @@ export async function POST(request: NextRequest) {
       /* ignore */
     }
 
-    return NextResponse.json({ ok: true, message: "Uploaded to OneDrive.", path }, { status: 200 });
+    return NextResponse.json({ ok: true, message: "Uploaded to OneDrive.", path, webUrl: uploaded.webUrl }, { status: 200 });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "OneDrive upload failed.";
     return NextResponse.json({ error: msg }, { status: 500 });
