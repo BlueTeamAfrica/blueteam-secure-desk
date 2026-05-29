@@ -86,14 +86,13 @@ export function asciiFallbackExportFilename(display: SubmissionDisplay): string 
 }
 
 /**
- * Stable OneDrive subfolder name for a submission — used as the parent
- * folder that holds the DOCX + all attachments for this case.
- * Based on the case reference so it is unique and does not change if
- * the title is updated.
+ * OneDrive subfolder name for a submission — named with the report title
+ * so journalists see a meaningful folder name rather than a system reference.
+ * Falls back to the case reference when no meaningful title exists yet.
  */
 export function buildSubmissionFolderName(display: SubmissionDisplay): string {
-  const ref = sanitizeDocxFilenameSegment(display.displayRef || "CASE", 60);
-  return ref;
+  const title = sanitizeDocxFilenameSegment(getSubmissionExportTitle(display), 80);
+  return title;
 }
 
 export async function buildSubmissionDocxBuffer(args: {
