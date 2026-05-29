@@ -3986,15 +3986,22 @@ a.exec-kpi:hover {
 
 @media (max-width: 640px) {
   .desk-stats-strip {
-    grid-template-columns: repeat(auto-fill, minmax(86px, 1fr)) !important;
+    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)) !important;
     gap: 8px !important;
     margin-bottom: var(--space-4) !important;
   }
   .desk-stat-pill {
-    padding: 12px 12px 10px !important;
+    padding: 14px 12px 12px !important;
+    min-height: 80px !important;
+  }
+  .desk-stat-icon {
+    width: 28px !important;
+    height: 28px !important;
+    top: 10px !important;
+    right: 10px !important;
   }
   .desk-stat-value {
-    font-size: 22px !important;
+    font-size: 24px !important;
   }
   .desk-stat-label {
     font-size: 9px !important;
@@ -4553,18 +4560,18 @@ a.exec-kpi:hover {
    STATS STRIP — bolder, more command-center
    ───────────────────────────────────────────────────────────── */
 
-/* ── KPI CARD GRID — replaces the joined horizontal pill bar ── */
+/* ── KPI CARD GRID — colorful gradient cards ── */
 .desk-stats-strip {
   display: grid !important;
-  grid-template-columns: repeat(auto-fill, minmax(108px, 1fr)) !important;
-  gap: 10px !important;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)) !important;
+  gap: 12px !important;
   padding: 0 !important;
   overflow: visible !important;
   background: transparent !important;
   border: none !important;
   border-radius: 0 !important;
   box-shadow: none !important;
-  margin-bottom: 24px !important;
+  margin-bottom: 28px !important;
   scrollbar-width: unset !important;
 }
 
@@ -4572,48 +4579,79 @@ a.exec-kpi:hover {
   display: flex !important;
   flex-direction: column !important;
   align-items: flex-start !important;
-  justify-content: flex-start !important;
+  justify-content: flex-end !important;
   gap: 0 !important;
-  padding: 16px 16px 14px !important;
+  padding: 18px 16px 16px !important;
   min-width: unset !important;
+  min-height: 96px !important;
   text-align: left !important;
   text-decoration: none !important;
-  color: var(--text) !important;
-  background: var(--panel-secondary) !important;
-  border: 1px solid var(--card-border) !important;
-  border-right: 1px solid var(--card-border) !important;
+  color: #ffffff !important;
+  background: linear-gradient(135deg, #374151 0%, #6b7280 100%) !important;
+  border: 1px solid transparent !important;
+  border-right: 1px solid transparent !important;
   border-radius: var(--radius-lg) !important;
-  box-shadow: 0 1px 3px rgba(12, 11, 9, 0.05), 0 1px 2px rgba(12, 11, 9, 0.04) !important;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18) !important;
   cursor: pointer !important;
-  transition: box-shadow 0.18s ease, border-color 0.18s ease !important;
+  transition: box-shadow 0.2s ease, transform 0.18s ease !important;
   position: relative !important;
+  overflow: hidden !important;
+}
+
+/* Decorative circle — top-right visual accent */
+.desk-stat-pill::before {
+  content: "" !important;
+  position: absolute !important;
+  top: -18px !important;
+  right: -18px !important;
+  width: 80px !important;
+  height: 80px !important;
+  border-radius: 50% !important;
+  background: rgba(255, 255, 255, 0.12) !important;
+  pointer-events: none !important;
 }
 
 .desk-stat-pill:first-child { border-radius: var(--radius-lg) !important; }
-.desk-stat-pill:last-child  { border-right: 1px solid var(--card-border) !important; border-radius: var(--radius-lg) !important; }
+.desk-stat-pill:last-child  { border-right: 1px solid transparent !important; border-radius: var(--radius-lg) !important; }
 
 .desk-stat-pill:hover {
-  box-shadow: 0 4px 16px rgba(12, 11, 9, 0.10) !important;
-  border-color: var(--card-border-strong) !important;
-  background: var(--panel-secondary) !important;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.26) !important;
+  transform: translateY(-2px) !important;
+  border-color: transparent !important;
 }
 
 .desk-stat-pill.is-active {
-  border-left: 3px solid var(--accent) !important;
-  background: color-mix(in oklab, var(--panel-secondary) 94%, var(--accent-surface)) !important;
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.85), 0 8px 24px rgba(0, 0, 0, 0.22) !important;
+  transform: translateY(-1px) !important;
+  border-left: 1px solid transparent !important;
 }
 
-/* Remove old bottom underline indicator */
 .desk-stat-pill.is-active::after {
   display: none !important;
 }
 
+/* Icon badge — top right */
+.desk-stat-icon {
+  position: absolute !important;
+  top: 14px !important;
+  right: 14px !important;
+  width: 36px !important;
+  height: 36px !important;
+  border-radius: 10px !important;
+  background: rgba(255, 255, 255, 0.20) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  color: rgba(255, 255, 255, 0.90) !important;
+  flex-shrink: 0 !important;
+}
+
 .desk-stat-value {
-  font-size: 30px !important;
+  font-size: 32px !important;
   font-weight: 800 !important;
   letter-spacing: -0.05em !important;
   line-height: 1 !important;
-  color: var(--text) !important;
+  color: #ffffff !important;
 }
 
 .desk-stat-label {
@@ -4621,18 +4659,35 @@ a.exec-kpi:hover {
   font-weight: 600 !important;
   letter-spacing: 0.08em !important;
   text-transform: uppercase !important;
-  color: var(--text-secondary) !important;
-  margin-top: 7px !important;
+  color: rgba(255, 255, 255, 0.72) !important;
+  margin-top: 6px !important;
   opacity: 1 !important;
 }
 
-.desk-stat-pill.is-active .desk-stat-value {
-  color: var(--accent) !important;
-}
-.desk-stat-pill.is-active .desk-stat-label {
-  color: color-mix(in oklab, var(--accent) 80%, var(--text-secondary)) !important;
-  opacity: 1 !important;
-}
+.desk-stat-pill.is-active .desk-stat-value { color: #ffffff !important; }
+.desk-stat-pill.is-active .desk-stat-label { color: rgba(255,255,255,0.85) !important; opacity: 1 !important; }
+
+/* ── Per-stage gradient colors ── */
+.desk-stat-pill[data-stage="total"]              { background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%) !important; box-shadow: 0 4px 16px rgba(59, 130, 246, 0.38) !important; }
+.desk-stat-pill[data-stage="new"]                { background: linear-gradient(135deg, #0c4a6e 0%, #0ea5e9 100%) !important; box-shadow: 0 4px 16px rgba(14, 165, 233, 0.38) !important; }
+.desk-stat-pill[data-stage="needs_triage"]       { background: linear-gradient(135deg, #78350f 0%, #f59e0b 100%) !important; box-shadow: 0 4px 16px rgba(245, 158, 11, 0.38) !important; }
+.desk-stat-pill[data-stage="assigned"]           { background: linear-gradient(135deg, #4c1d95 0%, #8b5cf6 100%) !important; box-shadow: 0 4px 16px rgba(139, 92, 246, 0.38) !important; }
+.desk-stat-pill[data-stage="in_review"]          { background: linear-gradient(135deg, #312e81 0%, #6366f1 100%) !important; box-shadow: 0 4px 16px rgba(99, 102, 241, 0.38) !important; }
+.desk-stat-pill[data-stage="waiting_follow_up"]  { background: linear-gradient(135deg, #7c2d12 0%, #f97316 100%) !important; box-shadow: 0 4px 16px rgba(249, 115, 22, 0.38) !important; }
+.desk-stat-pill[data-stage="resolved"]           { background: linear-gradient(135deg, #14532d 0%, #22c55e 100%) !important; box-shadow: 0 4px 16px rgba(34, 197, 94, 0.38) !important; }
+.desk-stat-pill[data-stage="archived"]           { background: linear-gradient(135deg, #1f2937 0%, #6b7280 100%) !important; box-shadow: 0 4px 16px rgba(107, 114, 128, 0.30) !important; }
+.desk-stat-pill[data-stage="urgent"]             { background: linear-gradient(135deg, #7f1d1d 0%, #ef4444 100%) !important; box-shadow: 0 4px 16px rgba(239, 68, 68, 0.38) !important; }
+
+/* Hover strengthens the shadow per stage */
+.desk-stat-pill[data-stage="total"]:hover              { box-shadow: 0 8px 28px rgba(59, 130, 246, 0.48), 0 0 0 0 transparent !important; }
+.desk-stat-pill[data-stage="new"]:hover                { box-shadow: 0 8px 28px rgba(14, 165, 233, 0.48) !important; }
+.desk-stat-pill[data-stage="needs_triage"]:hover       { box-shadow: 0 8px 28px rgba(245, 158, 11, 0.48) !important; }
+.desk-stat-pill[data-stage="assigned"]:hover           { box-shadow: 0 8px 28px rgba(139, 92, 246, 0.48) !important; }
+.desk-stat-pill[data-stage="in_review"]:hover          { box-shadow: 0 8px 28px rgba(99, 102, 241, 0.48) !important; }
+.desk-stat-pill[data-stage="waiting_follow_up"]:hover  { box-shadow: 0 8px 28px rgba(249, 115, 22, 0.48) !important; }
+.desk-stat-pill[data-stage="resolved"]:hover           { box-shadow: 0 8px 28px rgba(34, 197, 94, 0.48) !important; }
+.desk-stat-pill[data-stage="archived"]:hover           { box-shadow: 0 8px 28px rgba(107, 114, 128, 0.42) !important; }
+.desk-stat-pill[data-stage="urgent"]:hover             { box-shadow: 0 8px 28px rgba(239, 68, 68, 0.48) !important; }
 
 /* ─────────────────────────────────────────────────────────────
    TOPBAR — elevated feel
@@ -4864,24 +4919,22 @@ a.exec-kpi:hover {
    KPI STRIP — "All" total pill + urgent indicator pill
    ───────────────────────────────────────────────────────────── */
 
-/* Total pill: same card, no special separator needed in grid layout */
+/* Total pill: gradient handled by data-stage="total" */
 .desk-stat-pill--total {
-  border-right: 1px solid var(--card-border) !important;
+  border-right: 1px solid transparent !important;
 }
 
-/* Urgent pill: non-clickable, accent-tinted card */
+/* Urgent pill: gradient handled by data-stage="urgent" */
 .desk-stat-pill--urgent {
   cursor: default !important;
   user-select: none;
-  background: color-mix(in oklab, var(--panel-secondary) 90%, color-mix(in oklab, var(--accent) 8%, transparent)) !important;
-  border-color: color-mix(in oklab, var(--accent) 22%, var(--card-border)) !important;
 }
 .desk-stat-pill--urgent .desk-stat-value,
 .desk-stat-value--urgent {
-  color: var(--accent) !important;
+  color: #ffffff !important;
 }
 .desk-stat-pill--urgent .desk-stat-label {
-  color: color-mix(in oklab, var(--accent) 80%, var(--text-secondary)) !important;
+  color: rgba(255, 255, 255, 0.75) !important;
   opacity: 1 !important;
 }
 

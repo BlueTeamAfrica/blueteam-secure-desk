@@ -48,6 +48,33 @@ import { exportSubmissionToOneDrive } from "@/app/_lib/integrations/onedrive/cli
 
 type SubmissionAuditAction = "save_reviewer_note";
 
+/** Returns a small SVG icon element for a given stage/stat key. Pure presentation. */
+function StatIcon({ stage }: { stage: string }) {
+  const props = { width: 18, height: 18, viewBox: "0 0 18 18", fill: "none", stroke: "currentColor", strokeWidth: 1.6, strokeLinecap: "round" as const, strokeLinejoin: "round" as const };
+  switch (stage) {
+    case "total":
+      return <svg {...props}><rect x="1.5" y="1.5" width="6" height="6" rx="1.5"/><rect x="10.5" y="1.5" width="6" height="6" rx="1.5"/><rect x="1.5" y="10.5" width="6" height="6" rx="1.5"/><rect x="10.5" y="10.5" width="6" height="6" rx="1.5"/></svg>;
+    case "new":
+      return <svg {...props}><path d="M10 1.5H4a1 1 0 0 0-1 1v13a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V6.5z"/><path d="M10 1.5v5h5"/></svg>;
+    case "needs_triage":
+      return <svg {...props}><path d="M2 3.5h14l-5.5 6.5V15l-3-1.5v-4z"/></svg>;
+    case "assigned":
+      return <svg {...props}><circle cx="9" cy="6" r="3.5"/><path d="M2 17c0-3.3 3.1-5.5 7-5.5s7 2.2 7 5.5"/></svg>;
+    case "in_review":
+      return <svg {...props}><path d="M1.5 9s3-5.5 7.5-5.5S16.5 9 16.5 9s-3 5.5-7.5 5.5S1.5 9 1.5 9z"/><circle cx="9" cy="9" r="2.5"/></svg>;
+    case "waiting_follow_up":
+      return <svg {...props}><circle cx="9" cy="9" r="7.5"/><path d="M9 5v4l3 2"/></svg>;
+    case "resolved":
+      return <svg {...props}><circle cx="9" cy="9" r="7.5"/><path d="M5.5 9l2.5 2.5 5-5"/></svg>;
+    case "archived":
+      return <svg {...props}><rect x="1.5" y="2.5" width="15" height="3.5" rx="1"/><path d="M3 6v9a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V6"/><path d="M6.5 10h5"/></svg>;
+    case "urgent":
+      return <svg {...props}><path d="M10.5 1.5 3.5 10H9l-1.5 6.5L14.5 8H9.5z"/></svg>;
+    default:
+      return <svg {...props}><circle cx="9" cy="9" r="7.5"/><path d="M9 6v3.5l2 2"/></svg>;
+  }
+}
+
 export type WorkspaceMemberRow = {
   uid: string;
   email: string | null;
@@ -937,11 +964,13 @@ export function SubmissionsList({
       {/* Compact stage-count strip — replaces the old hero + exec-overview blocks */}
       {managingEditorDesk ? (
         <nav className="desk-stats-strip" aria-label="Stage overview">
-          {/* All-cases pill — links to inbox, active when view === "inbox" */}
+          {/* All-cases pill */}
           <Link
             href={deskBasePath}
             className={`desk-stat-pill desk-stat-pill--total${view === "inbox" ? " is-active" : ""}`}
+            data-stage="total"
           >
+            <span className="desk-stat-icon" aria-hidden="true"><StatIcon stage="total" /></span>
             <span className="desk-stat-value">{totalActive}</span>
             <span className="desk-stat-label">{labels.inbox ?? "All"}</span>
           </Link>
@@ -954,7 +983,9 @@ export function SubmissionsList({
                 key={status}
                 href={href}
                 className={`desk-stat-pill${isActive ? " is-active" : ""}`}
+                data-stage={status}
               >
+                <span className="desk-stat-icon" aria-hidden="true"><StatIcon stage={status} /></span>
                 <span className="desk-stat-value">
                   {stageCounts[status as CaseStatus] ?? 0}
                 </span>
@@ -965,9 +996,10 @@ export function SubmissionsList({
             );
           })}
 
-          {/* Urgent KPI pill — display-only, red when non-zero */}
+          {/* Urgent KPI pill — display-only */}
           {urgentCount > 0 && (
-            <span className="desk-stat-pill desk-stat-pill--urgent" aria-label={`${urgentCount} urgent cases`}>
+            <span className="desk-stat-pill desk-stat-pill--urgent" data-stage="urgent" aria-label={`${urgentCount} urgent cases`}>
+              <span className="desk-stat-icon" aria-hidden="true"><StatIcon stage="urgent" /></span>
               <span className="desk-stat-value">{urgentCount}</span>
               <span className="desk-stat-label">Urgent</span>
             </span>

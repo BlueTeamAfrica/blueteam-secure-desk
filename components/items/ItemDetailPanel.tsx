@@ -1103,17 +1103,35 @@ export function ItemDetailPanel({
                       disabled={actionPending || assignBusy || workflowBusy}
                       onClick={() => {
                         setScaffoldMessage(null);
-                        setAssignPanelOpen(true);
+                        setAssignPanelOpen(!assignPanelOpen);
                       }}
                     >
-                      {managingEditorDesk
-                        ? (action.setLead ?? "Set lead")
-                        : (action.assign ?? "Assign")}
+                      {assignPanelOpen
+                        ? "Cancel"
+                        : managingEditorDesk
+                          ? (action.setLead ?? "Set lead")
+                          : (action.assign ?? "Assign")}
                     </button>
                   ) : null}
                 </div>
               </div>
             ) : null}
+
+            {/* Assignment panel — opens inline directly below the Assign button */}
+            <ItemAssignmentPanel
+              open={assignPanelOpen && showAssign}
+              managingEditorDesk={managingEditorDesk}
+              role={role}
+              membersLoading={membersLoading}
+              membersError={membersError}
+              workspaceMembers={workspaceMembers}
+              assigneeUidDraft={assigneeUidDraft}
+              assignBusy={assignBusy}
+              assignError={assignError}
+              onChangeAssigneeUid={setAssigneeUidDraft}
+              onConfirm={onConfirmAssignOwner}
+              onCancel={() => setAssignPanelOpen(false)}
+            />
             {showResolveArchive ? (
               <div className="detail-action-group">
                 <div className="action-row">
@@ -1231,23 +1249,6 @@ export function ItemDetailPanel({
               Resolve and archive update case status in Firestore. Priority changes are not wired yet.
             </p>
           ) : null}
-
-          <ItemAssignmentPanel
-            open={assignPanelOpen && showAssign}
-            managingEditorDesk={managingEditorDesk}
-            role={role}
-            membersLoading={membersLoading}
-            membersError={membersError}
-            workspaceMembers={workspaceMembers}
-            assigneeUidDraft={assigneeUidDraft}
-            assignBusy={assignBusy}
-            assignError={assignError}
-            onChangeAssigneeUid={setAssigneeUidDraft}
-            onConfirm={onConfirmAssignOwner}
-            onCancel={() => {
-              setAssignPanelOpen(false);
-            }}
-          />
 
           <div className="action-row detail-read-actions-save">
             <button
