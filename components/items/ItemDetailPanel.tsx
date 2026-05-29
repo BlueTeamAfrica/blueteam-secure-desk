@@ -205,6 +205,11 @@ export function ItemDetailPanel({
   exportOneDriveBusy,
   exportOneDriveError,
   onExportOneDrive,
+  showRefreshOneDrive,
+  refreshOneDriveBusy,
+  refreshOneDriveError,
+  refreshOneDriveDone,
+  onRefreshOneDrive,
   showStatusPicker,
   allowedStatusTargets,
   workflowStatusDraft,
@@ -265,6 +270,11 @@ export function ItemDetailPanel({
   exportOneDriveBusy: boolean;
   exportOneDriveError: string | null;
   onExportOneDrive: () => void;
+  showRefreshOneDrive: boolean;
+  refreshOneDriveBusy: boolean;
+  refreshOneDriveError: string | null;
+  refreshOneDriveDone: boolean;
+  onRefreshOneDrive: () => void;
   showStatusPicker: boolean;
   allowedStatusTargets: CaseStatus[];
   workflowStatusDraft: CaseStatus | null;
@@ -1170,10 +1180,24 @@ export function ItemDetailPanel({
                     <button
                       type="button"
                       className="btn"
-                      disabled={exportOneDriveBusy || exportDocxBusy || actionPending || assignBusy || workflowBusy}
+                      disabled={exportOneDriveBusy || refreshOneDriveBusy || exportDocxBusy || actionPending || assignBusy || workflowBusy}
                       onClick={onExportOneDrive}
                     >
                       {exportOneDriveBusy ? "Sending…" : "Export \u2192 Send to OneDrive"}
+                    </button>
+                  ) : null}
+                  {showRefreshOneDrive ? (
+                    <button
+                      type="button"
+                      className="btn btn-secondary"
+                      disabled={refreshOneDriveBusy || exportOneDriveBusy || exportDocxBusy || actionPending || assignBusy || workflowBusy}
+                      onClick={onRefreshOneDrive}
+                    >
+                      {refreshOneDriveBusy
+                        ? "Refreshing…"
+                        : refreshOneDriveDone
+                          ? "\u2713 Refreshed"
+                          : "Refresh OneDrive export"}
                     </button>
                   ) : null}
                 </div>
@@ -1194,6 +1218,11 @@ export function ItemDetailPanel({
           {showExportOneDrive && exportOneDriveError ? (
             <div className="alert alert-danger" role="alert" style={{ marginTop: 12 }}>
               {exportOneDriveError}
+            </div>
+          ) : null}
+          {showRefreshOneDrive && refreshOneDriveError ? (
+            <div className="alert alert-danger" role="alert" style={{ marginTop: 12 }}>
+              {refreshOneDriveError}
             </div>
           ) : null}
 

@@ -93,6 +93,9 @@ export function AssignmentsView() {
   const [exportDocxError, setExportDocxError] = useState<string | null>(null);
   const [exportOneDriveBusy, setExportOneDriveBusy] = useState(false);
   const [exportOneDriveError, setExportOneDriveError] = useState<string | null>(null);
+  const [refreshOneDriveBusy, setRefreshOneDriveBusy] = useState(false);
+  const [refreshOneDriveError, setRefreshOneDriveError] = useState<string | null>(null);
+  const [refreshOneDriveDone, setRefreshOneDriveDone] = useState(false);
   const setDeleteConfirmPanelOpen = useCallback((open: boolean) => {
     setDeleteConfirmOpen(open);
     if (open) setDeleteError(null);
@@ -516,6 +519,30 @@ export function AssignmentsView() {
     }
   }
 
+  async function refreshSelectedOneDriveDocx() {
+    if (!selectedId || !selected || !role || !userCtx) return;
+    if (!mayExportSubmissionDocx({ role, workspaceCase: selected, ctx: userCtx })) return;
+    setRefreshOneDriveBusy(true);
+    setRefreshOneDriveError(null);
+    setRefreshOneDriveDone(false);
+    try {
+      const user = getFirebaseAuth().currentUser;
+      if (!user) { setRefreshOneDriveError("Please sign in again."); return; }
+      const token = await user.getIdToken(true);
+      const res = await fetch(
+        `/api/admin/submissions/${encodeURIComponent(selected.id)}/refresh-onedrive-docx`,
+        { method: "POST", headers: { Authorization: `Bearer ${token}` } },
+      );
+      const data = await res.json().catch(() => null);
+      if (!res.ok) { setRefreshOneDriveError(data?.error ?? "Refresh failed."); return; }
+      setRefreshOneDriveDone(true);
+    } catch {
+      setRefreshOneDriveError("Network error during refresh.");
+    } finally {
+      setRefreshOneDriveBusy(false);
+    }
+  }
+
   async function runActionSaveNote() {
     setActionError(null);
     setActionPending(true);
@@ -659,6 +686,11 @@ export function AssignmentsView() {
           exportOneDriveBusy={exportOneDriveBusy}
           exportOneDriveError={exportOneDriveError}
           onExportOneDrive={() => void exportSelectedToOneDrive()}
+          showRefreshOneDrive={showExportOneDrive && !!selected?.onedriveItemId}
+          refreshOneDriveBusy={refreshOneDriveBusy}
+          refreshOneDriveError={refreshOneDriveError}
+          refreshOneDriveDone={refreshOneDriveDone}
+          onRefreshOneDrive={() => void refreshSelectedOneDriveDocx()}
           showStatusPicker={showStatusPicker}
           allowedStatusTargets={allowedStatusTargets}
           workflowStatusDraft={workflowStatusDraft}

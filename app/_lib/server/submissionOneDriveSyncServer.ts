@@ -276,6 +276,54 @@ export async function pushSubmissionToOneDrive(
 }
 
 /**
+ * Refresh the metadata DOCX for a submission that is already on OneDrive.
+ *
+ * Regenerates the DOCX with current submission data and overwrites it in the
+ * existing subfolder. Attachments are not touched (they don't change). If the
+ * submission hasn't been exported yet, falls back to a full push.
+ *
+ * Use this when dashboard content changes (notes, priority, assignee) and
+ * the editor wants the OneDrive DOCX to reflect those changes without a
+ * stage change or full re-export.
+ */
+export async function refreshSubmissionDocxInOneDrive(
+  submissionId: string,
+): Promise<OneDriveSyncResult> {
+  if (!isOneDriveEnabled()) {
+    return { ok: false, reason: "OneDrive integration is not enabled for this workspace." };
+  }
+
+  const accessToken = await getValidWorkspaceAccessToken();
+  if (!accessToken) {
+    return { ok: false, reason: "OneDrive is not connected." };
+  }
+
+  const workspaceCase = await loadWorkspaceCaseForSubmission(submissionId);
+  if (!workspaceCase) {
+    return { ok: false, reason: "Submission not found." };
+  }
+
+  const { onedriveItemId, onedriveFilename } = workspaceCase;
+
+  // No existing export — fall back to a full push.
+  if (!onedriveItemId || !onedriveFilename) {
+    return pushSubmissionToOneDrive(submissionId);
+  }
+
+  try {
+    await refreshDocxInFolder({
+      accessToken,
+      submissionId,
+      status: workspaceCase.status,
+      folderName: onedriveFilename,
+    });
+    return { ok: true, action: "uploaded", webUrl: workspaceCase.onedriveWebUrl };
+  } catch (e) {
+    return { ok: false, reason: e instanceof Error ? e.message : "DOCX refresh failed." };
+  }
+}
+
+/**
  * Move a submission's OneDrive file to the folder corresponding to `toStatus`.
  *
  * - If no `onedriveItemId` exists, falls back to a fresh upload.
