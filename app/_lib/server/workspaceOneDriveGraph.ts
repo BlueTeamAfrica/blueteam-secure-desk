@@ -137,15 +137,11 @@ export async function graphMoveItemToFolder(args: {
   /** Keep the current filename (must be provided to avoid a rename). */
   filename: string;
 }): Promise<GraphFileItem> {
-  // Resolve destination folder ID first.
-  const folder = await graphGetItemByPath({
+  // Resolve destination folder ID — create it if it doesn't exist yet.
+  const folder = await graphEnsureFolder({
     accessToken: args.accessToken,
-    drivePath: args.newFolderPath,
+    folderPath: args.newFolderPath,
   });
-
-  if (!folder) {
-    throw new Error(`OneDrive destination folder not found: "${args.newFolderPath}"`);
-  }
 
   const url = `${GRAPH_BASE}/me/drive/items/${encodeURIComponent(args.itemId)}`;
 
@@ -178,8 +174,73 @@ export async function graphMoveItemToFolder(args: {
 }
 
 /**
+ * Ensure a folder exists at `folderPath` in /me/drive, creating it (and any
+ * missing parent folders) if it doesn't. Returns the folder item.
+ *
+ * Uses GET-first, then POST-to-create if 404. If two callers race and both
+ * hit 409 on the POST, a second GET is attempted as a fallback.
+ */
+export async function graphEnsureFolder(args: {
+  accessToken: string;
+  /** Drive-relative folder path, e.g. "SecureDesk-Test/raw" */
+  folderPath: string;
+}): Promise<GraphFileItem> {
+  // Fast path — folder already exists.
+  const existing = await graphGetItemByPath({ accessToken: args.accessToken, drivePath: args.folderPath });
+  if (existing) return existing;
+
+  // Split into parent path + folder name.
+  const lastSlash = args.folderPath.lastIndexOf("/");
+  const parentPath = lastSlash >= 0 ? args.folderPath.slice(0, lastSlash) : "";
+  const folderName = lastSlash >= 0 ? args.folderPath.slice(lastSlash + 1) : args.folderPath;
+
+  // Ensure parent exists recursively (noop when parentPath is empty = drive root).
+  if (parentPath) {
+    await graphEnsureFolder({ accessToken: args.accessToken, folderPath: parentPath });
+  }
+
+  const createUrl = parentPath
+    ? `${GRAPH_BASE}/me/drive/root:/${encodeDrivePath(parentPath)}:/children`
+    : `${GRAPH_BASE}/me/drive/root/children`;
+
+  const res = await fetch(createUrl, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${args.accessToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      name: folderName,
+      folder: {},
+      "@microsoft.graph.conflictBehavior": "fail",
+    }),
+  });
+
+  // 409 = already exists (race condition) — GET it.
+  if (res.status === 409) {
+    const retry = await graphGetItemByPath({ accessToken: args.accessToken, drivePath: args.folderPath });
+    if (retry) return retry;
+    throw new Error(`OneDrive folder creation conflict but folder not found: "${args.folderPath}"`);
+  }
+
+  const json = await parseGraphJson(res);
+  if (!res.ok) {
+    const msg = extractGraphError(json) ?? `OneDrive folder creation failed (HTTP ${res.status}).`;
+    throw new Error(msg);
+  }
+
+  const item = json as Record<string, unknown>;
+  return {
+    id: typeof item.id === "string" ? item.id : "",
+    name: typeof item.name === "string" ? item.name : folderName,
+    webUrl: typeof item.webUrl === "string" ? item.webUrl : null,
+  };
+}
+
+/**
  * List immediate children (files only — no sub-folders) of a folder path.
  * Returns an empty array if the folder doesn't exist or is empty.
+ * Follows @odata.nextLink to return all pages (Graph API caps at 200/page by default).
  */
 export async function graphListFolderChildren(args: {
   accessToken: string;
@@ -187,33 +248,43 @@ export async function graphListFolderChildren(args: {
   folderPath: string;
 }): Promise<GraphFileItem[]> {
   const encoded = encodeDrivePath(args.folderPath);
-  const url = `${GRAPH_BASE}/me/drive/root:/${encoded}:/children?$select=id,name,webUrl,file`;
-
-  const res = await fetch(url, {
-    headers: { Authorization: `Bearer ${args.accessToken}` },
-  });
-
-  if (res.status === 404) return [];
-
-  const json = await parseGraphJson(res);
-  if (!res.ok) return [];
-
-  const value = (json as Record<string, unknown>)?.value;
-  if (!Array.isArray(value)) return [];
-
   const results: GraphFileItem[] = [];
 
-  for (const raw of value) {
-    if (typeof raw !== "object" || raw === null) continue;
-    const it = raw as Record<string, unknown>;
-    // Only include actual files (items that have the "file" facet).
-    if (!it.file) continue;
-    if (typeof it.id !== "string") continue;
-    results.push({
-      id: it.id,
-      name: typeof it.name === "string" ? it.name : "",
-      webUrl: typeof it.webUrl === "string" ? it.webUrl : null,
+  // Request 500 items per page (Graph API max).
+  let nextUrl: string | null =
+    `${GRAPH_BASE}/me/drive/root:/${encoded}:/children?$select=id,name,webUrl,file&$top=500`;
+
+  while (nextUrl) {
+    const res = await fetch(nextUrl, {
+      headers: { Authorization: `Bearer ${args.accessToken}` },
     });
+
+    if (res.status === 404) return results;
+
+    const json = await parseGraphJson(res);
+    if (!res.ok) return results;
+
+    const page = json as Record<string, unknown>;
+    const value = page?.value;
+
+    if (Array.isArray(value)) {
+      for (const raw of value) {
+        if (typeof raw !== "object" || raw === null) continue;
+        const it = raw as Record<string, unknown>;
+        // Only include actual files (items that have the "file" facet).
+        if (!it.file) continue;
+        if (typeof it.id !== "string") continue;
+        results.push({
+          id: it.id,
+          name: typeof it.name === "string" ? it.name : "",
+          webUrl: typeof it.webUrl === "string" ? it.webUrl : null,
+        });
+      }
+    }
+
+    // Follow the next page link if present.
+    const link = page?.["@odata.nextLink"];
+    nextUrl = typeof link === "string" ? link : null;
   }
 
   return results;

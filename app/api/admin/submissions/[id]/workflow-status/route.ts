@@ -120,13 +120,22 @@ export async function POST(request: NextRequest, context: RouteParams) {
 
     // Mirror the stage change in OneDrive (move existing file, or upload fresh).
     // Failures here must never block the workflow response — OneDrive is auxiliary.
+    let onedrive: { synced: boolean; action?: string; error?: string } = { synced: false };
     try {
-      await moveSubmissionToStageInOneDrive(id, target);
+      const syncResult = await moveSubmissionToStageInOneDrive(id, target);
+      if (syncResult.ok) {
+        onedrive = { synced: true, action: syncResult.action };
+      } else {
+        onedrive = { synced: false, error: syncResult.reason };
+        console.error("[OneDrive sync]", syncResult.reason);
+      }
     } catch (e) {
-      console.error("[OneDrive sync]", e instanceof Error ? e.message : String(e));
+      const msg = e instanceof Error ? e.message : String(e);
+      onedrive = { synced: false, error: msg };
+      console.error("[OneDrive sync]", msg);
     }
 
-    return NextResponse.json({ ok: true });
+    return NextResponse.json({ ok: true, onedrive });
   } catch {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
