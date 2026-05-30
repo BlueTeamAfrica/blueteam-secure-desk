@@ -87,12 +87,16 @@ export type WorkspaceCase = {
   /** Original workflow / channel field. */
   workflowStatus: string | null;
   attachments: SubmissionAttachment[];
-  /** OneDrive Graph API item ID for the exported DOCX (null = not yet synced). */
+  /** OneDrive Graph API item ID of the submission subfolder (null = not yet synced). */
   onedriveItemId: string | null;
-  /** OneDrive web URL for the exported file (null = not yet synced). */
+  /** OneDrive web URL for the subfolder (null = not yet synced). */
   onedriveWebUrl: string | null;
-  /** Filename used in OneDrive (needed for move operations). */
+  /** Subfolder name in OneDrive — used as the identity key for moves. */
   onedriveFilename: string | null;
+  /** Exact filename of the metadata DOCX inside the subfolder.
+   *  Stored on first upload so refresh always overwrites the same file,
+   *  regardless of title/date changes in the naming logic. */
+  onedriveDocxFilename: string | null;
   raw: DocumentData;
 };
 
@@ -440,6 +444,7 @@ export function normalizeSubmissionToCase(id: string, data: DocumentData): Works
     onedriveItemId: str(data.onedriveItemId),
     onedriveWebUrl: str(data.onedriveWebUrl),
     onedriveFilename: str(data.onedriveFilename),
+    onedriveDocxFilename: str(data.onedriveDocxFilename),
     raw: data,
   };
 }

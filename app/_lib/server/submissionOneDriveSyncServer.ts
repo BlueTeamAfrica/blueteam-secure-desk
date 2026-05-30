@@ -132,8 +132,7 @@ async function refreshDocxInFolder(args: {
   status: CaseStatus;
   folderName: string;
 }): Promise<void> {
-  // Legacy DOCX-style exports (onedriveFilename ends with .docx) don't have
-  // a subfolder — skip regeneration for those.
+  // Legacy DOCX-style exports (onedriveFilename ends with .docx) have no subfolder.
   if (args.folderName.toLowerCase().endsWith(".docx")) return;
 
   const workspaceCase = await loadWorkspaceCaseForSubmission(args.submissionId);
@@ -150,7 +149,15 @@ async function refreshDocxInFolder(args: {
 
   const display = getSubmissionDisplay({ submission: workspaceCase, decryptedFiling });
   const item = mapSubmissionToItem({ submission: workspaceCase, decryptedFiling });
-  const docxFilename = buildExportDocxFilename(display) || asciiFallbackExportFilename(display);
+
+  // Use the stored DOCX filename so we always overwrite the same file.
+  // Recomputing with buildExportDocxFilename would produce a different name if
+  // the title or date changed, creating a second file instead of updating the first.
+  const docxFilename =
+    workspaceCase.onedriveDocxFilename ||
+    buildExportDocxFilename(display) ||
+    asciiFallbackExportFilename(display);
+
   const folderPath = buildSubmissionFolderPath(args.status, args.folderName);
 
   const buffer = await buildSubmissionDocxBuffer({
@@ -167,7 +174,6 @@ async function refreshDocxInFolder(args: {
     mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
   });
 
-  // Stamp last-synced so callers can detect freshness.
   await getAdminFirestore()
     .collection("submissions")
     .doc(args.submissionId)
@@ -261,14 +267,15 @@ export async function pushSubmissionToOneDrive(
 
   await uploadAttachmentsToFolder({ accessToken, folderPath, attachments });
 
-  // ── Persist subfolder ID to Firestore so future moves track the whole folder ──
+  // ── Persist subfolder ID + DOCX filename to Firestore ───────────────────────
   await getAdminFirestore()
     .collection("submissions")
     .doc(submissionId)
     .update({
-      onedriveItemId: folder.id,        // tracks the subfolder, not just the DOCX
+      onedriveItemId: folder.id,
       onedriveWebUrl: folder.webUrl ?? null,
-      onedriveFilename: folderName,     // subfolder name = stable case reference
+      onedriveFilename: folderName,
+      onedriveDocxFilename: docxFilename,   // exact filename, read back on every refresh
       onedriveLastSyncedAt: FieldValue.serverTimestamp(),
     });
 
@@ -396,6 +403,7 @@ export async function moveSubmissionToStageInOneDrive(
         onedriveItemId: folder.id,
         onedriveWebUrl: folder.webUrl ?? null,
         onedriveFilename: folderName,
+        onedriveDocxFilename: docxFilename,
         onedriveLastSyncedAt: FieldValue.serverTimestamp(),
       });
 
