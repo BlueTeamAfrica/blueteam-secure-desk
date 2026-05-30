@@ -118,6 +118,36 @@ export async function graphGetItemByPath(args: {
 }
 
 /**
+ * Fetch item metadata by Graph item ID.
+ * Returns null if the item no longer exists (deleted) or on error.
+ * Used to distinguish "deleted from OneDrive" from "moved to an untracked folder".
+ */
+export async function graphGetItemById(args: {
+  accessToken: string;
+  itemId: string;
+}): Promise<GraphFileItem | null> {
+  const url = `${GRAPH_BASE}/me/drive/items/${encodeURIComponent(args.itemId)}`;
+
+  const res = await fetch(url, {
+    headers: { Authorization: `Bearer ${args.accessToken}` },
+  });
+
+  if (res.status === 404) return null;
+
+  const json = await parseGraphJson(res);
+  if (!res.ok) return null; // treat unexpected errors as "not found" — non-fatal
+
+  const item = json as Record<string, unknown>;
+  if (typeof item.id !== "string") return null;
+
+  return {
+    id: item.id,
+    name: typeof item.name === "string" ? item.name : "",
+    webUrl: typeof item.webUrl === "string" ? item.webUrl : null,
+  };
+}
+
+/**
  * Move an item to a new parent folder and optionally rename it.
  * Requires the destination folder to exist.
  *

@@ -20,6 +20,7 @@ import { getSupabaseAdmin } from "@/app/_lib/server/supabaseAdmin";
 import { getValidWorkspaceAccessToken } from "@/app/_lib/server/workspaceOneDriveToken";
 import {
   graphEnsureFolder,
+  graphGetItemById,
   graphListFolderChildren,
   graphMoveItemToFolder,
   graphUploadFile,
@@ -570,7 +571,31 @@ export async function pullSyncFromOneDrive(): Promise<{
       }
     }
 
-    if (!matchedStatus) continue; // File not found in any stage folder.
+    if (!matchedStatus) {
+      // Item not found in any stage folder.
+      // Verify whether it was deleted from OneDrive or just moved to an untracked location.
+      // Only act when we have an item ID to check.
+      if (storedItemId) {
+        try {
+          const stillExists = await graphGetItemById({ accessToken, itemId: storedItemId });
+          if (!stillExists) {
+            // Item deleted from OneDrive — clear tracking so the submission
+            // shows as "not yet synced" and can be re-exported.
+            await db.collection("submissions").doc(doc.id).update({
+              onedriveItemId: null,
+              onedriveFilename: null,
+              onedriveDocxFilename: null,
+              onedriveWebUrl: null,
+              onedrivePullSyncedAt: FieldValue.serverTimestamp(),
+            });
+            checked++;
+            updated++;
+          }
+          // If stillExists, item was moved outside tracked folders — do nothing.
+        } catch { /* non-fatal */ }
+      }
+      continue;
+    }
 
     const currentStatus = (typeof data.caseStatus === "string" ? data.caseStatus : null) as CaseStatus | null;
     const stageChanged = currentStatus !== matchedStatus;
