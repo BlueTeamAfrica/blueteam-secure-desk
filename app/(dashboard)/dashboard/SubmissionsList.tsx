@@ -521,6 +521,17 @@ export function SubmissionsList({
         setWorkflowError(msg);
         return;
       }
+      // Stage updated — check if OneDrive sync also succeeded.
+      if (
+        typeof body === "object" &&
+        body !== null &&
+        "onedrive" in body
+      ) {
+        const od = (body as { onedrive: { synced?: boolean; error?: string } }).onedrive;
+        if (!od.synced && od.error) {
+          setWorkflowError(`Stage updated, but OneDrive sync failed: ${od.error}`);
+        }
+      }
     } catch {
       setWorkflowError("Network error while updating status.");
     } finally {
