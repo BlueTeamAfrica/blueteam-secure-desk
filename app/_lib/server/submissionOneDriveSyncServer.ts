@@ -20,7 +20,6 @@ import { getSupabaseAdmin } from "@/app/_lib/server/supabaseAdmin";
 import { getValidWorkspaceAccessToken } from "@/app/_lib/server/workspaceOneDriveToken";
 import {
   graphEnsureFolder,
-  graphGetItemById,
   graphListFolderChildren,
   graphMoveItemToFolder,
   graphUploadFile,
@@ -573,25 +572,25 @@ export async function pullSyncFromOneDrive(): Promise<{
 
     if (!matchedStatus) {
       // Item not found in any stage folder.
-      // Verify whether it was deleted from OneDrive or just moved to an untracked location.
-      // Only act when we have an item ID to check.
-      if (storedItemId) {
+      //
+      // Only clear tracking when ALL stage folders were scanned without errors.
+      // If any folder scan failed (errors.length > 0), the item might be in a
+      // folder we couldn't read — don't clear in that case.
+      //
+      // We do NOT verify by Graph item ID because deleted items go to the OneDrive
+      // Recycle Bin first and remain accessible by ID (200 OK, not 404). The only
+      // reliable signal is absence from the live stage folders we just scanned.
+      if (storedItemId && errors.length === 0) {
         try {
-          const stillExists = await graphGetItemById({ accessToken, itemId: storedItemId });
-          if (!stillExists) {
-            // Item deleted from OneDrive — clear tracking so the submission
-            // shows as "not yet synced" and can be re-exported.
-            await db.collection("submissions").doc(doc.id).update({
-              onedriveItemId: null,
-              onedriveFilename: null,
-              onedriveDocxFilename: null,
-              onedriveWebUrl: null,
-              onedrivePullSyncedAt: FieldValue.serverTimestamp(),
-            });
-            checked++;
-            updated++;
-          }
-          // If stillExists, item was moved outside tracked folders — do nothing.
+          await db.collection("submissions").doc(doc.id).update({
+            onedriveItemId: null,
+            onedriveFilename: null,
+            onedriveDocxFilename: null,
+            onedriveWebUrl: null,
+            onedrivePullSyncedAt: FieldValue.serverTimestamp(),
+          });
+          checked++;
+          updated++;
         } catch { /* non-fatal */ }
       }
       continue;
