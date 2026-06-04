@@ -64,15 +64,27 @@ function buildSubmissionFolderPath(status: CaseStatus, folderName: string): stri
 
 /**
  * Derive the OneDrive subfolder name for a submission.
- * Uses the case reference code as the primary name (always available without
- * decryption), falling back to `case-{last6chars}` if no reference exists.
+ *
+ * Priority:
+ *  1. Decrypted report title (server-side decrypt, most descriptive)
+ *  2. Case reference code (always available without decryption)
+ *  3. `case-{last6chars}` fallback
  */
-function buildFolderName(
+async function buildFolderName(
+  submissionId: string,
   display: ReturnType<typeof getSubmissionDisplay>,
-  caseId: string,
-): string {
+  encryptedPayload?: string | null,
+): Promise<string> {
+  if (encryptedPayload?.trim()) {
+    try {
+      const json = decryptEncryptedPayloadFieldToJson(encryptedPayload);
+      const filing = extractDecryptedFiling(json);
+      const title = filing?.title?.trim();
+      if (title) return safeExportName(title, { maxLen: 60 });
+    } catch { /* fall through to ref fallback */ }
+  }
   const ref = display.displayRef?.trim();
-  return ref && ref.length > 0 ? ref : `case-${caseId.slice(-6)}`;
+  return ref && ref.length > 0 ? ref : `case-${submissionId.slice(-6)}`;
 }
 
 /**
@@ -254,7 +266,7 @@ export async function pushSubmissionToOneDrive(
   const item = mapSubmissionToItem({ submission: workspaceCase, decryptedFiling });
 
   // ── Subfolder ────────────────────────────────────────────────────────────────
-  const folderName = buildFolderName(display, submissionId);
+  const folderName = await buildFolderName(submissionId, display, workspaceCase.encryptedPayload);
   const folderPath = buildSubmissionFolderPath(workspaceCase.status, folderName);
   const folder = await graphEnsureFolder({ accessToken, folderPath });
 
@@ -408,7 +420,7 @@ export async function moveSubmissionToStageInOneDrive(
     const display = getSubmissionDisplay({ submission: workspaceCase, decryptedFiling });
     const item = mapSubmissionToItem({ submission: workspaceCase, decryptedFiling });
 
-    const folderName = buildFolderName(display, submissionId);
+    const folderName = await buildFolderName(submissionId, display, workspaceCase.encryptedPayload);
     const folderPath = buildSubmissionFolderPath(toStatus, folderName);
     const folder = await graphEnsureFolder({ accessToken, folderPath });
 
