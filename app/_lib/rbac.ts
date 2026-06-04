@@ -286,11 +286,11 @@ export function allowedCaseStatusTargets(
   if (role === "admin") return all;
   // Editor: can move through editorial stages but cannot publish/archive.
   if (role === "reviewer") {
-    return ["new", "needs_triage", "assigned", "waiting_follow_up"] as CaseStatus[];
+    return ["incoming", "raw", "first_edit", "in_review"] as CaseStatus[];
   }
   // Proofreader: can set proof-related stages only.
   if (role === "intake") {
-    return ["in_review", "waiting_follow_up"] as CaseStatus[];
+    return ["second_edit", "in_review"] as CaseStatus[];
   }
   return [];
 }

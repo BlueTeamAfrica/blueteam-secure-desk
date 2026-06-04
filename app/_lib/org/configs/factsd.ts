@@ -27,7 +27,7 @@ const labels: WorkspaceCoreLabels = {
   itemSingular: "report",
   itemPlural: "reports",
   inbox: "Inbox",
-  assignments: "Assigned",
+  assignments: "first edit",
   myQueue: "Your queue",
   analytics: "Analytics",
   settings: "Settings",
@@ -36,14 +36,14 @@ const labels: WorkspaceCoreLabels = {
   managingEditorDeskSubline:
     "Command center for the room — leads, stages, and filings in one sweep.",
   runSheet: "Run sheet",
-  activeReports: "Inbox",
-  new: "Received",
-  needsTriage: "Raw",
-  withLead: "First Editing",
-  inReview: "Second Editing",
-  awaitingFollowUp: "In Review",
-  resolved: "Reviewed",
-  archive: "Designed",
+  activeReports: "incoming",
+  new: "incoming",
+  needsTriage: "raw",
+  withLead: "first edit",
+  inReview: "second edit",
+  awaitingFollowUp: "in_review",
+  resolved: "reviewed",
+  archive: "designed",
   noLeadYet: "No lead yet",
   needsALead: "Needs a lead",
   resolvedToday: "Reviewed today",
@@ -57,13 +57,13 @@ const labels: WorkspaceCoreLabels = {
     readonly: "Viewer",
   },
   caseStatusLabels: {
-    new: "Received",
-    needs_triage: "Raw",
-    assigned: "First Editing",
-    in_review: "Second Editing",
-    waiting_follow_up: "In Review",
-    resolved: "Reviewed",
-    archived: "Designed",
+    incoming: "incoming",
+    raw: "raw",
+    first_edit: "first edit",
+    second_edit: "second edit",
+    in_review: "in_review",
+    reviewed: "reviewed",
+    designed: "designed",
   },
 };
 
@@ -167,27 +167,27 @@ const exportDocxLabels = {
 } satisfies import("@/app/_lib/org/types").WorkspaceExportDocxLabels;
 
 const hdrRawMaterials: EditorDeskHeaderPair = {
-  title: "Received",
+  title: "incoming",
   subtitle: "New incoming submissions waiting to be routed.",
 };
 
 const hdrFirstEditing: EditorDeskHeaderPair = {
-  title: "Raw",
+  title: "raw",
   subtitle: "New material waiting for first editing.",
 };
 
 const hdrYourQueue: EditorDeskHeaderPair = {
-  title: "First Editing",
+  title: "first edit",
   subtitle: "Stories currently in the first editorial pass.",
 };
 
 const hdrProofreading: EditorDeskHeaderPair = {
-  title: "Second Editing",
+  title: "second edit",
   subtitle: "Stories in the second editorial pass.",
 };
 
 const hdrDesigned: EditorDeskHeaderPair = {
-  title: "In Review",
+  title: "in_review",
   subtitle: "Stories under review before final sign-off.",
 };
 
@@ -285,7 +285,7 @@ const board: WorkspaceBoardCopy = {
     "Your list only shows submissions where you are the lead. If you expected work here, ask the desk to confirm the assignment — they may still be routing it.",
   intakeEmptyTitle: "Nothing in triage",
   intakeEmptyBeforeStates: "Intake only sees reports in ",
-  intakeEmptyStateNewLabel: "Received",
+  intakeEmptyStateNewLabel: "incoming",
   intakeEmptyOrWord: " or ",
   intakeEmptyStateTriageLabel: "Raw",
   intakeEmptyAfterStates: ". When submissions arrive in those states, they will appear here.",
@@ -311,9 +311,8 @@ export const factsdWorkspaceConfig: WorkspaceConfig = {
   theme: "light",
   labels,
   workflow: {
-    stageOrder: ["new", "needs_triage", "assigned", "in_review", "waiting_follow_up", "resolved", "archived"],
+    stageOrder: ["incoming", "raw", "first_edit", "second_edit", "in_review", "reviewed", "designed"],
     sidebarStageViews: [
-      { key: "inbox", href: "/dashboard" },
       { key: "needs_lead", href: "/dashboard?view=needs_lead" },
       { key: "assigned_work", href: "/dashboard?view=assigned_work" },
       { key: "new", href: "/dashboard?view=raw" },
@@ -326,15 +325,15 @@ export const factsdWorkspaceConfig: WorkspaceConfig = {
       { key: "team", href: "/dashboard?view=team" },
       { key: "analytics", href: "/dashboard?view=analytics" },
     ],
-    mePipelineStages: ["new", "needs_triage", "assigned", "in_review", "waiting_follow_up"],
+    mePipelineStages: ["incoming", "raw", "first_edit", "second_edit", "in_review"],
     viewKeyByStatus: {
-      new: "new",
-      needs_triage: "needs_triage",
-      assigned: "assigned",
-      in_review: "in_review",
-      waiting_follow_up: "waiting_follow_up",
-      resolved: "resolved",
-      archived: "archive",
+      incoming: "new",
+      raw: "needs_triage",
+      first_edit: "assigned",
+      second_edit: "in_review",
+      in_review: "waiting_follow_up",
+      reviewed: "resolved",
+      designed: "archive",
     },
   },
   integrations: {
@@ -346,13 +345,13 @@ export const factsdWorkspaceConfig: WorkspaceConfig = {
       enabled: true,
       rootFolderName: "SecureDesk-Test",
       stageFolderMap: {
-        new: "incoming",
-        needs_triage: "raw",
-        assigned: "first edit",
-        in_review: "second edit",
-        waiting_follow_up: "in_review",
-        resolved: "reviewed",
-        archived: "designed",
+        incoming: "incoming",
+        raw: "raw",
+        first_edit: "first edit",
+        second_edit: "second edit",
+        in_review: "in_review",
+        reviewed: "reviewed",
+        designed: "designed",
       },
     },
   },

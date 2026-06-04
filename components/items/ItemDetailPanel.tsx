@@ -69,7 +69,7 @@ function yyyyMmDdFromIso(iso: string | null): string {
 
 function isOverdue(selected: WorkspaceCase): boolean {
   if (!selected.dueDate) return false;
-  if (selected.status === "resolved" || selected.status === "archived") return false;
+  if (selected.status === "reviewed" || selected.status === "designed") return false;
   const d = new Date(selected.dueDate);
   if (Number.isNaN(d.getTime())) return false;
   return d.getTime() < Date.now();

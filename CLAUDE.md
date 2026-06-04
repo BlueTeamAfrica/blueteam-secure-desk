@@ -1,78 +1,135 @@
-# CLAUDE.md
+# Project: secure-reporter-dashboard
+## Purpose
+Next.js admin dashboard for managing secure reporter submissions. Admins review, decrypt, assign, and manage encrypted case submissions from the reporter mobile app. Multi-tenant workspace support (default: Sudan Facts / Atar `factsd`; also `demoNgo`).
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
-
-@AGENTS.md
+## Stack
+- Next.js (App Router)
+- Auth: Firebase Auth (admin accounts only) via `requireActiveAdmin` middleware
+- Database: Firestore
+- Storage: Supabase (signed attachment download URLs, server-only)
+- Encryption: AES-256-CBC decryption (server-only) — key must match reporter app
+- Hosting: Vercel
 
 ## Commands
-
 ```bash
 npm run dev          # generate editorial manifest, then start Next.js dev server
 npm run build        # generate editorial manifest, then production build
 npm run lint         # ESLint
 npm run seed:workspace-owner  # seed Firestore users/{uid} with role=owner for a given email
 ```
+No test runner — lint and build are primary verification steps.
 
-No test runner is configured. Lint and build serve as the primary verification steps.
+## Environment Variables
+Copy `.env.example` to `.env.local`. Required:
+```
+NEXT_PUBLIC_FIREBASE_*                  # Firebase web app config (client-safe)
+FIREBASE_SERVICE_ACCOUNT_BASE64         # Preferred: base64 of full service-account JSON (avoids PEM newline issues on Vercel)
+# If absent, fallback to legacy trio:
+FIREBASE_PROJECT_ID=
+FIREBASE_CLIENT_EMAIL=
+FIREBASE_PRIVATE_KEY=
 
-## Environment
+SUBMISSION_PAYLOAD_SECRET               # AES-256-CBC key — must match EXPO_PUBLIC_SUBMISSION_PAYLOAD_SECRET in reporter app
+SUPABASE_URL=                           # server-only
+SUPABASE_SERVICE_ROLE_KEY=              # server-only
+SUPABASE_BUCKET=                        # server-only
+NEXT_PUBLIC_WORKSPACE_CONFIG_ID=        # "demoNgo" for demo tenant; omit/blank for default "factsd" (Sudan Facts / Atar)
+```
 
-Copy `.env.example` to `.env.local` and fill in all values before running locally. Required variables:
+## Multi-Tenant Workspace Config
+- All copy, branding, workflow stages, and integration settings live in a `WorkspaceConfig` object
+- Selected at boot via `NEXT_PUBLIC_WORKSPACE_CONFIG_ID`
+- Two configs: `factsd` (default — Sudan Facts / Atar) and `demoNgo`
+- Selector: `app/_lib/org/getWorkspaceConfig.ts`
+- Adding a new tenant: create config in `app/_lib/org/configs/` and add branch to `getWorkspaceConfig`
 
-- `NEXT_PUBLIC_FIREBASE_*` — Firebase web app config (client-safe).
-- `FIREBASE_SERVICE_ACCOUNT_BASE64` — preferred credential for Firebase Admin SDK (base64 of full service-account JSON; avoids PEM newline issues on Vercel). If absent, the legacy trio `FIREBASE_PROJECT_ID` + `FIREBASE_CLIENT_EMAIL` + `FIREBASE_PRIVATE_KEY` is used instead.
-- `SUBMISSION_PAYLOAD_SECRET` — AES-256-CBC key shared with the reporter mobile app; must match `SUBMISSION_PAYLOAD_SECRET` on the intake side.
-- `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_BUCKET` — server-only; used for signed attachment download URLs.
-- `NEXT_PUBLIC_WORKSPACE_CONFIG_ID` — set to `demoNgo` to activate the demo tenant config; omit or leave blank for the default `factsd` (Sudan Facts / Atar) config.
+## Auth Flow
+`AuthContext` (`app/_components/auth/AuthContext.tsx`) manages full auth lifecycle:
+1. Firebase client SDK detects sign-in state
+2. Checks `adminUsers/{uid}.active === true` in Firestore — only active admins proceed
+3. Loads workspace role from `/api/me` (server-verified) with fallback to `users/{uid}` client Firestore read
+4. Resolves to: `loading` | `signedOut` | `signedInButUnauthorized` | `signedInNoRole` | `signedInWorkspace`
 
-## Architecture
+## API Route Authentication
+- `app/api/admin/*` — calls `requireActiveAdmin` (`app/_lib/server/adminApiAuth.ts`): verifies Firebase ID token via Admin SDK + checks `adminUsers/{uid}.active`
+- `app/api/workspace/*` — uses `userApiAuth`: token check only, no admin gate
 
-### Multi-tenant workspace config
+## RBAC
+`app/_lib/rbac.ts` defines five roles: `owner`, `admin`, `reviewer`, `intake`, `readonly`
+Permission helpers: `mayAssignInUi`, `canAssignCasesInWorkspace`, `allowedCaseStatusTargets`, etc.
+Both API routes and UI components import from here — keep permission logic centralized, never duplicate it.
 
-All copy, branding, workflow stages, and integration settings live in a single `WorkspaceConfig` object selected at boot time via `NEXT_PUBLIC_WORKSPACE_CONFIG_ID`. Two configs exist: `factsd` (default) and `demoNgo`. The selector is `app/_lib/org/getWorkspaceConfig.ts`. Adding a new tenant means creating a config file in `app/_lib/org/configs/` and adding a branch to `getWorkspaceConfig`.
+## Data Model
+`app/_lib/caseWorkspaceModel.ts` is the central domain model:
+- Defines `WorkspaceCase` (normalized case shape), `CaseStatus`, `PriorityLevel`
+- All normalization helpers: `normalizeSubmissionToCase`, `normalizeCaseStatus`, etc.
+- Firestore `submissions` docs are raw and may carry legacy field names — all normalization goes here, not in components
 
-### Data model
+## Firestore Collections
+- `submissions` — encrypted case documents. Status in `caseStatus` (preferred) or `processingStatus` (legacy)
+- `adminUsers/{uid}` — `{ active: true }` gates dashboard access
+- `users/{uid}` — workspace role document `{ role: WorkspaceRole }`
 
-`app/_lib/caseWorkspaceModel.ts` is the central domain model. It defines `WorkspaceCase` (the normalized case shape), `CaseStatus`, `PriorityLevel`, and all normalization helpers (`normalizeSubmissionToCase`, `normalizeCaseStatus`, etc.). Firestore documents from the `submissions` collection are raw and may carry legacy field names — all normalization goes here, not in components.
+## Payload Decryption
+- Server-only: `app/_lib/server/decryptEncryptedPayload.ts`
+- Key derived as `SHA256(secret)`, IV as `MD5("iv:" + secret)` — must match reporter app encryption scheme exactly
+- API route: `app/api/admin/submissions/[id]/decrypt/route.ts`
+- `SUBMISSION_PAYLOAD_SECRET` must match `EXPO_PUBLIC_SUBMISSION_PAYLOAD_SECRET` in reporter app — never change independently
 
-### Auth flow
+## Routing
+Two parallel routing trees:
+- `app/(dashboard)/` — main dashboard shell (sidebar + topbar + `CaseQueueProvider`)
+- `app/dashboard/` and `app/sudanfacts/` — tenant-specific route segments that re-export the shared layout
+- Root `app/page.tsx` redirects to `/dashboard`
+- Auth redirects handled client-side inside `app/(dashboard)/layout.tsx`
 
-`AuthContext` (`app/_components/auth/AuthContext.tsx`) manages the full auth lifecycle:
-1. Firebase client SDK detects sign-in state.
-2. Checks `adminUsers/{uid}.active === true` in Firestore — only active admin users proceed.
-3. Loads the user's workspace role from `/api/me` (server-verified) with a fallback to `users/{uid}` client Firestore read.
-4. Resolves to one of: `loading` | `signedOut` | `signedInButUnauthorized` | `signedInNoRole` | `signedInWorkspace`.
+## Integrations / Export
+- Adapters: `app/_lib/integrations/`
+- Active adapter resolved from workspace config `integrations.exportProvider` via `app/_lib/integrations/registry.ts`
+- Supported providers: `oneDrive`, `manualDownload`, `googleDrive` (stub), `disabled`
 
-### API route authentication
+## Editorial Image Manifest
+- `public/editorial/` holds branding images
+- `scripts/generate-editorial-manifest.mjs` generates manifest consumed by `app/_lib/editorialImageManifest.ts`
+- Runs automatically before `dev` and `build`
 
-Every route under `app/api/admin/` calls `requireActiveAdmin` (`app/_lib/server/adminApiAuth.ts`), which verifies the Firebase ID token via the Admin SDK and then checks `adminUsers/{uid}.active`. Routes under `app/api/workspace/` use `userApiAuth` which only checks the token (no admin gate).
+## Relation to Other Projects
+- **Paired with `secure-reporter-app`** — reporters submit via mobile app, admins manage here
+- Shared Firebase project with app
+- `SUBMISSION_PAYLOAD_SECRET` must match `EXPO_PUBLIC_SUBMISSION_PAYLOAD_SECRET` in app — coordinate before any change
+- Read `secure-reporter-shared/SHARED_CONTEXT.md` for auth contracts and Firestore rules status
+- Note: this dashboard is also the Sudan Facts / Atar submission management tool (`factsd` config)
 
-### Firestore collections (accessed by this dashboard)
+## Open Threads
+- [x] Firestore rules committed — `firestore.rules` (+ `firebase.json`, `firestore.indexes.json`) added to repo (2026-06-04)
+- [ ] Deploy rules to production: `firebase deploy --only firestore:rules` — need `.firebaserc` pointing to `sudanfcts-reporting`
+- [ ] Verify Vercel env: use `/api/admin/debug/auth-check` (non-prod) to confirm `projectsMatch: true` before debugging 401s further
+- [ ] After rules deployed + env confirmed: full auth flow test — login → dashboard access → submission decryption → attachment download
+- [ ] Verify `adminUsers/{uid}.active` is correctly set for all admin accounts in production
 
-- `submissions` — encrypted case documents. Status lives in `caseStatus` (preferred) or `processingStatus` (legacy).
-- `adminUsers/{uid}` — `{ active: true }` gates dashboard access.
-- `users/{uid}` — workspace role document `{ role: WorkspaceRole }`.
+## Key Conventions
+- `requireActiveAdmin` must be enforced on every protected route — never relax without explicit review
+- Firestore rules must be committed AND deployed before testing — never test against uncommitted rules
+- All normalization of Firestore documents goes in `caseWorkspaceModel.ts` — never in components
+- Permission logic stays in `rbac.ts` — never duplicate in components or API routes
+- Decryption is server-only — never move decryption logic to client side
+- Coordinate any encryption key or Firestore rules changes with `secure-reporter-app`
+- Blueprints before coding — especially for auth middleware, RBAC, and decryption
 
-### Payload decryption
+## Do Not Touch
+- `requireActiveAdmin` without reading `SHARED_CONTEXT.md` first
+- `decryptEncryptedPayload.ts` without coordinating with reporter app encryption scheme
+- `rbac.ts` permission logic without reviewing all callers first
+- `SUBMISSION_PAYLOAD_SECRET` without simultaneous update on app side
+- Firestore rules without committing and updating `SHARED_CONTEXT.md` open threads
 
-Submission bodies are AES-256-CBC encrypted. Decryption is server-only (`app/_lib/server/decryptEncryptedPayload.ts`). The key is derived as `SHA256(secret)` and the IV as `MD5("iv:" + secret)` — this must match the reporter app's encryption scheme. The relevant API route is `app/api/admin/submissions/[id]/decrypt/route.ts`.
+## Session Start Checklist
+1. Read this file
+2. Read `secure-reporter-shared/SHARED_CONTEXT.md`
+3. Read `MASTER_HANDOVER.md` — core sections only (stop at `## Extended project reference`).
+   Load the extended sections only if this session targets: secure-reporter-app contracts, blueteam-portal, blueteamafrica, or cross-project planning.
+4. Also check `@AGENTS.md` if it exists in the repo root
+5. State which open thread you are targeting before writing any code
 
-### RBAC
-
-`app/_lib/rbac.ts` defines five roles: `owner`, `admin`, `reviewer`, `intake`, `readonly`. Permission helpers (`mayAssignInUi`, `canAssignCasesInWorkspace`, `allowedCaseStatusTargets`, etc.) are all in this file. Both API routes and UI components import from here — keep permission logic centralized.
-
-### Routing
-
-Two parallel routing trees exist:
-- `app/(dashboard)/` — the main dashboard shell (sidebar + topbar + `CaseQueueProvider`).
-- `app/dashboard/` and `app/sudanfacts/` — tenant-specific route segments that re-export the shared layout.
-
-The root `app/page.tsx` redirects to `/dashboard`. Auth redirects are handled client-side inside `app/(dashboard)/layout.tsx`.
-
-### Integrations / export
-
-Export adapters live under `app/_lib/integrations/`. The active adapter is resolved from the workspace config's `integrations.exportProvider` via `app/_lib/integrations/registry.ts`. Supported providers: `oneDrive`, `manualDownload`, `googleDrive` (stub), `disabled`.
-
-### Editorial image manifest
-
-`public/editorial/` holds branding images. `scripts/generate-editorial-manifest.mjs` generates a manifest consumed by `app/_lib/editorialImageManifest.ts`. This script runs automatically before `dev` and `build`.
+## Corrections
+- [Date] — [mistake Claude made] → [correct approach]

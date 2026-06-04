@@ -17,16 +17,22 @@
 ## Table of contents
 
 1. [Executive map](#executive-map)
-2. [secure-reporter-app](#1-secure-reporter-app)
-3. [secure-reporter-dashboard](#2-secure-reporter-dashboard)
-4. [SudanFacts & Atar (product layer)](#3-sudanfacts--atar-product-layer)
-5. [blueteamafrica (marketing site)](#4-blueteamafrica-marketing-site)
-6. [blueteam-portal](#5-blueteam-portal)
-7. [Ikseer](#6-ikseer)
-8. [Fintech / firewall / security consulting](#7-fintech--firewall--security-consulting)
-9. [Cross-project relationships](#8-cross-project-relationships)
-10. [Mohamed’s working style](#9-mohameds-working-style)
-11. [Session continuity rules](#10-session-continuity-rules)
+2. [secure-reporter-dashboard](#1-secure-reporter-dashboard)
+3. [Cross-project relationships](#2-cross-project-relationships)
+4. [Mohamed's working style](#3-mohameds-working-style)
+5. [Session continuity rules](#4-session-continuity-rules)
+6. [Appendix A — Key file index](#appendix-a--key-file-index)
+
+*Extended reference (load only if session targets reporter app, portal, or cross-project work):*
+
+7. [secure-reporter-app](#5-secure-reporter-app)
+8. [SudanFacts & Atar (product layer)](#6-sudanfacts--atar-product-layer)
+9. [blueteamafrica (marketing site)](#7-blueteamafrica-marketing-site)
+10. [blueteam-portal](#8-blueteam-portal)
+11. [Ikseer](#9-ikseer)
+12. [Fintech / firewall / security consulting](#10-fintech--firewall--security-consulting)
+13. [Appendix B — Agent transcript references](#appendix-b--agent-transcript-references)
+14. [Appendix C — Unresolved ambiguity](#appendix-c--unresolved-ambiguity-do-not-forget)
 
 ---
 
@@ -49,137 +55,7 @@
 
 ---
 
-# 1. secure-reporter-app
-
-## 1. Project Summary
-
-| Field | Detail |
-|--------|--------|
-| **Purpose** | High-risk **field reporter mobile app** (Expo/React Native): capture encrypted notes, optional attachments, queue offline, sync to Firebase/Supabase; **no persistent local copy after confirmed server receipt**. |
-| **Owner/client** | **CERTAIN:** Built by Blue Team Africa (`productOwner: "Blue Team Africa"` in dashboard config). **INFERRED:** Primary editorial client branding is **Atar / Sudan Facts** newsroom. |
-| **Business context** | Protects reporters under duress: plausible deniability, stealth UI language, panic/decoy modes. |
-| **Why it exists** | Mobile intake for sensitive tips/stories where convenience is sacrificed for safety. |
-| **Relationships** | Pairs with `secure-reporter-dashboard` (decrypt, workflow, export). Shares `SUBMISSION_PAYLOAD_SECRET` + Supabase bucket with dashboard. **Does not** share Firebase/Auth with `blueteam-portal`. |
-
-## 2. Current State
-
-### Completed (**CERTAIN** from code + transcripts)
-
-- Expo Router app with global security in `app/_layout.tsx` (lock on background, decoy routing, privacy overlay, panic trigger).
-- Dual PIN: real + decoy (`src/state/device.ts`); decoy → `/cover` harmless shell.
-- Draft encryption: AES-256-CBC in AsyncStorage, key = SHA-256(PIN) (`src/lib/crypto/drafts.ts`).
-- Submission encryption: AES with `EXPO_PUBLIC_SUBMISSION_PAYLOAD_SECRET` before Firestore write.
-- Attachment pipeline: document picker → sandbox copy → Supabase Storage upload on sync.
-- Report lifecycle: `draft → ready → queued → syncing → confirmed → purged` with tombstones to prevent re-materialization.
-- Post-submit **auto-purge** after confirmed server success only.
-- Stealth UX: neutral user-facing copy (avoid “report”, “encrypted”, etc. on visible screens).
-- Panic mode: triple-tap / long-press header; locks session, neutral screen.
-- Hidden decoy PIN setup: long-press version in Settings → “Change backup code”.
-- Production stabilization passes (May 2026): unlock → Home (not auto-editor); Save/Ready/Pending → return Home; text-only submissions; optional attachments; “Add to pending” on Home for ready items; missing local attachment files skipped (non-fatal).
-- Typing interruption fix: inactivity timer reset on `onChangeText` (root cause was 15s lock firing during continuous typing).
-
-### Partially completed / fragile
-
-- **INFERRED:** Camera/audio capture listed as future goals in dependency audit; not fully implemented.
-- Firebase Functions `attachmentRelay` / `attachmentRollback` exist but **CERTAIN:** legacy, not called by current app (direct Supabase upload).
-- Git history is thin (`0f94051 Clean Expo template`, `9fd4ac1 Initial commit`) — much feature work may be local/unpushed or squashed.
-
-### Pending work (**from transcripts**)
-
-- Full **production-readiness** checklist before store/APK distribution.
-- **APK size audit** (Expo packages classified keep/remove/review — do not uninstall without confirming plugin usage).
-- Screen privacy / screenshot blocking hardening (Android recents).
-- Field reliability layer fully validated on bad networks (retry, stable `clientSubmissionId`).
-- Remove temporary `[EDITOR DEBUG]` logs before production if still present.
-
-### Blockers
-
-- **UNKNOWN:** App Store / Play deployment credentials, EAS profiles, production Firebase project IDs (not in repo).
-- Physical device testing required for lock/panic/decoy flows.
-
-### Technical debt
-
-- No automated tests (**CERTAIN** in `CLAUDE.md`).
-- CryptoJS + MD5 IV derivation (legacy compatibility with dashboard — **do not change** without coordinated migration).
-- Plaintext reporter metadata on Firestore submissions (`reporterProfile.ts`) — intentional tradeoff **INFERRED** for desk routing.
-
-## 3. Architecture
-
-| Layer | Technology |
-|--------|------------|
-| **Stack** | Expo ~54, React Native 0.81, Expo Router 6, TypeScript |
-| **Local state** | Plain TS modules in `src/state/` (not React Context) |
-| **Remote** | Firestore REST (`experimentalForceLongPolling`), Supabase Storage |
-| **Secrets** | `expo-secure-store` for PIN hashes; in-memory session PIN only |
-
-**Data flow**
-
-```
-Reporter types → encrypted AsyncStorage drafts
-  → ready/queued → syncQueuedItem
-    → upload attachments (Supabase)
-    → AES encrypt payload → Firestore submissions doc
-    → confirmed → purge local + tombstone
-Dashboard decrypts server-side only
-```
-
-**Env vars** (`.env.local`, all `EXPO_PUBLIC_*` unless noted):
-
-- Firebase web config (6 vars)
-- `EXPO_PUBLIC_SUPABASE_URL`, `EXPO_PUBLIC_SUPABASE_ANON_KEY`, `EXPO_PUBLIC_SUPABASE_BUCKET`
-- `EXPO_PUBLIC_SUBMISSION_PAYLOAD_SECRET`
-- Cloud Function secret: `REPORTER_ATTACHMENT_UPLOAD_SECRET` (**CERTAIN** in CLAUDE.md)
-
-**Deployment**
-
-- **CERTAIN:** Repo `https://github.com/BlueTeamForAfrica/secure-reporter-app.git`
-- Mobile builds via Expo (`npm run ios` / `android`); **UNKNOWN** production pipeline.
-
-## 4. Product Decisions
-
-| Decision | Why |
-|----------|-----|
-| **Reporter anonymity > convenience** | Dual PIN, decoy shell, neutral UI, no submitted history on device |
-| **Submitted reports disappear locally after confirmation** | Device is not record of truth; reduces seizure risk |
-| **Attachments optional** | Text-only tips must work; missing files must not fail send |
-| **Never reveal dual-mode** | Wrong PIN behavior must not hint decoy exists |
-| **Lock on background** | Except document-picker transient guard |
-| **2-minute inactivity timeout** | Extended by explicit user interaction including typing |
-| **No content in logs** | Transcripts repeatedly require no filenames/paths/content in production logs |
-
-## 5. Technical Decisions
-
-- **PIN hashing:** SHA-256 via `expo-crypto`, stored in Secure Store.
-- **Draft/submission crypto:** AES-256-CBC; key `SHA256(secret)`, IV `MD5("iv:"+secret)` — must match dashboard.
-- **Attachments:** Supabase direct upload (not Firebase Storage for current path).
-- **Session PIN:** Memory-only after unlock; cleared on lock.
-- **Purge tombstones:** `purge_tombstones` AsyncStorage key prevents ghost re-listing.
-
-## 6. Known Problems / Weirdness
-
-| Issue | Notes |
-|--------|--------|
-| Typing interruption | **Fixed** May 2026 — verify on device after any session/timer changes |
-| Auto-open editor after unlock | **Fixed** — must land on Home |
-| Attachment required bug | **Fixed** — text-only path |
-| Missing local file on send | **Fixed** — skip with warning, do not fail report |
-| `documentPickerTransientActive` | Required — otherwise false lock during picker |
-| Do not change encryption scheme unilaterally | Breaks dashboard decrypt |
-
-## 7. Roadmap State
-
-**Last active work (May 2026 transcripts):** Production stabilization, flow correction (Home-centric), direct “Queue” from Home, dependency/APK audit request.
-
-**Next logical steps**
-
-1. Device QA matrix (unlock, decoy, panic, offline queue, purge, attachment skip).
-2. Strip debug logs; confirm env parity with dashboard Firebase/Supabase/secrets.
-3. EAS/production build config if shipping APK.
-4. Camera/audio only when explicitly scoped.
-
----
-
-# 2. secure-reporter-dashboard
+# 1. secure-reporter-dashboard
 
 ## 1. Project Summary
 
@@ -311,268 +187,7 @@ Dashboard decrypts server-side only
 
 ---
 
-# 3. SudanFacts & Atar (product layer)
-
-> Not a separate repository. Documented here because Mohamed lists them as projects.
-
-## 1. Project Summary
-
-| Field | Detail |
-|--------|--------|
-| **Purpose** | **Atar** = editorial desk / newsroom brand; **Sudan Facts** = related media brand. Together they are the **default Secure Desk workspace** (`factsd`). |
-| **Owner/client** | **INFERRED:** Sudan Facts / Atar newsroom is the **client**; platform operator is **Blue Team Africa**. |
-| **Business context** | Investigative/editorial workflow in hostile environment; uses Secure Reporter stack. |
-| **Why it exists** | Client-specific terminology and pipeline stages on shared product. |
-| **Relationships** | `secure-reporter-dashboard` config `app/_lib/org/configs/factsd.ts`; route `/sudanfacts`; legacy web assets under `~/Documents/Wordpress/Sudanfacts.org` and Desktop image folders. |
-
-## 2. Current State
-
-- **CERTAIN:** Dashboard branding: “Atar Editorial Desk”, workspace name “Atar / Sudan Facts”, logo `/editorial/sf1.png`.
-- **CERTAIN:** Workflow stages mapped to newsroom phases (see config `caseStatusLabels`).
-- **CERTAIN:** Export provider `manualDownload`; OneDrive folders mapped but disabled.
-- WordPress site folder exists — **UNKNOWN** if still hosted/production.
-- Marketing/design assets on Desktop (`Sudanfacts illus`, `webp-sudanfacts`) — not wired to app automatically.
-
-## 3–5. Architecture / Decisions
-
-- Uses full Secure Reporter architecture; no separate backend.
-- Product decision: **small newsroom** RBAC — viewers can see lists (`permissions.ts` comment in codebase).
-- Arabic support mentioned in dashboard inspection — verify per-page if client requires RTL.
-
-## 6. Known Problems
-
-- Confusion between **SudanFacts website** (WordPress/marketing) vs **Secure Desk** (Firebase app) — keep deployments separate.
-- Branding debug session (Apr 2026): Firestore `settings/branding` vs static config mismatch caused fallback “Workspace” labels.
-
-## 7. Roadmap
-
-- **INFERRED:** Continue editorial workflow polish on shared dashboard, not a fork.
-- Legacy WordPress migration/maintenance **UNKNOWN** priority.
-
----
-
-# 4. blueteamafrica (marketing site)
-
-## 1. Project Summary
-
-| Field | Detail |
-|--------|--------|
-| **Purpose** | Public marketing website for **Blue Team Africa** — services, portfolio, blog, SEO, lead capture. |
-| **Owner/client** | **CERTAIN:** Owned by Blue Team Africa (Mohamed’s company). |
-| **Business context** | Lead generation for web design, hosting, ERP, CRM, mobile, cybersecurity in Rwanda/East Africa. |
-| **Why it exists** | Commercial presence separate from internal portal. |
-| **Relationships** | Monorepo includes copy of `blueteam-portal/` but **must not mix** portal code into marketing routes. Canonical portal is separate repo. |
-
-## 2. Current State
-
-### Completed (**CERTAIN**)
-
-- Next.js 16, App Router, Tailwind, Framer Motion.
-- Service pages, portfolio, blog, FAQ, company/about, contact.
-- Contact API `app/api/leads/route.ts` with rate limiting, sanitization, Firebase Admin → Firestore in production.
-- SEO: JSON-LD, sitemap via `next-sitemap` postbuild.
-- Extensive image normalization/rename work (many `*_COMPLETE.md` reports in repo).
-- Vercel deployment docs; canonical URLs `https://www.blueteamafrica.com/`.
-- Brand colors: primary `#1982c4`, secondary `#D97706`, dark `#0F172A`.
-
-### Partially completed
-
-- Image/asset pipeline — many status markdown files suggest iterative fixes; verify 404s before launch claims.
-- `NEXT_STEPS.md` still lists placeholder image tasks — may be outdated vs current `public/images/`.
-
-### Pending
-
-- GA4 optional.
-- Custom domain env on Vercel (`DEPLOY_VERCEL.md`, `FIREBASE_SETUP.md`).
-- Disk space / build issues were documented (`DISK_SPACE_FIXED.md`) — re-verify if builds fail.
-
-### Blockers
-
-- **UNKNOWN:** Current production URL vs `blueteam-git-main-*.vercel.app` preview URLs in docs.
-
-### Technical debt
-
-- Two apps in one repo (marketing + portal copy) — easy to run commands from wrong directory.
-- `upstream` remote points to `blueTeamAfrica` typo repo — verify intentional.
-
-## 3. Architecture
-
-| Item | Detail |
-|------|--------|
-| **Stack** | Next.js 16.0.7, React 18, Tailwind 3, Firebase client + admin for leads |
-| **Port** | 3000 (conflicts if portal also on 3000 — run one at a time) |
-| **Deploy** | Vercel; GitHub `BlueTeamAfrica/blueteam` |
-| **Leads** | Production: Firestore; dev: `data/leads.json` fallback documented in older status files |
-
-**Monorepo sync rule (`CLAUDE.md`)**
-
-```bash
-rsync -av --delete \
-  --exclude='.git' --exclude='node_modules' --exclude='.next' --exclude='.env.local' \
-  ./blueteam-portal/ ~/Documents/blueteam-portal/
-```
-
-## 4. Product Decisions
-
-- **CERTAIN:** Portal must **not** touch `blueteamafrica.com` marketing code (original portal creation brief).
-- Removed non-existent service pages (consulting, system-integration, digital-transformation) per `READY_TO_PUSH.md`.
-- Contact form: strong validation, rate limits (5/hour/IP in route).
-
-## 5. Technical Decisions
-
-- Separate Firebase project for marketing leads vs `blueteam-portal` Firebase (**INFERRED** from separate setup docs).
-- WebP images under `public/images/` with blueprint enforcement scripts.
-
-## 6. Known Problems
-
-- Form 404 on Vercel documented in `FIX_FORM_ERROR_VERCEL.md`, `FIX_API_404.md` — check env + route deployment.
-- Running `npm run dev` at repo root vs `blueteam-portal/` causes confusion.
-- Large number of historical troubleshooting markdown files — trust **`CLAUDE.md`** and git over old urgency docs.
-
-## 7. Roadmap State
-
-**Last git commits:** Portal client UX features mirrored from standalone portal (`7654bd4 feat(blueteam-portal): client portal UX...`).
-
-**Next:** Verify production contact form → Firestore; finish any remaining image 404s; keep portal sync via rsync + push to `blueteam-portal` repo.
-
----
-
-# 5. blueteam-portal
-
-## 1. Project Summary
-
-| Field | Detail |
-|--------|--------|
-| **Purpose** | **SaaS client portal** for Blue Team Africa: staff `/portal/*` and client `/client/*` — clients, services, invoices, subscriptions, projects, support tickets, notifications. |
-| **Owner/client** | **CERTAIN:** Blue Team Africa internal product for **their** managed-service customers. |
-| **Business context** | Operational hub replacing spreadsheets/email for billing and service health. |
-| **Why it exists** | Separate from public site; multi-tenant B2B2C. |
-| **Relationships** | Firebase project `blueteam-portal`; optional copy in `blueteamafrica/blueteam-portal/`. |
-
-## 2. Current State
-
-### Completed (**CERTAIN**)
-
-- Next.js 14 App Router, Firebase Auth + Firestore.
-- Multi-tenancy: `tenants/{tenantId}/…`, `userTenants/{uid}_{tenantId}`, client users via `users/{uid}` with `clientId`.
-- Roles: staff `admin`/`owner` → `/portal`; `client` → `/client/dashboard`.
-- Billing plan gating: `lib/tenantBillingPlan.ts` + matching `firestore.rules` `getBillingPlanId`.
-- Cron routes: `generate-invoices`, `client-notifications`.
-- PDF invoices (`@react-pdf/renderer`), nodemailer email, notification dedupe keys.
-- Client mobile-first card lists, Action Required dashboard card, support tickets.
-- `firestore.rules` + indexes in repo.
-- Canonical repo: `~/Documents/blueteam-portal` → **push here**, not only monorepo copy.
-
-### Partially completed
-
-- Invoice creation permission denied issues — **instrumentation requested** in transcript (owner role + `planPermissions.canInvoices`); may be unresolved.
-- ESLint ignored during build (`CLAUDE.md`).
-
-### Pending
-
-- Any uncommitted portal work in monorepo needs rsync to standalone + push.
-- Deploy rules/indexes after permission changes: `firebase deploy --only firestore:rules,firestore:indexes`.
-
-### Technical debt
-
-- Legacy `userTenants` query paths + deterministic doc IDs (both supported).
-- Index missing → in-memory sort fallback (hides missing index problems).
-- README still shows early admin-only schema — superseded by tenant model.
-
-## 3. Architecture
-
-| Item | Detail |
-|------|--------|
-| **Stack** | Next.js 14, React 18, Tailwind 3, Firebase, nodemailer, react-pdf |
-| **URL** | `NEXT_PUBLIC_PORTAL_URL=https://portal.blueteamafrica.com` (from CLAUDE.md) |
-| **Deploy** | **INFERRED** Vercel or similar — **UNKNOWN** exact host from repo |
-| **Tenant resolution** | `TenantProvider` → `resolvePortalUser.ts` (server), same order as rules |
-
-**Subcollections under `tenants/{tenantId}/`**
-
-`clients`, `projects`, `services`, `subscriptions`, `invoices`, `tickets` (+ replies), `notifications`, `payments`, `planPermissions/{planId}`
-
-**Email URL helper**
-
-- Staff links: `portalBaseUrl()`
-- Client emails: `clientFacingEmailBaseUrl()` strips `/portal` so links hit `/client/...`
-
-## 4. Product Decisions
-
-| Decision | Why |
-|----------|-----|
-| **Separate Firebase project** from marketing site | Security isolation |
-| **Clients never see other clients’ data** | `clientId` filtering + rules |
-| **Plan permissions default** | `canInvoices != false` in rules — missing doc should allow unless explicitly false |
-| **Client-friendly health labels** | Separate maps in `serviceHealth.ts` |
-| **Notifications idempotent** | `dedupeKey` as doc ID |
-
-## 5. Technical Decisions
-
-- Server routes use `server-only` helpers under `lib/server/`.
-- Bearer token auth on PDF generation and admin APIs.
-- `userTenants` doc ID format `{uid}_{tenantId}` preferred over random IDs.
-
-## 6. Known Problems / Weirdness
-
-| Issue | Detail |
-|--------|--------|
-| Invoice create denied for owner | Trace UI gate + `planPermissions` + rules `canInvoices` (**may be open**) |
-| `tenantContext.tsx` was `.ts` not `.tsx` | Historical build error — use `.tsx` for JSX |
-| `/dashboard/clients` vs `/portal/clients` | Early confusion — portal uses `/portal` not `/dashboard` |
-| **Do not** push portal only to monorepo | User rule: canonical `blueteam-portal` repo |
-| Firebase config in README contains real API keys | Rotate if repo is public |
-
-## 7. Roadmap State
-
-**Last commits:** Client portal UX, notifications, mobile layouts (`6ff7832` on standalone).
-
-**Next:** Resolve invoice permission tracing; keep `firestore.rules` in sync with `tenantBillingPlan.ts`; production cron schedules on Vercel.
-
----
-
-# 6. Ikseer
-
-## 1. Project Summary
-
-| Field | Detail |
-|--------|--------|
-| **Purpose** | **UNKNOWN as software.** Folder contains **Arabic magazine PDFs** and a DOCX (“إكسير” / Ikseer journal, Khartoum editions 2012–2017). |
-| **Owner/client** | **INFERRED:** Personal/archive or publishing client — not evidenced as active dev project. |
-| **Relationships** | None to Secure Reporter or Blue Team repos on disk. |
-
-## 2–7. State
-
-- **No codebase**, no git repo, no package.json.
-- **Pending:** **UNKNOWN** — digitization, website, or CMS not started in Documents.
-- If user mentions “Ikseer project”, ask whether they mean **content archive** vs **future site**.
-
----
-
-# 7. Fintech / firewall / security consulting
-
-## 1. Project Summary
-
-| Field | Detail |
-|--------|--------|
-| **Purpose** | **INFERRED:** Professional services (firewall/WAF, security architecture, compliance) for fintech clients — **not** a single app in `~/Documents`. |
-| **Owner/client** | Mohamed / Blue Team Africa consulting engagements. |
-| **Evidence** | `Projects/MESL SOLUTIONS/` (templates only on scan); Business Plan keyword CSVs mention “managed firewall”; user explicitly listed this line item. |
-
-## 2. Current State
-
-- **UNKNOWN:** Deliverables, SOWs, client names, tooling (Fortinet, AWS WAF, etc.).
-- No dedicated git repository found at Documents level.
-
-## 3–7.
-
-Treat each engagement as **separate** unless Mohamed provides repo or folder. Apply **security-first** and **verify live config** (see Working Style) before recommending rule changes.
-
-**Do not** conflate with `blueteamafrica` `/services/cybersecurity` page (marketing copy only).
-
----
-
-# 8. Cross-project relationships
+# 2. Cross-project relationships
 
 ```mermaid
 flowchart TB
@@ -649,7 +264,7 @@ flowchart TB
 
 ---
 
-# 9. Mohamed's working style
+# 3. Mohamed's working style
 
 Derived from **repeated transcript patterns** (Apr–May 2026). Treat as operational requirements for Claude.
 
@@ -695,7 +310,7 @@ Derived from **repeated transcript patterns** (Apr–May 2026). Treat as operati
 
 ---
 
-# 10. Session continuity rules
+# 4. Session continuity rules
 
 When resuming after interruption, Claude should:
 
@@ -794,6 +409,410 @@ cd ~/Documents/blueteam-portal && npm run build
 | `CLAUDE.md` | Monorepo layout + sync |
 | `app/api/leads/route.ts` | Contact form |
 | `blueteam-portal/` | Portal copy (sync to standalone) |
+
+---
+
+<!-- EXTENDED REFERENCE — stop here for dashboard sessions -->
+## Extended project reference
+
+Read this section only if your session targets one of:
+- `secure-reporter-app` (reporter mobile app, shared encryption contract, or SUBMISSION_PAYLOAD_SECRET)
+- `blueteam-portal` (client portal, invoice permissions, tenant billing)
+- `blueteamafrica` (marketing site, contact form, monorepo sync)
+- Cross-project planning or unresolved ambiguity review
+
+Otherwise stop here.
+
+---
+
+# 5. secure-reporter-app
+
+## 1. Project Summary
+
+| Field | Detail |
+|--------|--------|
+| **Purpose** | High-risk **field reporter mobile app** (Expo/React Native): capture encrypted notes, optional attachments, queue offline, sync to Firebase/Supabase; **no persistent local copy after confirmed server receipt**. |
+| **Owner/client** | **CERTAIN:** Built by Blue Team Africa (`productOwner: "Blue Team Africa"` in dashboard config). **INFERRED:** Primary editorial client branding is **Atar / Sudan Facts** newsroom. |
+| **Business context** | Protects reporters under duress: plausible deniability, stealth UI language, panic/decoy modes. |
+| **Why it exists** | Mobile intake for sensitive tips/stories where convenience is sacrificed for safety. |
+| **Relationships** | Pairs with `secure-reporter-dashboard` (decrypt, workflow, export). Shares `SUBMISSION_PAYLOAD_SECRET` + Supabase bucket with dashboard. **Does not** share Firebase/Auth with `blueteam-portal`. |
+
+## 2. Current State
+
+### Completed (**CERTAIN** from code + transcripts)
+
+- Expo Router app with global security in `app/_layout.tsx` (lock on background, decoy routing, privacy overlay, panic trigger).
+- Dual PIN: real + decoy (`src/state/device.ts`); decoy → `/cover` harmless shell.
+- Draft encryption: AES-256-CBC in AsyncStorage, key = SHA-256(PIN) (`src/lib/crypto/drafts.ts`).
+- Submission encryption: AES with `EXPO_PUBLIC_SUBMISSION_PAYLOAD_SECRET` before Firestore write.
+- Attachment pipeline: document picker → sandbox copy → Supabase Storage upload on sync.
+- Report lifecycle: `draft → ready → queued → syncing → confirmed → purged` with tombstones to prevent re-materialization.
+- Post-submit **auto-purge** after confirmed server success only.
+- Stealth UX: neutral user-facing copy (avoid “report”, “encrypted”, etc. on visible screens).
+- Panic mode: triple-tap / long-press header; locks session, neutral screen.
+- Hidden decoy PIN setup: long-press version in Settings → “Change backup code”.
+- Production stabilization passes (May 2026): unlock → Home (not auto-editor); Save/Ready/Pending → return Home; text-only submissions; optional attachments; “Add to pending” on Home for ready items; missing local attachment files skipped (non-fatal).
+- Typing interruption fix: inactivity timer reset on `onChangeText` (root cause was 15s lock firing during continuous typing).
+
+### Partially completed / fragile
+
+- **INFERRED:** Camera/audio capture listed as future goals in dependency audit; not fully implemented.
+- Firebase Functions `attachmentRelay` / `attachmentRollback` exist but **CERTAIN:** legacy, not called by current app (direct Supabase upload).
+- Git history is thin (`0f94051 Clean Expo template`, `9fd4ac1 Initial commit`) — much feature work may be local/unpushed or squashed.
+
+### Pending work (**from transcripts**)
+
+- Full **production-readiness** checklist before store/APK distribution.
+- **APK size audit** (Expo packages classified keep/remove/review — do not uninstall without confirming plugin usage).
+- Screen privacy / screenshot blocking hardening (Android recents).
+- Field reliability layer fully validated on bad networks (retry, stable `clientSubmissionId`).
+- Remove temporary `[EDITOR DEBUG]` logs before production if still present.
+
+### Blockers
+
+- **UNKNOWN:** App Store / Play deployment credentials, EAS profiles, production Firebase project IDs (not in repo).
+- Physical device testing required for lock/panic/decoy flows.
+
+### Technical debt
+
+- No automated tests (**CERTAIN** in `CLAUDE.md`).
+- CryptoJS + MD5 IV derivation (legacy compatibility with dashboard — **do not change** without coordinated migration).
+- Plaintext reporter metadata on Firestore submissions (`reporterProfile.ts`) — intentional tradeoff **INFERRED** for desk routing.
+
+## 3. Architecture
+
+| Layer | Technology |
+|--------|------------|
+| **Stack** | Expo ~54, React Native 0.81, Expo Router 6, TypeScript |
+| **Local state** | Plain TS modules in `src/state/` (not React Context) |
+| **Remote** | Firestore REST (`experimentalForceLongPolling`), Supabase Storage |
+| **Secrets** | `expo-secure-store` for PIN hashes; in-memory session PIN only |
+
+**Data flow**
+
+```
+Reporter types → encrypted AsyncStorage drafts
+  → ready/queued → syncQueuedItem
+    → upload attachments (Supabase)
+    → AES encrypt payload → Firestore submissions doc
+    → confirmed → purge local + tombstone
+Dashboard decrypts server-side only
+```
+
+**Env vars** (`.env.local`, all `EXPO_PUBLIC_*` unless noted):
+
+- Firebase web config (6 vars)
+- `EXPO_PUBLIC_SUPABASE_URL`, `EXPO_PUBLIC_SUPABASE_ANON_KEY`, `EXPO_PUBLIC_SUPABASE_BUCKET`
+- `EXPO_PUBLIC_SUBMISSION_PAYLOAD_SECRET`
+- Cloud Function secret: `REPORTER_ATTACHMENT_UPLOAD_SECRET` (**CERTAIN** in CLAUDE.md)
+
+**Deployment**
+
+- **CERTAIN:** Repo `https://github.com/BlueTeamForAfrica/secure-reporter-app.git`
+- Mobile builds via Expo (`npm run ios` / `android`); **UNKNOWN** production pipeline.
+
+## 4. Product Decisions
+
+| Decision | Why |
+|----------|-----|
+| **Reporter anonymity > convenience** | Dual PIN, decoy shell, neutral UI, no submitted history on device |
+| **Submitted reports disappear locally after confirmation** | Device is not record of truth; reduces seizure risk |
+| **Attachments optional** | Text-only tips must work; missing files must not fail send |
+| **Never reveal dual-mode** | Wrong PIN behavior must not hint decoy exists |
+| **Lock on background** | Except document-picker transient guard |
+| **2-minute inactivity timeout** | Extended by explicit user interaction including typing |
+| **No content in logs** | Transcripts repeatedly require no filenames/paths/content in production logs |
+
+## 5. Technical Decisions
+
+- **PIN hashing:** SHA-256 via `expo-crypto`, stored in Secure Store.
+- **Draft/submission crypto:** AES-256-CBC; key `SHA256(secret)`, IV `MD5("iv:"+secret)` — must match dashboard.
+- **Attachments:** Supabase direct upload (not Firebase Storage for current path).
+- **Session PIN:** Memory-only after unlock; cleared on lock.
+- **Purge tombstones:** `purge_tombstones` AsyncStorage key prevents ghost re-listing.
+
+## 6. Known Problems / Weirdness
+
+| Issue | Notes |
+|--------|--------|
+| Typing interruption | **Fixed** May 2026 — verify on device after any session/timer changes |
+| Auto-open editor after unlock | **Fixed** — must land on Home |
+| Attachment required bug | **Fixed** — text-only path |
+| Missing local file on send | **Fixed** — skip with warning, do not fail report |
+| `documentPickerTransientActive` | Required — otherwise false lock during picker |
+| Do not change encryption scheme unilaterally | Breaks dashboard decrypt |
+
+## 7. Roadmap State
+
+**Last active work (May 2026 transcripts):** Production stabilization, flow correction (Home-centric), direct “Queue” from Home, dependency/APK audit request.
+
+**Next logical steps**
+
+1. Device QA matrix (unlock, decoy, panic, offline queue, purge, attachment skip).
+2. Strip debug logs; confirm env parity with dashboard Firebase/Supabase/secrets.
+3. EAS/production build config if shipping APK.
+4. Camera/audio only when explicitly scoped.
+
+---
+
+# 6. SudanFacts & Atar (product layer)
+
+> Not a separate repository. Documented here because Mohamed lists them as projects.
+
+## 1. Project Summary
+
+| Field | Detail |
+|--------|--------|
+| **Purpose** | **Atar** = editorial desk / newsroom brand; **Sudan Facts** = related media brand. Together they are the **default Secure Desk workspace** (`factsd`). |
+| **Owner/client** | **INFERRED:** Sudan Facts / Atar newsroom is the **client**; platform operator is **Blue Team Africa**. |
+| **Business context** | Investigative/editorial workflow in hostile environment; uses Secure Reporter stack. |
+| **Why it exists** | Client-specific terminology and pipeline stages on shared product. |
+| **Relationships** | `secure-reporter-dashboard` config `app/_lib/org/configs/factsd.ts`; route `/sudanfacts`; legacy web assets under `~/Documents/Wordpress/Sudanfacts.org` and Desktop image folders. |
+
+## 2. Current State
+
+- **CERTAIN:** Dashboard branding: “Atar Editorial Desk”, workspace name “Atar / Sudan Facts”, logo `/editorial/sf1.png`.
+- **CERTAIN:** Workflow stages mapped to newsroom phases (see config `caseStatusLabels`).
+- **CERTAIN:** Export provider `manualDownload`; OneDrive folders mapped but disabled.
+- WordPress site folder exists — **UNKNOWN** if still hosted/production.
+- Marketing/design assets on Desktop (`Sudanfacts illus`, `webp-sudanfacts`) — not wired to app automatically.
+
+## 3–5. Architecture / Decisions
+
+- Uses full Secure Reporter architecture; no separate backend.
+- Product decision: **small newsroom** RBAC — viewers can see lists (`permissions.ts` comment in codebase).
+- Arabic support mentioned in dashboard inspection — verify per-page if client requires RTL.
+
+## 6. Known Problems
+
+- Confusion between **SudanFacts website** (WordPress/marketing) vs **Secure Desk** (Firebase app) — keep deployments separate.
+- Branding debug session (Apr 2026): Firestore `settings/branding` vs static config mismatch caused fallback “Workspace” labels.
+
+## 7. Roadmap
+
+- **INFERRED:** Continue editorial workflow polish on shared dashboard, not a fork.
+- Legacy WordPress migration/maintenance **UNKNOWN** priority.
+
+---
+
+# 7. blueteamafrica (marketing site)
+
+## 1. Project Summary
+
+| Field | Detail |
+|--------|--------|
+| **Purpose** | Public marketing website for **Blue Team Africa** — services, portfolio, blog, SEO, lead capture. |
+| **Owner/client** | **CERTAIN:** Owned by Blue Team Africa (Mohamed’s company). |
+| **Business context** | Lead generation for web design, hosting, ERP, CRM, mobile, cybersecurity in Rwanda/East Africa. |
+| **Why it exists** | Commercial presence separate from internal portal. |
+| **Relationships** | Monorepo includes copy of `blueteam-portal/` but **must not mix** portal code into marketing routes. Canonical portal is separate repo. |
+
+## 2. Current State
+
+### Completed (**CERTAIN**)
+
+- Next.js 16, App Router, Tailwind, Framer Motion.
+- Service pages, portfolio, blog, FAQ, company/about, contact.
+- Contact API `app/api/leads/route.ts` with rate limiting, sanitization, Firebase Admin → Firestore in production.
+- SEO: JSON-LD, sitemap via `next-sitemap` postbuild.
+- Extensive image normalization/rename work (many `*_COMPLETE.md` reports in repo).
+- Vercel deployment docs; canonical URLs `https://www.blueteamafrica.com/`.
+- Brand colors: primary `#1982c4`, secondary `#D97706`, dark `#0F172A`.
+
+### Partially completed
+
+- Image/asset pipeline — many status markdown files suggest iterative fixes; verify 404s before launch claims.
+- `NEXT_STEPS.md` still lists placeholder image tasks — may be outdated vs current `public/images/`.
+
+### Pending
+
+- GA4 optional.
+- Custom domain env on Vercel (`DEPLOY_VERCEL.md`, `FIREBASE_SETUP.md`).
+- Disk space / build issues were documented (`DISK_SPACE_FIXED.md`) — re-verify if builds fail.
+
+### Blockers
+
+- **UNKNOWN:** Current production URL vs `blueteam-git-main-*.vercel.app` preview URLs in docs.
+
+### Technical debt
+
+- Two apps in one repo (marketing + portal copy) — easy to run commands from wrong directory.
+- `upstream` remote points to `blueTeamAfrica` typo repo — verify intentional.
+
+## 3. Architecture
+
+| Item | Detail |
+|------|--------|
+| **Stack** | Next.js 16.0.7, React 18, Tailwind 3, Firebase client + admin for leads |
+| **Port** | 3000 (conflicts if portal also on 3000 — run one at a time) |
+| **Deploy** | Vercel; GitHub `BlueTeamAfrica/blueteam` |
+| **Leads** | Production: Firestore; dev: `data/leads.json` fallback documented in older status files |
+
+**Monorepo sync rule (`CLAUDE.md`)**
+
+```bash
+rsync -av --delete \
+  --exclude='.git' --exclude='node_modules' --exclude='.next' --exclude='.env.local' \
+  ./blueteam-portal/ ~/Documents/blueteam-portal/
+```
+
+## 4. Product Decisions
+
+- **CERTAIN:** Portal must **not** touch `blueteamafrica.com` marketing code (original portal creation brief).
+- Removed non-existent service pages (consulting, system-integration, digital-transformation) per `READY_TO_PUSH.md`.
+- Contact form: strong validation, rate limits (5/hour/IP in route).
+
+## 5. Technical Decisions
+
+- Separate Firebase project for marketing leads vs `blueteam-portal` Firebase (**INFERRED** from separate setup docs).
+- WebP images under `public/images/` with blueprint enforcement scripts.
+
+## 6. Known Problems
+
+- Form 404 on Vercel documented in `FIX_FORM_ERROR_VERCEL.md`, `FIX_API_404.md` — check env + route deployment.
+- Running `npm run dev` at repo root vs `blueteam-portal/` causes confusion.
+- Large number of historical troubleshooting markdown files — trust **`CLAUDE.md`** and git over old urgency docs.
+
+## 7. Roadmap State
+
+**Last git commits:** Portal client UX features mirrored from standalone portal (`7654bd4 feat(blueteam-portal): client portal UX...`).
+
+**Next:** Verify production contact form → Firestore; finish any remaining image 404s; keep portal sync via rsync + push to `blueteam-portal` repo.
+
+---
+
+# 8. blueteam-portal
+
+## 1. Project Summary
+
+| Field | Detail |
+|--------|--------|
+| **Purpose** | **SaaS client portal** for Blue Team Africa: staff `/portal/*` and client `/client/*` — clients, services, invoices, subscriptions, projects, support tickets, notifications. |
+| **Owner/client** | **CERTAIN:** Blue Team Africa internal product for **their** managed-service customers. |
+| **Business context** | Operational hub replacing spreadsheets/email for billing and service health. |
+| **Why it exists** | Separate from public site; multi-tenant B2B2C. |
+| **Relationships** | Firebase project `blueteam-portal`; optional copy in `blueteamafrica/blueteam-portal/`. |
+
+## 2. Current State
+
+### Completed (**CERTAIN**)
+
+- Next.js 14 App Router, Firebase Auth + Firestore.
+- Multi-tenancy: `tenants/{tenantId}/…`, `userTenants/{uid}_{tenantId}`, client users via `users/{uid}` with `clientId`.
+- Roles: staff `admin`/`owner` → `/portal`; `client` → `/client/dashboard`.
+- Billing plan gating: `lib/tenantBillingPlan.ts` + matching `firestore.rules` `getBillingPlanId`.
+- Cron routes: `generate-invoices`, `client-notifications`.
+- PDF invoices (`@react-pdf/renderer`), nodemailer email, notification dedupe keys.
+- Client mobile-first card lists, Action Required dashboard card, support tickets.
+- `firestore.rules` + indexes in repo.
+- Canonical repo: `~/Documents/blueteam-portal` → **push here**, not only monorepo copy.
+
+### Partially completed
+
+- Invoice creation permission denied issues — **instrumentation requested** in transcript (owner role + `planPermissions.canInvoices`); may be unresolved.
+- ESLint ignored during build (`CLAUDE.md`).
+
+### Pending
+
+- Any uncommitted portal work in monorepo needs rsync to standalone + push.
+- Deploy rules/indexes after permission changes: `firebase deploy --only firestore:rules,firestore:indexes`.
+
+### Technical debt
+
+- Legacy `userTenants` query paths + deterministic doc IDs (both supported).
+- Index missing → in-memory sort fallback (hides missing index problems).
+- README still shows early admin-only schema — superseded by tenant model.
+
+## 3. Architecture
+
+| Item | Detail |
+|------|--------|
+| **Stack** | Next.js 14, React 18, Tailwind 3, Firebase, nodemailer, react-pdf |
+| **URL** | `NEXT_PUBLIC_PORTAL_URL=https://portal.blueteamafrica.com` (from CLAUDE.md) |
+| **Deploy** | **INFERRED** Vercel or similar — **UNKNOWN** exact host from repo |
+| **Tenant resolution** | `TenantProvider` → `resolvePortalUser.ts` (server), same order as rules |
+
+**Subcollections under `tenants/{tenantId}/`**
+
+`clients`, `projects`, `services`, `subscriptions`, `invoices`, `tickets` (+ replies), `notifications`, `payments`, `planPermissions/{planId}`
+
+**Email URL helper**
+
+- Staff links: `portalBaseUrl()`
+- Client emails: `clientFacingEmailBaseUrl()` strips `/portal` so links hit `/client/...`
+
+## 4. Product Decisions
+
+| Decision | Why |
+|----------|-----|
+| **Separate Firebase project** from marketing site | Security isolation |
+| **Clients never see other clients’ data** | `clientId` filtering + rules |
+| **Plan permissions default** | `canInvoices != false` in rules — missing doc should allow unless explicitly false |
+| **Client-friendly health labels** | Separate maps in `serviceHealth.ts` |
+| **Notifications idempotent** | `dedupeKey` as doc ID |
+
+## 5. Technical Decisions
+
+- Server routes use `server-only` helpers under `lib/server/`.
+- Bearer token auth on PDF generation and admin APIs.
+- `userTenants` doc ID format `{uid}_{tenantId}` preferred over random IDs.
+
+## 6. Known Problems / Weirdness
+
+| Issue | Detail |
+|--------|--------|
+| Invoice create denied for owner | Trace UI gate + `planPermissions` + rules `canInvoices` (**may be open**) |
+| `tenantContext.tsx` was `.ts` not `.tsx` | Historical build error — use `.tsx` for JSX |
+| `/dashboard/clients` vs `/portal/clients` | Early confusion — portal uses `/portal` not `/dashboard` |
+| **Do not** push portal only to monorepo | User rule: canonical `blueteam-portal` repo |
+| Firebase config in README contains real API keys | Rotate if repo is public |
+
+## 7. Roadmap State
+
+**Last commits:** Client portal UX, notifications, mobile layouts (`6ff7832` on standalone).
+
+**Next:** Resolve invoice permission tracing; keep `firestore.rules` in sync with `tenantBillingPlan.ts`; production cron schedules on Vercel.
+
+---
+
+# 9. Ikseer
+
+## 1. Project Summary
+
+| Field | Detail |
+|--------|--------|
+| **Purpose** | **UNKNOWN as software.** Folder contains **Arabic magazine PDFs** and a DOCX (“إكسير” / Ikseer journal, Khartoum editions 2012–2017). |
+| **Owner/client** | **INFERRED:** Personal/archive or publishing client — not evidenced as active dev project. |
+| **Relationships** | None to Secure Reporter or Blue Team repos on disk. |
+
+## 2–7. State
+
+- **No codebase**, no git repo, no package.json.
+- **Pending:** **UNKNOWN** — digitization, website, or CMS not started in Documents.
+- If user mentions “Ikseer project”, ask whether they mean **content archive** vs **future site**.
+
+---
+
+# 10. Fintech / firewall / security consulting
+
+## 1. Project Summary
+
+| Field | Detail |
+|--------|--------|
+| **Purpose** | **INFERRED:** Professional services (firewall/WAF, security architecture, compliance) for fintech clients — **not** a single app in `~/Documents`. |
+| **Owner/client** | Mohamed / Blue Team Africa consulting engagements. |
+| **Evidence** | `Projects/MESL SOLUTIONS/` (templates only on scan); Business Plan keyword CSVs mention “managed firewall”; user explicitly listed this line item. |
+
+## 2. Current State
+
+- **UNKNOWN:** Deliverables, SOWs, client names, tooling (Fortinet, AWS WAF, etc.).
+- No dedicated git repository found at Documents level.
+
+## 3–7.
+
+Treat each engagement as **separate** unless Mohamed provides repo or folder. Apply **security-first** and **verify live config** (see Working Style) before recommending rule changes.
+
+**Do not** conflate with `blueteamafrica` `/services/cybersecurity` page (marketing copy only).
 
 ---
 

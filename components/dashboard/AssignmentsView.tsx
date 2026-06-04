@@ -670,8 +670,8 @@ export function AssignmentsView() {
           onConfirmAssignOwner={() => void confirmAssignOwner()}
           showPriorityScaffold={showPriorityScaffold}
           showResolveArchive={showResolveArchive}
-          onResolve={() => void updateCaseWorkflowStatus("resolved")}
-          onArchive={() => void updateCaseWorkflowStatus("archived")}
+          onResolve={() => void updateCaseWorkflowStatus("reviewed")}
+          onArchive={() => void updateCaseWorkflowStatus("designed")}
           showDelete={showDelete}
           deleteConfirmOpen={deleteConfirmOpen}
           setDeleteConfirmOpen={setDeleteConfirmPanelOpen}

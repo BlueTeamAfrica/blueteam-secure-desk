@@ -4167,43 +4167,43 @@ a.exec-kpi:hover {
 }
 
 /* Per-stage: border + faint tint */
-.report-card--clean[data-case-status="new"] {
+.report-card--clean[data-case-status="incoming"] {
   border-left-color: var(--stage-new) !important;
   background: color-mix(in oklab, var(--stage-new) 5%, var(--premium-sheet-gradient)) !important;
 }
-.report-card--clean[data-case-status="needs_triage"] {
+.report-card--clean[data-case-status="raw"] {
   border-left-color: var(--stage-triage) !important;
   background: color-mix(in oklab, var(--stage-triage) 5%, var(--premium-sheet-gradient)) !important;
 }
-.report-card--clean[data-case-status="assigned"] {
+.report-card--clean[data-case-status="first_edit"] {
   border-left-color: var(--stage-assigned) !important;
   background: color-mix(in oklab, var(--stage-assigned) 5%, var(--premium-sheet-gradient)) !important;
 }
-.report-card--clean[data-case-status="in_review"] {
+.report-card--clean[data-case-status="second_edit"] {
   border-left-color: var(--stage-in-review) !important;
   background: color-mix(in oklab, var(--stage-in-review) 5%, var(--premium-sheet-gradient)) !important;
 }
-.report-card--clean[data-case-status="waiting_follow_up"] {
+.report-card--clean[data-case-status="in_review"] {
   border-left-color: var(--stage-follow-up) !important;
   background: color-mix(in oklab, var(--stage-follow-up) 5%, var(--premium-sheet-gradient)) !important;
 }
-.report-card--clean[data-case-status="resolved"] {
+.report-card--clean[data-case-status="reviewed"] {
   border-left-color: var(--stage-resolved) !important;
   background: color-mix(in oklab, var(--stage-resolved) 5%, var(--premium-sheet-gradient)) !important;
 }
-.report-card--clean[data-case-status="archived"] {
+.report-card--clean[data-case-status="designed"] {
   border-left-color: var(--stage-archived) !important;
   background: color-mix(in oklab, var(--stage-archived) 5%, var(--premium-sheet-gradient)) !important;
 }
 
 /* Deepen the border on hover */
-.report-card--clean:hover[data-case-status="new"]             { border-left-color: color-mix(in oklab, var(--stage-new) 80%, #000) !important; }
-.report-card--clean:hover[data-case-status="needs_triage"]    { border-left-color: color-mix(in oklab, var(--stage-triage) 80%, #000) !important; }
-.report-card--clean:hover[data-case-status="assigned"]        { border-left-color: color-mix(in oklab, var(--stage-assigned) 80%, #000) !important; }
-.report-card--clean:hover[data-case-status="in_review"]       { border-left-color: color-mix(in oklab, var(--stage-in-review) 80%, #000) !important; }
-.report-card--clean:hover[data-case-status="waiting_follow_up"]{ border-left-color: color-mix(in oklab, var(--stage-follow-up) 80%, #000) !important; }
-.report-card--clean:hover[data-case-status="resolved"]        { border-left-color: color-mix(in oklab, var(--stage-resolved) 80%, #000) !important; }
-.report-card--clean:hover[data-case-status="archived"]        { border-left-color: color-mix(in oklab, var(--stage-archived) 80%, #000) !important; }
+.report-card--clean:hover[data-case-status="incoming"]             { border-left-color: color-mix(in oklab, var(--stage-new) 80%, #000) !important; }
+.report-card--clean:hover[data-case-status="raw"]    { border-left-color: color-mix(in oklab, var(--stage-triage) 80%, #000) !important; }
+.report-card--clean:hover[data-case-status="first_edit"]        { border-left-color: color-mix(in oklab, var(--stage-assigned) 80%, #000) !important; }
+.report-card--clean:hover[data-case-status="second_edit"]       { border-left-color: color-mix(in oklab, var(--stage-in-review) 80%, #000) !important; }
+.report-card--clean:hover[data-case-status="in_review"]{ border-left-color: color-mix(in oklab, var(--stage-follow-up) 80%, #000) !important; }
+.report-card--clean:hover[data-case-status="reviewed"]        { border-left-color: color-mix(in oklab, var(--stage-resolved) 80%, #000) !important; }
+.report-card--clean:hover[data-case-status="designed"]        { border-left-color: color-mix(in oklab, var(--stage-archived) 80%, #000) !important; }
 
 /* ── Corner triangle flag: overdue or critical/high priority ── */
 /* Uses ::after (::before is reserved for potential future use) */
@@ -4387,22 +4387,22 @@ a.exec-kpi:hover {
 }
 
 /* ── Stage accent colors ── */
-.rc[data-case-status="new"]               { border-left-color: var(--stage-new); background: color-mix(in oklab, var(--stage-new) 4%, var(--panel-secondary)); }
-.rc[data-case-status="needs_triage"]      { border-left-color: var(--stage-triage); background: color-mix(in oklab, var(--stage-triage) 4%, var(--panel-secondary)); }
-.rc[data-case-status="assigned"]          { border-left-color: var(--stage-assigned); background: color-mix(in oklab, var(--stage-assigned) 4%, var(--panel-secondary)); }
-.rc[data-case-status="in_review"]         { border-left-color: var(--stage-in-review); background: color-mix(in oklab, var(--stage-in-review) 4%, var(--panel-secondary)); }
-.rc[data-case-status="waiting_follow_up"] { border-left-color: var(--stage-follow-up); background: color-mix(in oklab, var(--stage-follow-up) 4%, var(--panel-secondary)); }
-.rc[data-case-status="resolved"]          { border-left-color: var(--stage-resolved); background: color-mix(in oklab, var(--stage-resolved) 4%, var(--panel-secondary)); }
-.rc[data-case-status="archived"]          { border-left-color: var(--stage-archived); background: color-mix(in oklab, var(--stage-archived) 4%, var(--panel-secondary)); }
+.rc[data-case-status="incoming"]               { border-left-color: var(--stage-new); background: color-mix(in oklab, var(--stage-new) 4%, var(--panel-secondary)); }
+.rc[data-case-status="raw"]      { border-left-color: var(--stage-triage); background: color-mix(in oklab, var(--stage-triage) 4%, var(--panel-secondary)); }
+.rc[data-case-status="first_edit"]          { border-left-color: var(--stage-assigned); background: color-mix(in oklab, var(--stage-assigned) 4%, var(--panel-secondary)); }
+.rc[data-case-status="second_edit"]         { border-left-color: var(--stage-in-review); background: color-mix(in oklab, var(--stage-in-review) 4%, var(--panel-secondary)); }
+.rc[data-case-status="in_review"] { border-left-color: var(--stage-follow-up); background: color-mix(in oklab, var(--stage-follow-up) 4%, var(--panel-secondary)); }
+.rc[data-case-status="reviewed"]          { border-left-color: var(--stage-resolved); background: color-mix(in oklab, var(--stage-resolved) 4%, var(--panel-secondary)); }
+.rc[data-case-status="designed"]          { border-left-color: var(--stage-archived); background: color-mix(in oklab, var(--stage-archived) 4%, var(--panel-secondary)); }
 
 /* Hover: deepen the left border */
-.rc:hover[data-case-status="new"]               { border-left-color: color-mix(in oklab, var(--stage-new) 75%, #000); }
-.rc:hover[data-case-status="needs_triage"]      { border-left-color: color-mix(in oklab, var(--stage-triage) 75%, #000); }
-.rc:hover[data-case-status="assigned"]          { border-left-color: color-mix(in oklab, var(--stage-assigned) 75%, #000); }
-.rc:hover[data-case-status="in_review"]         { border-left-color: color-mix(in oklab, var(--stage-in-review) 75%, #000); }
-.rc:hover[data-case-status="waiting_follow_up"] { border-left-color: color-mix(in oklab, var(--stage-follow-up) 75%, #000); }
-.rc:hover[data-case-status="resolved"]          { border-left-color: color-mix(in oklab, var(--stage-resolved) 75%, #000); }
-.rc:hover[data-case-status="archived"]          { border-left-color: color-mix(in oklab, var(--stage-archived) 75%, #000); }
+.rc:hover[data-case-status="incoming"]               { border-left-color: color-mix(in oklab, var(--stage-new) 75%, #000); }
+.rc:hover[data-case-status="raw"]      { border-left-color: color-mix(in oklab, var(--stage-triage) 75%, #000); }
+.rc:hover[data-case-status="first_edit"]          { border-left-color: color-mix(in oklab, var(--stage-assigned) 75%, #000); }
+.rc:hover[data-case-status="second_edit"]         { border-left-color: color-mix(in oklab, var(--stage-in-review) 75%, #000); }
+.rc:hover[data-case-status="in_review"] { border-left-color: color-mix(in oklab, var(--stage-follow-up) 75%, #000); }
+.rc:hover[data-case-status="reviewed"]          { border-left-color: color-mix(in oklab, var(--stage-resolved) 75%, #000); }
+.rc:hover[data-case-status="designed"]          { border-left-color: color-mix(in oklab, var(--stage-archived) 75%, #000); }
 
 /* ── Urgency corner flag ── */
 .rc.rc--overdue::after,
@@ -4445,13 +4445,13 @@ a.exec-kpi:hover {
   line-height: 1;
 }
 /* Stage label inherits the accent color */
-.rc[data-case-status="new"] .rc-stage             { color: var(--stage-new); }
-.rc[data-case-status="needs_triage"] .rc-stage    { color: var(--stage-triage); }
-.rc[data-case-status="assigned"] .rc-stage        { color: var(--stage-assigned); }
-.rc[data-case-status="in_review"] .rc-stage       { color: var(--stage-in-review); }
-.rc[data-case-status="waiting_follow_up"] .rc-stage { color: var(--stage-follow-up); }
-.rc[data-case-status="resolved"] .rc-stage        { color: var(--stage-resolved); }
-.rc[data-case-status="archived"] .rc-stage        { color: var(--stage-archived); }
+.rc[data-case-status="incoming"] .rc-stage             { color: var(--stage-new); }
+.rc[data-case-status="raw"] .rc-stage    { color: var(--stage-triage); }
+.rc[data-case-status="first_edit"] .rc-stage        { color: var(--stage-assigned); }
+.rc[data-case-status="second_edit"] .rc-stage       { color: var(--stage-in-review); }
+.rc[data-case-status="in_review"] .rc-stage { color: var(--stage-follow-up); }
+.rc[data-case-status="reviewed"] .rc-stage        { color: var(--stage-resolved); }
+.rc[data-case-status="designed"] .rc-stage        { color: var(--stage-archived); }
 .rc-stage:lang(ar), .rc-stage:lang(ar-SA) { text-transform: none; letter-spacing: 0.06em; }
 
 .rc-ref {
@@ -4714,24 +4714,24 @@ a.exec-kpi:hover {
 /* ── Per-stage gradient colors — pipeline progression: blue → indigo → violet → teal → green ── */
 /*    Each hue step tracks where the story sits in the editorial flow.                          */
 .desk-stat-pill[data-stage="total"]              { background: linear-gradient(135deg, #1c2833 0%, #2d3436 100%) !important; box-shadow: 0 4px 16px rgba(45, 52, 54, 0.45) !important; }    /* Charcoal — master overview */
-.desk-stat-pill[data-stage="new"]                { background: linear-gradient(135deg, #1a5276 0%, #2980b9 100%) !important; box-shadow: 0 4px 16px rgba(41, 128, 185, 0.38) !important; }   /* Sudan Facts blue — just received */
-.desk-stat-pill[data-stage="needs_triage"]       { background: linear-gradient(135deg, #784212 0%, #e67e22 100%) !important; box-shadow: 0 4px 16px rgba(230, 126, 34, 0.38) !important; }   /* Sudan Facts orange — needs attention */
-.desk-stat-pill[data-stage="assigned"]           { background: linear-gradient(135deg, #0a4a45 0%, #0d9488 100%) !important; box-shadow: 0 4px 16px rgba(13, 148, 136, 0.38) !important; }   /* Sudan Facts teal — in active work */
-.desk-stat-pill[data-stage="in_review"]          { background: linear-gradient(135deg, #084c4c 0%, #0f766e 100%) !important; box-shadow: 0 4px 16px rgba(15, 118, 110, 0.38) !important; }   /* Deep teal — deep editorial */
-.desk-stat-pill[data-stage="waiting_follow_up"]  { background: linear-gradient(135deg, #7e5109 0%, #d4870e 100%) !important; box-shadow: 0 4px 16px rgba(212, 135, 14, 0.38) !important; }   /* Amber — paused/waiting */
-.desk-stat-pill[data-stage="resolved"]           { background: linear-gradient(135deg, #1e5631 0%, #27ae60 100%) !important; box-shadow: 0 4px 16px rgba(39, 174, 96, 0.38) !important; }    /* Sudan Facts green — approved */
-.desk-stat-pill[data-stage="archived"]           { background: linear-gradient(135deg, #145a32 0%, #1e8449 100%) !important; box-shadow: 0 4px 16px rgba(30, 132, 73, 0.38) !important; }    /* Deep green — published/final */
+.desk-stat-pill[data-stage="incoming"]                { background: linear-gradient(135deg, #1a5276 0%, #2980b9 100%) !important; box-shadow: 0 4px 16px rgba(41, 128, 185, 0.38) !important; }   /* Sudan Facts blue — just received */
+.desk-stat-pill[data-stage="raw"]       { background: linear-gradient(135deg, #784212 0%, #e67e22 100%) !important; box-shadow: 0 4px 16px rgba(230, 126, 34, 0.38) !important; }   /* Sudan Facts orange — needs attention */
+.desk-stat-pill[data-stage="first_edit"]           { background: linear-gradient(135deg, #0a4a45 0%, #0d9488 100%) !important; box-shadow: 0 4px 16px rgba(13, 148, 136, 0.38) !important; }   /* Sudan Facts teal — in active work */
+.desk-stat-pill[data-stage="second_edit"]          { background: linear-gradient(135deg, #084c4c 0%, #0f766e 100%) !important; box-shadow: 0 4px 16px rgba(15, 118, 110, 0.38) !important; }   /* Deep teal — deep editorial */
+.desk-stat-pill[data-stage="in_review"]  { background: linear-gradient(135deg, #7e5109 0%, #d4870e 100%) !important; box-shadow: 0 4px 16px rgba(212, 135, 14, 0.38) !important; }   /* Amber — paused/waiting */
+.desk-stat-pill[data-stage="reviewed"]           { background: linear-gradient(135deg, #1e5631 0%, #27ae60 100%) !important; box-shadow: 0 4px 16px rgba(39, 174, 96, 0.38) !important; }    /* Sudan Facts green — approved */
+.desk-stat-pill[data-stage="designed"]           { background: linear-gradient(135deg, #145a32 0%, #1e8449 100%) !important; box-shadow: 0 4px 16px rgba(30, 132, 73, 0.38) !important; }    /* Deep green — published/final */
 .desk-stat-pill[data-stage="urgent"]             { background: linear-gradient(135deg, #7b241c 0%, #c0392b 100%) !important; box-shadow: 0 4px 16px rgba(192, 57, 43, 0.40) !important; }    /* Sudan Facts red — urgent */
 
 /* Hover: deepen each stage's own shadow */
 .desk-stat-pill[data-stage="total"]:hover              { box-shadow: 0 8px 28px rgba(45, 52, 54, 0.55) !important; }
-.desk-stat-pill[data-stage="new"]:hover                { box-shadow: 0 8px 28px rgba(41, 128, 185, 0.50) !important; }
-.desk-stat-pill[data-stage="needs_triage"]:hover       { box-shadow: 0 8px 28px rgba(230, 126, 34, 0.50) !important; }
-.desk-stat-pill[data-stage="assigned"]:hover           { box-shadow: 0 8px 28px rgba(13, 148, 136, 0.50) !important; }
-.desk-stat-pill[data-stage="in_review"]:hover          { box-shadow: 0 8px 28px rgba(15, 118, 110, 0.50) !important; }
-.desk-stat-pill[data-stage="waiting_follow_up"]:hover  { box-shadow: 0 8px 28px rgba(212, 135, 14, 0.50) !important; }
-.desk-stat-pill[data-stage="resolved"]:hover           { box-shadow: 0 8px 28px rgba(39, 174, 96, 0.50) !important; }
-.desk-stat-pill[data-stage="archived"]:hover           { box-shadow: 0 8px 28px rgba(30, 132, 73, 0.50) !important; }
+.desk-stat-pill[data-stage="incoming"]:hover                { box-shadow: 0 8px 28px rgba(41, 128, 185, 0.50) !important; }
+.desk-stat-pill[data-stage="raw"]:hover       { box-shadow: 0 8px 28px rgba(230, 126, 34, 0.50) !important; }
+.desk-stat-pill[data-stage="first_edit"]:hover           { box-shadow: 0 8px 28px rgba(13, 148, 136, 0.50) !important; }
+.desk-stat-pill[data-stage="second_edit"]:hover          { box-shadow: 0 8px 28px rgba(15, 118, 110, 0.50) !important; }
+.desk-stat-pill[data-stage="in_review"]:hover  { box-shadow: 0 8px 28px rgba(212, 135, 14, 0.50) !important; }
+.desk-stat-pill[data-stage="reviewed"]:hover           { box-shadow: 0 8px 28px rgba(39, 174, 96, 0.50) !important; }
+.desk-stat-pill[data-stage="designed"]:hover           { box-shadow: 0 8px 28px rgba(30, 132, 73, 0.50) !important; }
 .desk-stat-pill[data-stage="urgent"]:hover             { box-shadow: 0 8px 28px rgba(192, 57, 43, 0.52) !important; }
 
 /* ─────────────────────────────────────────────────────────────

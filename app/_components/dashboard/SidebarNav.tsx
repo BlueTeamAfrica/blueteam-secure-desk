@@ -39,7 +39,6 @@ function buildAllSidebarItems(args: { labels: OrgLabels; role: WorkspaceRole | n
   const stageLaneKeys: SidebarViewKey[] = ["new", "needs_triage", "assigned", "in_review", "waiting_follow_up", "resolved"];
 
   const baseForManaging: NavItem[] = [
-    casesItem("inbox"),
     casesItem("needs_lead"),
     casesItem("assigned_work"),
     {
@@ -56,7 +55,6 @@ function buildAllSidebarItems(args: { labels: OrgLabels; role: WorkspaceRole | n
   ];
 
   const baseForEditor: NavItem[] = [
-    casesItem("inbox"),
     {
       kind: "route",
       key: "my_queue",
@@ -84,14 +82,14 @@ function navLabelForRole(role: WorkspaceRole | null, item: NavItem, labels: OrgL
     if (item.key === "assigned_work") return "Assigned work";
     if (item.key === "team") return labels.teamNavDefault;
     if (item.key === "analytics") return labels.analytics;
-    if (item.key === "archive") return labels.archive;
-    if (item.key === "needs_triage") return labels.caseStatusLabels.needs_triage ?? labels.needsTriage;
+    if (item.key === "archive") return labels.caseStatusLabels.designed ?? labels.archive;
+    if (item.key === "needs_triage") return labels.caseStatusLabels.raw ?? labels.needsTriage;
     if (item.key === "waiting_follow_up")
-      return labels.caseStatusLabels.waiting_follow_up ?? labels.awaitingFollowUp;
-    if (item.key === "in_review") return labels.caseStatusLabels.in_review ?? labels.inReview;
-    if (item.key === "new") return labels.caseStatusLabels.new ?? labels.new;
-    if (item.key === "assigned") return labels.caseStatusLabels.assigned ?? labels.assignments;
-    if (item.key === "resolved") return labels.caseStatusLabels.resolved ?? labels.resolved;
+      return labels.caseStatusLabels.in_review ?? labels.awaitingFollowUp;
+    if (item.key === "in_review") return labels.caseStatusLabels.second_edit ?? labels.inReview;
+    if (item.key === "new") return labels.caseStatusLabels.incoming ?? labels.new;
+    if (item.key === "assigned") return labels.caseStatusLabels.first_edit ?? labels.assignments;
+    if (item.key === "resolved") return labels.caseStatusLabels.reviewed ?? labels.resolved;
   }
   return item.label;
 }
@@ -182,11 +180,11 @@ export function SidebarNav() {
     return { uid: u.uid, email: u.email ?? null, displayName: u.displayName ?? null };
   }, [state]);
 
-  const assignedAnyCount = useMemo(() => rows.filter((r) => rowHasOwner(r) && r.status !== "archived").length, [rows]);
-  const needsLeadCount = useMemo(() => rows.filter((r) => !rowHasOwner(r) && r.status !== "archived").length, [rows]);
+  const assignedAnyCount = useMemo(() => rows.filter((r) => rowHasOwner(r) && r.status !== "designed").length, [rows]);
+  const needsLeadCount = useMemo(() => rows.filter((r) => !rowHasOwner(r) && r.status !== "designed").length, [rows]);
   const myQueueCount = useMemo(() => {
     if (!userCtx) return 0;
-    return rows.filter((r) => rowHasOwner(r) && r.status !== "archived" && isRowAssignedToUser(r, userCtx)).length;
+    return rows.filter((r) => rowHasOwner(r) && r.status !== "designed" && isRowAssignedToUser(r, userCtx)).length;
   }, [rows, userCtx]);
 
   const isEditorDesk = workspaceRole === "reviewer";

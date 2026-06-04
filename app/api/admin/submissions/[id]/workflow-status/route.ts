@@ -20,13 +20,13 @@ import { moveSubmissionToStageInOneDrive } from "@/app/_lib/server/submissionOne
 type RouteParams = { params: Promise<{ id: string }> };
 
 const CASE_STATUS_SET = new Set<string>([
-  "new",
-  "needs_triage",
-  "assigned",
+  "incoming",
+  "raw",
+  "first_edit",
+  "second_edit",
   "in_review",
-  "waiting_follow_up",
-  "resolved",
-  "archived",
+  "reviewed",
+  "designed",
 ]);
 
 function parseCaseStatusBody(v: unknown): CaseStatus | null {
@@ -38,13 +38,13 @@ function parseCaseStatusBody(v: unknown): CaseStatus | null {
 
 /** `processingStatus` values that keep legacy readers / filters aligned with approved enum. */
 const PROCESSING_FOR_CASE_STATUS: Record<CaseStatus, string> = {
-  new: "new",
-  needs_triage: "needs_triage",
-  assigned: "assigned",
+  incoming: "incoming",
+  raw: "raw",
+  first_edit: "first_edit",
+  second_edit: "second_edit",
   in_review: "in_review",
-  waiting_follow_up: "waiting_follow_up",
-  resolved: "verified",
-  archived: "archived",
+  reviewed: "reviewed",
+  designed: "designed",
 };
 
 export async function POST(request: NextRequest, context: RouteParams) {
@@ -97,10 +97,10 @@ export async function POST(request: NextRequest, context: RouteParams) {
       processingStatus: PROCESSING_FOR_CASE_STATUS[target],
       updatedAt: FieldValue.serverTimestamp(),
     };
-    if (target === "resolved") {
+    if (target === "reviewed") {
       patch.resolvedAt = FieldValue.serverTimestamp();
     }
-    if (target === "archived") {
+    if (target === "designed") {
       patch.archivedAt = FieldValue.serverTimestamp();
     }
 

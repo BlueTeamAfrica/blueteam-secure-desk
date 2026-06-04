@@ -9,7 +9,7 @@ import { useDashboardBranding } from "@/app/_components/dashboard/WorkspaceBrand
 
 function isOverdue(submission: WorkspaceCase): boolean {
   if (!submission.dueDate) return false;
-  if (submission.status === "resolved" || submission.status === "archived") return false;
+  if (submission.status === "reviewed" || submission.status === "designed") return false;
   const d = new Date(submission.dueDate);
   if (Number.isNaN(d.getTime())) return false;
   return d.getTime() < Date.now();

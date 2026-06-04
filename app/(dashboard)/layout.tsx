@@ -62,7 +62,7 @@ function MobileBottomNav() {
             <rect x="3" y="3" width="18" height="18" rx="2"/>
             <path d="M3 9h18M9 21V9"/>
           </svg>
-          <span className="bottom-nav-label">{labels.caseStatusLabels?.needs_triage ?? "Raw"}</span>
+          <span className="bottom-nav-label">{labels.caseStatusLabels?.raw ?? "raw"}</span>
         </Link>
       )}
       {(role === "owner" || role === "admin") && (
@@ -81,7 +81,7 @@ function MobileBottomNav() {
 /** Reads the live queue count — must render inside CaseQueueProvider. */
 function TopbarLiveBadge() {
   const { rows } = useCaseQueue();
-  const count = rows.filter((r) => r.status !== "archived").length;
+  const count = rows.filter((r) => r.status !== "designed").length;
   if (count === 0) return null;
   return (
     <span className="topbar-live-badge" aria-label={`${count} active cases`}>

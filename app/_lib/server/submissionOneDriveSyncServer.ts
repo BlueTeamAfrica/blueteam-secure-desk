@@ -19,6 +19,7 @@ import { loadWorkspaceCaseForSubmission } from "@/app/_lib/server/submissionCase
 import { getSupabaseAdmin } from "@/app/_lib/server/supabaseAdmin";
 import { getValidWorkspaceAccessToken } from "@/app/_lib/server/workspaceOneDriveToken";
 import {
+  graphCopyItemToFolder,
   graphEnsureFolder,
   graphListFolderChildren,
   graphMoveItemToFolder,
@@ -415,6 +416,26 @@ export async function moveSubmissionToStageInOneDrive(
   // carries all its contents (DOCX + attachments) automatically.
   const itemName = onedriveFilename ?? `${submissionId.slice(-6)}`;
   const newFolderPath = buildStageFolderPath(toStatus);
+
+  // ── Version snapshot: copy the current subfolder into {currentStage}/_versions/
+  // before moving it out, so a point-in-time record survives the stage transition.
+  // This is non-fatal — a failure here must never block the move.
+  try {
+    const currentStage = workspaceCase.status;
+    const currentStageFolderPath = buildStageFolderPath(currentStage);
+    const versionsFolderPath = `${currentStageFolderPath}/_versions`;
+    // Timestamp suffix: YYYY-MM-DDTHHMM (filesystem-safe, no colons after T)
+    const ts = new Date().toISOString().slice(0, 16).replace(":", "").replace("-", "").replace("-", "");
+    const snapshotName = `${itemName}_${currentStage}_${ts}`;
+    await graphCopyItemToFolder({
+      accessToken,
+      itemId: onedriveItemId,
+      destinationFolderPath: versionsFolderPath,
+      newName: snapshotName,
+    });
+  } catch (e) {
+    console.error("[OneDrive version snapshot] copy failed (non-fatal):", e instanceof Error ? e.message : String(e));
+  }
 
   const moved = await graphMoveItemToFolder({
     accessToken,

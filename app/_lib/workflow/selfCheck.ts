@@ -50,7 +50,7 @@ export function runWorkflowSelfCheck() {
   if (canDeleteItem("intake")) fail("proofreader should not delete");
 
   const ctx: WorkspaceUserContext = { uid: "u1", email: "a@b.c", displayName: "A" };
-  const baseCase = { status: "new" } as WorkspaceCase;
+  const baseCase = { status: "incoming" } as WorkspaceCase;
   if (!mayExportSubmissionDocx({ role: "owner", workspaceCase: baseCase, ctx }))
     fail("owner should export");
   if (!mayExportSubmissionDocx({ role: "admin", workspaceCase: baseCase, ctx }))
@@ -72,19 +72,19 @@ export function runWorkflowSelfCheck() {
   if (!mayShowDecryptUi("reviewer", baseCase, ctx)) fail("editor should decrypt/open attachments");
 
   // Stage change expectations (per allowedCaseStatusTargets).
-  const from: CaseStatus = "new";
-  if (!canChangeWorkflowStatus({ role: "owner", fromStatus: from, toStatus: "archived", workspaceCase: baseCase, ctx }))
-    fail("owner should change stage to archive");
-  if (!canChangeWorkflowStatus({ role: "admin", fromStatus: from, toStatus: "resolved", workspaceCase: baseCase, ctx }))
-    fail("admin should change stage to resolved");
+  const from: CaseStatus = "incoming";
+  if (!canChangeWorkflowStatus({ role: "owner", fromStatus: from, toStatus: "designed", workspaceCase: baseCase, ctx }))
+    fail("owner should change stage to designed");
+  if (!canChangeWorkflowStatus({ role: "admin", fromStatus: from, toStatus: "reviewed", workspaceCase: baseCase, ctx }))
+    fail("admin should change stage to reviewed");
   if (
-    canChangeWorkflowStatus({ role: "reviewer", fromStatus: from, toStatus: "resolved", workspaceCase: baseCase, ctx })
+    canChangeWorkflowStatus({ role: "reviewer", fromStatus: from, toStatus: "reviewed", workspaceCase: baseCase, ctx })
   )
-    fail("editor should not publish/resolved");
+    fail("editor should not set reviewed");
   if (
-    canChangeWorkflowStatus({ role: "intake", fromStatus: from, toStatus: "assigned", workspaceCase: baseCase, ctx })
+    canChangeWorkflowStatus({ role: "intake", fromStatus: from, toStatus: "first_edit", workspaceCase: baseCase, ctx })
   )
-    fail("proofreader should not set assigned");
+    fail("proofreader should not set first_edit");
 
   flush();
 }

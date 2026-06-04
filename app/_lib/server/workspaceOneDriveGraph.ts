@@ -204,6 +204,48 @@ export async function graphMoveItemToFolder(args: {
 }
 
 /**
+ * Initiate an async copy of a drive item (file or folder) to a destination folder.
+ *
+ * Uses Graph API POST /me/drive/items/{id}/copy, which returns 202 Accepted and
+ * runs asynchronously — we fire and forget (do not wait for completion).
+ *
+ * The destination folder is created if it doesn't exist (via graphEnsureFolder).
+ * Any failure in this function is non-fatal to the caller.
+ */
+export async function graphCopyItemToFolder(args: {
+  accessToken: string;
+  /** Graph item ID of the item to copy. */
+  itemId: string;
+  /** Drive-relative path of the destination folder, e.g. "SecureDesk-Test/incoming/_versions" */
+  destinationFolderPath: string;
+  /** Name for the copy. */
+  newName: string;
+}): Promise<void> {
+  // Ensure the destination folder exists and get its item ID.
+  const destFolder = await graphEnsureFolder({
+    accessToken: args.accessToken,
+    folderPath: args.destinationFolderPath,
+  });
+
+  const url = `${GRAPH_BASE}/me/drive/items/${encodeURIComponent(args.itemId)}/copy`;
+
+  // POST /copy is async on Graph — 202 Accepted means the operation was queued.
+  // We initiate it and return immediately without waiting for completion.
+  await fetch(url, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${args.accessToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      parentReference: { id: destFolder.id },
+      name: args.newName,
+    }),
+  });
+  // Response not checked — copy is fire-and-forget; failures are logged by the caller.
+}
+
+/**
  * Ensure a folder exists at `folderPath` in /me/drive, creating it (and any
  * missing parent folders) if it doesn't. Returns the folder item.
  *

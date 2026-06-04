@@ -3,13 +3,13 @@ import { extractSubmissionAttachments } from "@/app/_lib/attachments/extractSubm
 
 /** Approved operational status (UI + future Firestore `caseStatus`). */
 export const CASE_STATUS_KEYS = [
-  "new",
-  "needs_triage",
-  "assigned",
+  "incoming",
+  "raw",
+  "first_edit",
+  "second_edit",
   "in_review",
-  "waiting_follow_up",
-  "resolved",
-  "archived",
+  "reviewed",
+  "designed",
 ] as const;
 
 export type CaseStatus = (typeof CASE_STATUS_KEYS)[number];
@@ -17,13 +17,13 @@ export type CaseStatus = (typeof CASE_STATUS_KEYS)[number];
 const CASE_STATUS_SET = new Set<string>(CASE_STATUS_KEYS);
 
 export const CASE_STATUS_LABEL: Record<CaseStatus, string> = {
-  new: "Raw Materials",
-  needs_triage: "First Editing",
-  assigned: "Second Editing",
-  in_review: "Proofreading",
-  waiting_follow_up: "Designed",
-  resolved: "Published",
-  archived: "Archive",
+  incoming: "incoming",
+  raw: "raw",
+  first_edit: "first edit",
+  second_edit: "second edit",
+  in_review: "in_review",
+  reviewed: "reviewed",
+  designed: "designed",
 };
 
 export const PRIORITY_KEYS = ["low", "normal", "high", "critical"] as const;
@@ -148,24 +148,42 @@ function tokenize(s: string): string {
 
 /** Legacy / transitional tokens → approved enum (client-side only). */
 const LEGACY_STATUS_MAP: Record<string, CaseStatus> = {
-  queued: "new",
-  new: "new",
-  new_report: "new",
-  draft: "new",
-  needs_review: "needs_triage",
-  needs_triage: "needs_triage",
-  triage: "needs_triage",
-  assigned: "assigned",
-  in_review: "in_review",
-  investigating: "in_review",
-  waiting_follow_up: "waiting_follow_up",
-  waiting_followup: "waiting_follow_up",
-  waiting: "waiting_follow_up",
-  verified: "resolved",
-  resolved: "resolved",
-  complete: "resolved",
-  closed: "archived",
-  archived: "archived",
+  // old "new" / inbox / received → incoming
+  queued: "incoming",
+  new: "incoming",
+  new_report: "incoming",
+  draft: "incoming",
+  inbox: "incoming",
+  received: "incoming",
+  incoming: "incoming",
+  // old needs_triage / raw_materials → raw
+  needs_review: "raw",
+  needs_triage: "raw",
+  triage: "raw",
+  raw: "raw",
+  raw_materials: "raw",
+  // old assigned / first_editing → first_edit
+  assigned: "first_edit",
+  first_editing: "first_edit",
+  first_edit: "first_edit",
+  // old in_review / second_editing → second_edit
+  in_review: "second_edit",
+  second_editing: "second_edit",
+  second_edit: "second_edit",
+  investigating: "second_edit",
+  // old waiting_follow_up → in_review
+  waiting_follow_up: "in_review",
+  waiting_followup: "in_review",
+  waiting: "in_review",
+  // old resolved / verified → reviewed
+  verified: "reviewed",
+  resolved: "reviewed",
+  complete: "reviewed",
+  reviewed: "reviewed",
+  // old archived / closed → designed
+  closed: "designed",
+  archived: "designed",
+  designed: "designed",
 };
 
 export function normalizeCaseStatus(data: DocumentData, processingStatus: string | null): CaseStatus {
@@ -177,10 +195,8 @@ export function normalizeCaseStatus(data: DocumentData, processingStatus: string
   }
   const p = processingStatus ? tokenize(processingStatus) : "";
   if (p && LEGACY_STATUS_MAP[p]) return LEGACY_STATUS_MAP[p];
-  if (p === "in_review") return "in_review";
-  if (p === "verified") return "resolved";
-  if (p) return LEGACY_STATUS_MAP[p] ?? "new";
-  return "new";
+  if (p) return LEGACY_STATUS_MAP[p] ?? "incoming";
+  return "incoming";
 }
 
 export function normalizePriority(data: DocumentData): PriorityLevel {
@@ -477,41 +493,41 @@ export function rowMatchesSidebarView(row: CaseQueueSnapshot, view: SidebarViewK
   if (view === "team" || view === "analytics") return false;
   if (view === "needs_lead") {
     const hasOwner = !!(row.assignedOwnerId?.trim() || row.assignedOwnerName?.trim());
-    return !hasOwner && row.status !== "archived";
+    return !hasOwner && row.status !== "designed";
   }
   if (view === "assigned_work") {
     const hasOwner = !!(row.assignedOwnerId?.trim() || row.assignedOwnerName?.trim());
-    return hasOwner && row.status !== "archived";
+    return hasOwner && row.status !== "designed";
   }
   switch (view) {
     case "inbox":
-      return row.status !== "archived";
+      return row.status !== "designed";
     case "new":
-      return row.status === "new";
+      return row.status === "incoming";
     case "needs_triage":
-      return row.status === "needs_triage";
+      return row.status === "raw";
     case "assigned":
-      return row.status === "assigned";
+      return row.status === "first_edit";
     case "in_review":
-      return row.status === "in_review";
+      return row.status === "second_edit";
     case "waiting_follow_up":
-      return row.status === "waiting_follow_up";
+      return row.status === "in_review";
     case "resolved":
-      return row.status === "resolved";
+      return row.status === "reviewed";
     case "archive":
-      return row.status === "archived";
+      return row.status === "designed";
     default:
       return false;
   }
 }
 
 export function statusBadgeClass(status: CaseStatus): string {
-  if (status === "new") return "badge badge-new";
-  if (status === "needs_triage") return "badge badge-triage";
-  if (status === "in_review") return "badge badge-review";
-  if (status === "waiting_follow_up") return "badge badge-followup";
-  if (status === "resolved") return "badge badge-resolved";
-  if (status === "archived") return "badge badge-archived";
+  if (status === "incoming") return "badge badge-new";
+  if (status === "raw") return "badge badge-triage";
+  if (status === "second_edit") return "badge badge-review";
+  if (status === "in_review") return "badge badge-followup";
+  if (status === "reviewed") return "badge badge-resolved";
+  if (status === "designed") return "badge badge-archived";
   return "badge badge-neutral";
 }
 

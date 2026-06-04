@@ -133,44 +133,44 @@ export function filterItemsByView(args: {
     case "analytics":
       return [];
 
-    // "Active reports" / inbox = everything not archived (matches current behavior).
+    // "Active reports" / inbox = everything not designed (matches current behavior).
     case "activeReports":
     case "inbox":
-      return visible.filter((c) => c.status !== "archived");
+      return visible.filter((c) => c.status !== "designed");
 
     case "new":
-      return visible.filter((c) => matchesStatus(c, "new"));
+      return visible.filter((c) => matchesStatus(c, "incoming"));
 
     case "needsTriage":
     case "needs_triage":
-      return visible.filter((c) => matchesStatus(c, "needs_triage"));
+      return visible.filter((c) => matchesStatus(c, "raw"));
 
     case "withLead":
       return visible.filter((c) => hasOwner(c));
 
     case "needs_lead":
-      return visible.filter((c) => !hasOwner(c) && c.status !== "archived");
+      return visible.filter((c) => !hasOwner(c) && c.status !== "designed");
 
     case "assigned_work":
-      return visible.filter((c) => hasOwner(c) && c.status !== "archived");
+      return visible.filter((c) => hasOwner(c) && c.status !== "designed");
 
     case "assigned":
-      // Stage lane: Second Editing (strict status).
-      return visible.filter((c) => matchesStatus(c, "assigned"));
+      // Stage lane: first edit (strict status).
+      return visible.filter((c) => matchesStatus(c, "first_edit"));
 
     case "inReview":
     case "in_review":
-      return visible.filter((c) => matchesStatus(c, "in_review"));
+      return visible.filter((c) => matchesStatus(c, "second_edit"));
 
     case "awaitingFollowUp":
     case "waiting_follow_up":
-      return visible.filter((c) => matchesStatus(c, "waiting_follow_up"));
+      return visible.filter((c) => matchesStatus(c, "in_review"));
 
     case "resolved":
-      return visible.filter((c) => matchesStatus(c, "resolved"));
+      return visible.filter((c) => matchesStatus(c, "reviewed"));
 
     case "archive":
-      return visible.filter((c) => matchesStatus(c, "archived"));
+      return visible.filter((c) => matchesStatus(c, "designed"));
 
     case "myQueue":
     case "yourQueue":
