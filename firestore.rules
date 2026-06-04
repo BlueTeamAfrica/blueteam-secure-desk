@@ -1,0 +1,41 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return signedIn() &&
+        exists(/databases/$(database)/documents/adminUsers/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/adminUsers/$(request.auth.uid)).data.active == true;
+    }
+
+    // Workspace branding
+    match /settings/branding {
+      allow read: if signedIn();
+      allow write: if false;
+    }
+
+    // Reporter submissions
+    match /submissions/{doc} {
+      allow create: if true;          // reporters can submit
+      allow read, update: if isAdmin(); // only admins can read/update
+      allow delete: if false;          // no deletion from client
+    }
+
+    // Admin allowlist
+    match /adminUsers/{uid} {
+      allow read: if signedIn() && request.auth.uid == uid;
+      allow write: if false;
+    }
+
+    // User profiles
+    match /users/{uid} {
+      allow read: if signedIn() && request.auth.uid == uid;
+      allow write: if false;
+    }
+
+  }
+}
