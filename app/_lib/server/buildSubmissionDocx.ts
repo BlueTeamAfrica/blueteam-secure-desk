@@ -100,8 +100,19 @@ export async function buildSubmissionDocxBuffer(args: {
   display: SubmissionDisplay;
   item: WorkflowItem;
   generatedAtIso: string;
+  /**
+   * Optional entry to append to the DOCX change log.
+   * Caller is responsible for also persisting this entry to Firestore
+   * (onedriveChangeLog array) so future regenerations include it.
+   */
+  lastChangedBy?: {
+    uid: string;
+    role: string;
+    /** Human-readable description, e.g. "moved to raw", "priority changed to high" */
+    action: string;
+  };
 }): Promise<Buffer> {
-  const { submission, display, item, generatedAtIso } = args;
+  const { submission, display, item, generatedAtIso, lastChangedBy } = args;
   const exportLabels = getOrgLabels().exportDocxLabels ?? {
     filedBy: "Filed by",
     status: "Status",
@@ -193,6 +204,42 @@ export async function buildSubmissionDocxBuffer(args: {
         new Paragraph({
           spacing: { after: 80 },
           children: [new TextRun({ text: `• ${name}` })],
+        }),
+      );
+    }
+  }
+
+  // ── Change log ──────────────────────────────────────────────────────────────
+  // All persisted entries from Firestore + the new entry being appended now.
+  const allLogEntries = [
+    ...(submission.onedriveChangeLog ?? []),
+    ...(lastChangedBy
+      ? [{ action: lastChangedBy.action, uid: lastChangedBy.uid, role: lastChangedBy.role, ts: generatedAtIso }]
+      : []),
+  ];
+  if (allLogEntries.length > 0) {
+    children.push(
+      new Paragraph({
+        heading: HeadingLevel.HEADING_2,
+        spacing: { before: 240, after: 120 },
+        children: [new TextRun("Change log")],
+      }),
+    );
+    for (const entry of allLogEntries) {
+      const when = (() => {
+        try {
+          return new Date(entry.ts).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
+        } catch {
+          return entry.ts;
+        }
+      })();
+      children.push(
+        new Paragraph({
+          spacing: { after: 80 },
+          children: [
+            new TextRun({ text: `${when}  `, bold: true }),
+            new TextRun(`${entry.action}  ·  ${entry.role} (${entry.uid})`),
+          ],
         }),
       );
     }

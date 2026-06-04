@@ -8,6 +8,7 @@ import { logSubmissionAudit } from "@/app/_lib/server/logSubmissionAudit";
 import { assertWorkspaceRole, jsonForbidden } from "@/app/_lib/server/submissionCaseAccess";
 import { fetchWorkspaceRole } from "@/app/_lib/server/workspaceRole";
 import { isWorkspaceUserActive, type WorkspaceUserProfile } from "@/app/_lib/workspace/userProfile";
+import { refreshSubmissionDocxInOneDrive } from "@/app/_lib/server/submissionOneDriveSyncServer";
 
 type RouteParams = { params: Promise<{ id: string }> };
 
@@ -97,6 +98,13 @@ export async function POST(request: NextRequest, context: RouteParams) {
     } catch {
       /* audit failure must not block assignment */
     }
+
+    // Refresh OneDrive DOCX with assignment changelog entry — fire-and-forget.
+    void refreshSubmissionDocxInOneDrive(id, {
+      uid: admin.uid,
+      role: role ?? "admin",
+      action: `assigned to ${assignedOwnerName}`,
+    }).catch(() => { /* OneDrive refresh must never block assignment */ });
 
     return NextResponse.json({ ok: true });
   } catch (e) {

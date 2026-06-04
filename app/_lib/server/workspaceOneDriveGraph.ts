@@ -204,45 +204,100 @@ export async function graphMoveItemToFolder(args: {
 }
 
 /**
- * Initiate an async copy of a drive item (file or folder) to a destination folder.
+ * Copy a drive item (file or folder) to a destination folder and wait for completion.
  *
- * Uses Graph API POST /me/drive/items/{id}/copy, which returns 202 Accepted and
- * runs asynchronously — we fire and forget (do not wait for completion).
+ * Graph API POST /me/drive/items/{id}/copy returns 202 Accepted with a Location
+ * header pointing to a monitor URL. This helper polls that URL (up to 10 retries,
+ * 1 second apart) until `status === "completed"`, then returns the new item.
  *
  * The destination folder is created if it doesn't exist (via graphEnsureFolder).
- * Any failure in this function is non-fatal to the caller.
  */
-export async function graphCopyItemToFolder(args: {
+export async function graphCopyItemAndWait(args: {
   accessToken: string;
   /** Graph item ID of the item to copy. */
   itemId: string;
-  /** Drive-relative path of the destination folder, e.g. "SecureDesk-Test/incoming/_versions" */
+  /** Drive-relative path of the destination folder, e.g. "SecureDesk-Test/raw" */
   destinationFolderPath: string;
-  /** Name for the copy. */
+  /** Name for the copy in the destination folder. */
   newName: string;
-}): Promise<void> {
-  // Ensure the destination folder exists and get its item ID.
+}): Promise<GraphFileItem> {
+  // Ensure the destination folder exists and obtain its item ID.
   const destFolder = await graphEnsureFolder({
     accessToken: args.accessToken,
     folderPath: args.destinationFolderPath,
   });
 
-  const url = `${GRAPH_BASE}/me/drive/items/${encodeURIComponent(args.itemId)}/copy`;
+  const copyUrl = `${GRAPH_BASE}/me/drive/items/${encodeURIComponent(args.itemId)}/copy`;
 
-  // POST /copy is async on Graph — 202 Accepted means the operation was queued.
-  // We initiate it and return immediately without waiting for completion.
-  await fetch(url, {
+  const copyRes = await fetch(copyUrl, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${args.accessToken}`,
       "Content-Type": "application/json",
+      Prefer: "respond-async",
     },
     body: JSON.stringify({
       parentReference: { id: destFolder.id },
       name: args.newName,
     }),
   });
-  // Response not checked — copy is fire-and-forget; failures are logged by the caller.
+
+  if (!copyRes.ok && copyRes.status !== 202) {
+    const errJson = await parseGraphJson(copyRes);
+    const msg = extractGraphError(errJson) ?? `OneDrive copy failed (HTTP ${copyRes.status}).`;
+    throw new Error(msg);
+  }
+
+  // Graph returns 202 with a Location header pointing to an async monitor URL.
+  const monitorUrl = copyRes.headers.get("Location");
+  if (!monitorUrl) {
+    // Fallback: 200 with body means synchronous completion (rare, small items).
+    const body = await parseGraphJson(copyRes) as Record<string, unknown> | null;
+    const id = typeof body?.id === "string" ? body.id : args.itemId;
+    const webUrl = typeof body?.webUrl === "string" ? body.webUrl : null;
+    return { id, name: args.newName, webUrl };
+  }
+
+  // Poll monitor URL until completed, failed, or retry limit reached.
+  const MAX_RETRIES = 10;
+  const POLL_INTERVAL_MS = 1000;
+
+  for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+    await new Promise((r) => setTimeout(r, POLL_INTERVAL_MS));
+
+    const pollRes = await fetch(monitorUrl, {
+      headers: { Authorization: `Bearer ${args.accessToken}` },
+    });
+
+    const pollJson = await parseGraphJson(pollRes) as Record<string, unknown> | null;
+    const status = typeof pollJson?.status === "string" ? pollJson.status : "";
+
+    if (status === "completed") {
+      // resourceId is the new item's ID.
+      const resourceId =
+        typeof (pollJson?.resourceId) === "string"
+          ? (pollJson.resourceId as string)
+          : args.itemId;
+      // Fetch the new item to get its webUrl.
+      try {
+        const newItem = await graphGetItemById({ accessToken: args.accessToken, itemId: resourceId });
+        return newItem ?? { id: resourceId, name: args.newName, webUrl: null };
+      } catch {
+        return { id: resourceId, name: args.newName, webUrl: null };
+      }
+    }
+
+    if (status === "failed") {
+      const errMsg =
+        typeof pollJson?.error === "object" && pollJson.error !== null
+          ? ((pollJson.error as Record<string, unknown>).message as string | undefined) ?? "Copy operation failed."
+          : "Copy operation failed.";
+      throw new Error(errMsg);
+    }
+    // status === "inProgress" or "notStarted" → keep polling
+  }
+
+  throw new Error(`OneDrive copy timed out after ${MAX_RETRIES} polling attempts.`);
 }
 
 /**

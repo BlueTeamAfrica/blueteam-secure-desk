@@ -97,6 +97,8 @@ export type WorkspaceCase = {
    *  Stored on first upload so refresh always overwrites the same file,
    *  regardless of title/date changes in the naming logic. */
   onedriveDocxFilename: string | null;
+  /** Append-only log of changes written to this submission's OneDrive DOCX. */
+  onedriveChangeLog: Array<{ action: string; uid: string; role: string; ts: string }>;
   raw: DocumentData;
 };
 
@@ -461,6 +463,16 @@ export function normalizeSubmissionToCase(id: string, data: DocumentData): Works
     onedriveWebUrl: str(data.onedriveWebUrl),
     onedriveFilename: str(data.onedriveFilename),
     onedriveDocxFilename: str(data.onedriveDocxFilename),
+    onedriveChangeLog: Array.isArray(data.onedriveChangeLog)
+      ? (data.onedriveChangeLog as unknown[]).filter(
+          (e): e is { action: string; uid: string; role: string; ts: string } =>
+            typeof e === "object" && e !== null &&
+            typeof (e as Record<string, unknown>).action === "string" &&
+            typeof (e as Record<string, unknown>).uid === "string" &&
+            typeof (e as Record<string, unknown>).role === "string" &&
+            typeof (e as Record<string, unknown>).ts === "string",
+        )
+      : [],
     raw: data,
   };
 }

@@ -13,13 +13,12 @@ import {
   asciiFallbackExportFilename,
   buildExportDocxFilename,
   buildSubmissionDocxBuffer,
-  buildSubmissionFolderName,
 } from "@/app/_lib/server/buildSubmissionDocx";
 import { loadWorkspaceCaseForSubmission } from "@/app/_lib/server/submissionCaseAccess";
 import { getSupabaseAdmin } from "@/app/_lib/server/supabaseAdmin";
 import { getValidWorkspaceAccessToken } from "@/app/_lib/server/workspaceOneDriveToken";
 import {
-  graphCopyItemToFolder,
+  graphCopyItemAndWait,
   graphEnsureFolder,
   graphListFolderChildren,
   graphMoveItemToFolder,
@@ -61,6 +60,19 @@ function buildStageFolderPath(status: CaseStatus): string {
 function buildSubmissionFolderPath(status: CaseStatus, folderName: string): string {
   const safeName = safeExportName(folderName, { maxLen: 60 });
   return `${buildStageFolderPath(status)}/${safeName}`;
+}
+
+/**
+ * Derive the OneDrive subfolder name for a submission.
+ * Uses the case reference code as the primary name (always available without
+ * decryption), falling back to `case-{last6chars}` if no reference exists.
+ */
+function buildFolderName(
+  display: ReturnType<typeof getSubmissionDisplay>,
+  caseId: string,
+): string {
+  const ref = display.displayRef?.trim();
+  return ref && ref.length > 0 ? ref : `case-${caseId.slice(-6)}`;
 }
 
 /**
@@ -132,6 +144,7 @@ async function refreshDocxInFolder(args: {
   submissionId: string;
   status: CaseStatus;
   folderName: string;
+  lastChangedBy?: { uid: string; role: string; action: string };
 }): Promise<void> {
   // Legacy DOCX-style exports (onedriveFilename ends with .docx) have no subfolder.
   if (args.folderName.toLowerCase().endsWith(".docx")) return;
@@ -166,6 +179,7 @@ async function refreshDocxInFolder(args: {
     display,
     item,
     generatedAtIso: new Date().toISOString(),
+    lastChangedBy: args.lastChangedBy,
   });
 
   await graphUploadFile({
@@ -240,7 +254,7 @@ export async function pushSubmissionToOneDrive(
   const item = mapSubmissionToItem({ submission: workspaceCase, decryptedFiling });
 
   // ── Subfolder ────────────────────────────────────────────────────────────────
-  const folderName = buildSubmissionFolderName(display);
+  const folderName = buildFolderName(display, submissionId);
   const folderPath = buildSubmissionFolderPath(workspaceCase.status, folderName);
   const folder = await graphEnsureFolder({ accessToken, folderPath });
 
@@ -296,6 +310,7 @@ export async function pushSubmissionToOneDrive(
  */
 export async function refreshSubmissionDocxInOneDrive(
   submissionId: string,
+  lastChangedBy?: { uid: string; role: string; action: string },
 ): Promise<OneDriveSyncResult> {
   if (!isOneDriveEnabled()) {
     return { ok: false, reason: "OneDrive integration is not enabled for this workspace." };
@@ -318,12 +333,31 @@ export async function refreshSubmissionDocxInOneDrive(
     return pushSubmissionToOneDrive(submissionId);
   }
 
+  // If a changelog entry is provided, persist it to Firestore before refreshing
+  // so buildSubmissionDocxBuffer can read it from workspaceCase.onedriveChangeLog.
+  if (lastChangedBy) {
+    try {
+      await getAdminFirestore()
+        .collection("submissions")
+        .doc(submissionId)
+        .update({
+          onedriveChangeLog: FieldValue.arrayUnion({
+            action: lastChangedBy.action,
+            uid: lastChangedBy.uid,
+            role: lastChangedBy.role,
+            ts: new Date().toISOString(),
+          }),
+        });
+    } catch { /* non-fatal — DOCX refresh proceeds regardless */ }
+  }
+
   try {
     await refreshDocxInFolder({
       accessToken,
       submissionId,
       status: workspaceCase.status,
       folderName: onedriveFilename,
+      lastChangedBy,
     });
     return { ok: true, action: "uploaded", webUrl: workspaceCase.onedriveWebUrl };
   } catch (e) {
@@ -340,6 +374,7 @@ export async function refreshSubmissionDocxInOneDrive(
 export async function moveSubmissionToStageInOneDrive(
   submissionId: string,
   toStatus: CaseStatus,
+  actor: { uid: string; role: string },
 ): Promise<OneDriveSyncResult> {
   if (!isOneDriveEnabled()) {
     return { ok: false, reason: "OneDrive integration is not enabled for this workspace." };
@@ -373,7 +408,7 @@ export async function moveSubmissionToStageInOneDrive(
     const display = getSubmissionDisplay({ submission: workspaceCase, decryptedFiling });
     const item = mapSubmissionToItem({ submission: workspaceCase, decryptedFiling });
 
-    const folderName = buildSubmissionFolderName(display);
+    const folderName = buildFolderName(display, submissionId);
     const folderPath = buildSubmissionFolderPath(toStatus, folderName);
     const folder = await graphEnsureFolder({ accessToken, folderPath });
 
@@ -411,60 +446,50 @@ export async function moveSubmissionToStageInOneDrive(
     return { ok: true, action: "uploaded", webUrl: folder.webUrl };
   }
 
-  // Existing item (subfolder or legacy DOCX file) — move to new stage folder.
-  // Graph API PATCH works identically for files and folders; moving a folder
-  // carries all its contents (DOCX + attachments) automatically.
+  // Existing item — copy-forward to new stage folder (original stays in place as archive).
+  // graphCopyItemAndWait polls until Graph confirms completion and returns the new item ID.
   const itemName = onedriveFilename ?? `${submissionId.slice(-6)}`;
   const newFolderPath = buildStageFolderPath(toStatus);
+  const actionLabel = `moved to ${toStatus}`;
 
-  // ── Version snapshot: copy the current subfolder into {currentStage}/_versions/
-  // before moving it out, so a point-in-time record survives the stage transition.
-  // This is non-fatal — a failure here must never block the move.
-  try {
-    const currentStage = workspaceCase.status;
-    const currentStageFolderPath = buildStageFolderPath(currentStage);
-    const versionsFolderPath = `${currentStageFolderPath}/_versions`;
-    // Timestamp suffix: YYYY-MM-DDTHHMM (filesystem-safe, no colons after T)
-    const ts = new Date().toISOString().slice(0, 16).replace(":", "").replace("-", "").replace("-", "");
-    const snapshotName = `${itemName}_${currentStage}_${ts}`;
-    await graphCopyItemToFolder({
-      accessToken,
-      itemId: onedriveItemId,
-      destinationFolderPath: versionsFolderPath,
-      newName: snapshotName,
-    });
-  } catch (e) {
-    console.error("[OneDrive version snapshot] copy failed (non-fatal):", e instanceof Error ? e.message : String(e));
-  }
-
-  const moved = await graphMoveItemToFolder({
+  const copied = await graphCopyItemAndWait({
     accessToken,
     itemId: onedriveItemId,
-    newFolderPath,
-    filename: itemName,
+    destinationFolderPath: newFolderPath,
+    newName: itemName,
   });
 
+  // Append changelog entry to Firestore before refreshing DOCX so the new entry
+  // is visible when buildSubmissionDocxBuffer reads workspaceCase.onedriveChangeLog.
+  const changeEntry = {
+    action: actionLabel,
+    uid: actor.uid,
+    role: actor.role,
+    ts: new Date().toISOString(),
+  };
   await getAdminFirestore()
     .collection("submissions")
     .doc(submissionId)
     .update({
-      onedriveItemId: moved.id,
-      onedriveWebUrl: moved.webUrl ?? null,
-      onedriveFilename: moved.name,
+      onedriveItemId: copied.id,
+      onedriveWebUrl: copied.webUrl ?? null,
+      onedriveFilename: copied.name,
       onedriveLastSyncedAt: FieldValue.serverTimestamp(),
+      onedriveChangeLog: FieldValue.arrayUnion(changeEntry),
     });
 
-  // Regenerate the DOCX with current data at the new location.
+  // Regenerate DOCX at the new location with the change log entry appended.
   try {
     await refreshDocxInFolder({
       accessToken,
       submissionId,
       status: toStatus,
-      folderName: moved.name,
+      folderName: copied.name,
+      lastChangedBy: { uid: actor.uid, role: actor.role, action: actionLabel },
     });
   } catch { /* non-fatal */ }
 
-  return { ok: true, action: "moved", webUrl: moved.webUrl };
+  return { ok: true, action: "moved", webUrl: copied.webUrl };
 }
 
 /**

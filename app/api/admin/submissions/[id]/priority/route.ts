@@ -6,6 +6,7 @@ import { getAdminFirestore } from "@/app/_lib/server/firebaseAdmin";
 import { logSubmissionAudit } from "@/app/_lib/server/logSubmissionAudit";
 import { assertMayMutateSubmission, jsonForbidden, jsonNotFound, loadWorkspaceCaseForSubmission } from "@/app/_lib/server/submissionCaseAccess";
 import { fetchWorkspaceRole } from "@/app/_lib/server/workspaceRole";
+import { refreshSubmissionDocxInOneDrive } from "@/app/_lib/server/submissionOneDriveSyncServer";
 
 type RouteParams = { params: Promise<{ id: string }> };
 
@@ -62,6 +63,13 @@ export async function POST(request: NextRequest, context: RouteParams) {
     } catch {
       /* audit failure must not block */
     }
+
+    // Refresh OneDrive DOCX with priority changelog entry — fire-and-forget.
+    void refreshSubmissionDocxInOneDrive(id, {
+      uid: admin.uid,
+      role: role ?? "admin",
+      action: `priority changed to ${next}`,
+    }).catch(() => { /* OneDrive refresh must never block priority update */ });
 
     return NextResponse.json({ ok: true });
   } catch {

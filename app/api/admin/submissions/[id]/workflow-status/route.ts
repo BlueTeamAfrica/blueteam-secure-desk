@@ -122,7 +122,7 @@ export async function POST(request: NextRequest, context: RouteParams) {
     // Failures here must never block the workflow response — OneDrive is auxiliary.
     let onedrive: { synced: boolean; action?: string; error?: string } = { synced: false };
     try {
-      const syncResult = await moveSubmissionToStageInOneDrive(id, target);
+      const syncResult = await moveSubmissionToStageInOneDrive(id, target, { uid: admin.uid, role: role! });
       if (syncResult.ok) {
         onedrive = { synced: true, action: syncResult.action };
       } else {
