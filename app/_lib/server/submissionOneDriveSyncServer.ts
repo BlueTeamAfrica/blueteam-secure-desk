@@ -461,15 +461,20 @@ export async function moveSubmissionToStageInOneDrive(
     return { ok: true, action: "uploaded", webUrl: folder.webUrl };
   }
 
+  // Capture original IDs before the copy-forward so the archive move always
+  // references the pre-copy item, not any post-copy values.
+  const originalItemId = onedriveItemId;
+  const originalFolderName = onedriveFilename ?? `${submissionId.slice(-6)}`;
+
   // Existing item — copy-forward to new stage folder, then move the original
   // into a "previous versions" subfolder of the source stage as an explicit archive.
-  const itemName = onedriveFilename ?? `${submissionId.slice(-6)}`;
+  const itemName = originalFolderName;
   const newFolderPath = buildStageFolderPath(toStatus);
   const actionLabel = `moved to ${toStatus}`;
 
   const copied = await graphCopyItemAndWait({
     accessToken,
-    itemId: onedriveItemId,
+    itemId: originalItemId,
     destinationFolderPath: newFolderPath,
     newName: itemName,
   });
@@ -480,9 +485,9 @@ export async function moveSubmissionToStageInOneDrive(
   try {
     await graphMoveItemToFolder({
       accessToken,
-      itemId: onedriveItemId,
+      itemId: originalItemId,
       newFolderPath: `${buildStageFolderPath(workspaceCase.status)}/previous versions`,
-      filename: itemName,
+      filename: originalFolderName,
     });
   } catch { /* non-fatal — archive failure must not block the stage move */ }
 
@@ -685,6 +690,11 @@ export async function pullSyncFromOneDrive(): Promise<{
       if (stageChanged) {
         patch.caseStatus = matchedStatus;
         patch.processingStatus = matchedStatus;
+        patch.onedriveChangeLog = FieldValue.arrayUnion({
+          action: `stage updated via OneDrive sync to ${matchedStatus}`,
+          triggeredBy: "pull-sync",
+          timestamp: new Date().toISOString(),
+        });
       }
       // Re-link onedriveItemId when the file was copied/re-uploaded (new ID).
       if (idChanged && matchedItemId) {

@@ -80,13 +80,14 @@ export async function POST(request: NextRequest, context: RouteParams) {
     let auditDetails: Record<string, unknown> | undefined;
 
     if (action === "mark_in_review") {
-      await subRef.update({ processingStatus: "in_review" });
+      await subRef.update({ caseStatus: "in_review", processingStatus: "in_review" });
     } else if (action === "mark_verified") {
       await subRef.update({
-        processingStatus: "verified",
+        caseStatus: "reviewed",
+        processingStatus: "reviewed",
         reviewedAt: FieldValue.serverTimestamp(),
       });
-      auditDetails = { processingStatus: "verified" };
+      auditDetails = { caseStatus: "reviewed", processingStatus: "reviewed" };
     } else {
       const reviewerNote = (body as unknown as { reviewerNote: string }).reviewerNote;
       await subRef.update({ reviewerNote });
