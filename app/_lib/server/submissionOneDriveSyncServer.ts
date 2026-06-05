@@ -173,8 +173,11 @@ async function refreshDocxInFolder(args: {
     } catch { /* skip */ }
   }
 
-  const display = getSubmissionDisplay({ submission: workspaceCase, decryptedFiling });
-  const item = mapSubmissionToItem({ submission: workspaceCase, decryptedFiling });
+  // Override status with the caller-supplied currentStatus so the DOCX reflects
+  // the new stage, not the stale Firestore value at the time of this call.
+  const caseWithCurrentStatus = { ...workspaceCase, status: args.status };
+  const display = getSubmissionDisplay({ submission: caseWithCurrentStatus, decryptedFiling });
+  const item = mapSubmissionToItem({ submission: caseWithCurrentStatus, decryptedFiling });
 
   // Use the stored DOCX filename so we always overwrite the same file.
   // Recomputing with buildExportDocxFilename would produce a different name if
@@ -187,7 +190,7 @@ async function refreshDocxInFolder(args: {
   const folderPath = buildSubmissionFolderPath(args.status, args.folderName);
 
   const buffer = await buildSubmissionDocxBuffer({
-    submission: workspaceCase,
+    submission: caseWithCurrentStatus,
     display,
     item,
     generatedAtIso: new Date().toISOString(),
@@ -458,8 +461,8 @@ export async function moveSubmissionToStageInOneDrive(
     return { ok: true, action: "uploaded", webUrl: folder.webUrl };
   }
 
-  // Existing item — copy-forward to new stage folder (original stays in place as archive).
-  // graphCopyItemAndWait polls until Graph confirms completion and returns the new item ID.
+  // Existing item — copy-forward to new stage folder, then move the original
+  // into a "previous versions" subfolder of the source stage as an explicit archive.
   const itemName = onedriveFilename ?? `${submissionId.slice(-6)}`;
   const newFolderPath = buildStageFolderPath(toStatus);
   const actionLabel = `moved to ${toStatus}`;
@@ -470,6 +473,18 @@ export async function moveSubmissionToStageInOneDrive(
     destinationFolderPath: newFolderPath,
     newName: itemName,
   });
+
+  // Archive: move the original (still in the source stage folder) into
+  // "{sourceStage}/previous versions/". graphMoveItemToFolder creates the
+  // subfolder if it doesn't exist. Non-fatal — never blocks the stage move.
+  try {
+    await graphMoveItemToFolder({
+      accessToken,
+      itemId: onedriveItemId,
+      newFolderPath: `${buildStageFolderPath(workspaceCase.status)}/previous versions`,
+      filename: itemName,
+    });
+  } catch { /* non-fatal — archive failure must not block the stage move */ }
 
   // Append changelog entry to Firestore before refreshing DOCX so the new entry
   // is visible when buildSubmissionDocxBuffer reads workspaceCase.onedriveChangeLog.
