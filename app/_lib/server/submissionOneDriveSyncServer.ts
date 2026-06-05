@@ -1,7 +1,7 @@
 import "server-only";
 
 import { FieldValue } from "firebase-admin/firestore";
-import type { CaseStatus, SubmissionAttachment } from "@/app/_lib/caseWorkspaceModel";
+import type { CaseStatus, SubmissionAttachment, WorkspaceCase } from "@/app/_lib/caseWorkspaceModel";
 import { extractDecryptedFiling } from "@/app/_lib/decryptedSubmissionReadout";
 import { getSubmissionDisplay } from "@/app/_lib/items/getSubmissionDisplay";
 import { mapSubmissionToItem } from "@/app/_lib/items/mapSubmissionToItem";
@@ -18,7 +18,7 @@ import { loadWorkspaceCaseForSubmission } from "@/app/_lib/server/submissionCase
 import { getSupabaseAdmin } from "@/app/_lib/server/supabaseAdmin";
 import { getValidWorkspaceAccessToken } from "@/app/_lib/server/workspaceOneDriveToken";
 import {
-  graphCopyItemAndWait,
+  type GraphFileItem,
   graphEnsureFolder,
   graphListFolderChildren,
   graphMoveItemToFolder,
@@ -134,6 +134,80 @@ async function uploadAttachmentsToFolder(args: {
     }
   }
   return uploaded;
+}
+
+/**
+ * Create a fresh stage subfolder for a submission and populate it with:
+ * 1. A fresh metadata DOCX reflecting currentStatus
+ * 2. The reporter's DOCX attachment (if one exists in the payload or attachments)
+ *
+ * Returns the created folder's OneDrive item or null on failure.
+ */
+async function createStageFolder(args: {
+  accessToken: string;
+  submissionId: string;
+  workspaceCase: WorkspaceCase;
+  decryptedFiling: ReturnType<typeof extractDecryptedFiling> | undefined;
+  currentStatus: CaseStatus;
+  folderName: string;
+  actor: { uid: string; role: string };
+  actionLabel: string;
+}): Promise<{ folder: GraphFileItem; docxFilename: string } | null> {
+  const { accessToken, submissionId, workspaceCase, decryptedFiling, currentStatus, folderName, actor, actionLabel } = args;
+
+  const folderPath = buildSubmissionFolderPath(currentStatus, folderName);
+  const folder = await graphEnsureFolder({ accessToken, folderPath });
+
+  const display = getSubmissionDisplay({ submission: { ...workspaceCase, status: currentStatus }, decryptedFiling });
+  const item = mapSubmissionToItem({ submission: { ...workspaceCase, status: currentStatus }, decryptedFiling });
+
+  // Upload metadata DOCX
+  const docxFilename = workspaceCase.onedriveDocxFilename
+    || buildExportDocxFilename(display)
+    || asciiFallbackExportFilename(display);
+
+  const buffer = await buildSubmissionDocxBuffer({
+    submission: { ...workspaceCase, status: currentStatus },
+    display,
+    item,
+    generatedAtIso: new Date().toISOString(),
+    lastChangedBy: { uid: actor.uid, role: actor.role, action: actionLabel },
+  });
+
+  await graphUploadFile({
+    accessToken,
+    drivePath: `${folderPath}/${docxFilename}`,
+    bytes: new Uint8Array(buffer),
+    mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  });
+
+  // Upload reporter DOCX attachment only (filter by mimeType)
+  const allAttachments = (decryptedFiling?.attachments?.length ?? 0) > 0
+    ? (decryptedFiling?.attachments ?? [])
+    : (workspaceCase.attachments ?? []);
+
+  const reporterDocx = allAttachments.find(
+    (a) => a.mimeType === "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+      || a.name?.toLowerCase().endsWith(".docx"),
+  );
+
+  if (reporterDocx?.storagePath?.trim()) {
+    const bytes = await downloadAttachmentFromSupabase(reporterDocx.storagePath);
+    if (bytes) {
+      const safeName = safeExportName(reporterDocx.name || "reporter-file.docx", { maxLen: 120 });
+      await graphUploadFile({
+        accessToken,
+        drivePath: `${folderPath}/${safeName}`,
+        bytes,
+        mimeType: reporterDocx.mimeType ?? "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      });
+    }
+  }
+
+  // Suppress unused variable warning — submissionId reserved for future logging.
+  void submissionId;
+
+  return { folder, docxFilename };
 }
 
 /** Build the full drive path for a file: folderPath/filename */
@@ -461,71 +535,61 @@ export async function moveSubmissionToStageInOneDrive(
     return { ok: true, action: "uploaded", webUrl: folder.webUrl };
   }
 
-  // Capture original IDs before the copy-forward so the archive move always
-  // references the pre-copy item, not any post-copy values.
-  const originalItemId = onedriveItemId;
-  const originalFolderName = onedriveFilename ?? `${submissionId.slice(-6)}`;
-
-  // Existing item — copy-forward to new stage folder, then move the original
-  // into a "previous versions" subfolder of the source stage as an explicit archive.
-  const itemName = originalFolderName;
-  const newFolderPath = buildStageFolderPath(toStatus);
-  const actionLabel = `moved to ${toStatus}`;
-
-  const copied = await graphCopyItemAndWait({
-    accessToken,
-    itemId: originalItemId,
-    destinationFolderPath: newFolderPath,
-    newName: itemName,
-  });
-
-  // Archive: move the original (still in the source stage folder) into
-  // "{sourceStage}/previous versions/". graphMoveItemToFolder creates the
-  // subfolder if it doesn't exist. Non-fatal — never blocks the stage move.
-  try {
-    await graphMoveItemToFolder({
-      accessToken,
-      itemId: originalItemId,
-      newFolderPath: `${buildStageFolderPath(workspaceCase.status)}/previous versions`,
-      filename: originalFolderName,
-    });
-  } catch (e) {
-    console.error("[moveSubmissionToStageInOneDrive] Archive move failed:", e instanceof Error ? e.message : String(e));
+  // Decrypt payload for folder creation.
+  let decryptedFiling: ReturnType<typeof extractDecryptedFiling> | undefined;
+  const enc = workspaceCase.encryptedPayload?.trim();
+  if (enc) {
+    try {
+      const json = decryptEncryptedPayloadFieldToJson(enc);
+      decryptedFiling = extractDecryptedFiling(json);
+    } catch { decryptedFiling = undefined; }
   }
 
-  // Append changelog entry to Firestore before refreshing DOCX so the new entry
-  // is visible when buildSubmissionDocxBuffer reads workspaceCase.onedriveChangeLog.
+  const folderName = await buildFolderName(
+    submissionId,
+    getSubmissionDisplay({ submission: workspaceCase, decryptedFiling }),
+    workspaceCase.encryptedPayload,
+  );
+
+  const actionLabel = `moved to ${toStatus}`;
+
+  // Create fresh folder in destination stage with metadata DOCX + reporter DOCX.
+  const result = await createStageFolder({
+    accessToken,
+    submissionId,
+    workspaceCase,
+    decryptedFiling,
+    currentStatus: toStatus,
+    folderName,
+    actor,
+    actionLabel,
+  });
+
+  if (!result) {
+    return { ok: false, reason: "Failed to create stage folder in OneDrive." };
+  }
+
+  // Update Firestore with new folder details.
   const changeEntry = {
     action: actionLabel,
     uid: actor.uid,
     role: actor.role,
     ts: new Date().toISOString(),
   };
+
   await getAdminFirestore()
     .collection("submissions")
     .doc(submissionId)
     .update({
-      onedriveItemId: copied.id,
-      onedriveWebUrl: copied.webUrl ?? null,
-      onedriveFilename: copied.name,
+      onedriveItemId: result.folder.id,
+      onedriveWebUrl: result.folder.webUrl ?? null,
+      onedriveFilename: folderName,
+      onedriveDocxFilename: result.docxFilename,
       onedriveLastSyncedAt: FieldValue.serverTimestamp(),
       onedriveChangeLog: FieldValue.arrayUnion(changeEntry),
     });
 
-  // Regenerate DOCX at the new location with the change log entry appended.
-  try {
-    await refreshDocxInFolder({
-      accessToken,
-      submissionId,
-      status: toStatus,
-      folderName: copied.name,
-      lastChangedBy: { uid: actor.uid, role: actor.role, action: actionLabel },
-    });
-  } catch (e) {
-    console.error("[moveSubmissionToStageInOneDrive] DOCX refresh failed:", e instanceof Error ? e.message : String(e));
-  }
-
-  return { ok: true, action: "moved", webUrl: copied.webUrl };
+  return { ok: true, action: "moved", webUrl: result.folder.webUrl };
 }
 
 /**

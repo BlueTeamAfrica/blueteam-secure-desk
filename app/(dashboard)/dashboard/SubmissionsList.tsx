@@ -316,7 +316,7 @@ export function SubmissionsList({
     }
     setSelectedId((cur) => {
       if (cur && filteredCases.some((c) => c.id === cur)) return cur;
-      return filteredCases[0].id;
+      return null;
     });
   }, [filteredCases]);
 
