@@ -259,8 +259,8 @@ export async function graphCopyItemAndWait(args: {
   }
 
   // Poll monitor URL until completed, failed, or retry limit reached.
-  const MAX_RETRIES = 10;
-  const POLL_INTERVAL_MS = 1000;
+  const MAX_RETRIES = 30;
+  const POLL_INTERVAL_MS = 2000;
 
   for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
     await new Promise((r) => setTimeout(r, POLL_INTERVAL_MS));
@@ -297,6 +297,7 @@ export async function graphCopyItemAndWait(args: {
     // status === "inProgress" or "notStarted" → keep polling
   }
 
+  console.error(`[graphCopyItemAndWait] Copy timed out after ${MAX_RETRIES} attempts for itemId: ${args.itemId}`);
   throw new Error(`OneDrive copy timed out after ${MAX_RETRIES} polling attempts.`);
 }
 

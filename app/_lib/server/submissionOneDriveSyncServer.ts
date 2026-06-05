@@ -489,7 +489,9 @@ export async function moveSubmissionToStageInOneDrive(
       newFolderPath: `${buildStageFolderPath(workspaceCase.status)}/previous versions`,
       filename: originalFolderName,
     });
-  } catch { /* non-fatal — archive failure must not block the stage move */ }
+  } catch (e) {
+    console.error("[moveSubmissionToStageInOneDrive] Archive move failed:", e instanceof Error ? e.message : String(e));
+  }
 
   // Append changelog entry to Firestore before refreshing DOCX so the new entry
   // is visible when buildSubmissionDocxBuffer reads workspaceCase.onedriveChangeLog.
@@ -519,7 +521,9 @@ export async function moveSubmissionToStageInOneDrive(
       folderName: copied.name,
       lastChangedBy: { uid: actor.uid, role: actor.role, action: actionLabel },
     });
-  } catch { /* non-fatal */ }
+  } catch (e) {
+    console.error("[moveSubmissionToStageInOneDrive] DOCX refresh failed:", e instanceof Error ? e.message : String(e));
+  }
 
   return { ok: true, action: "moved", webUrl: copied.webUrl };
 }
