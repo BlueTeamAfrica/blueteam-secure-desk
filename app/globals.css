@@ -5144,4 +5144,114 @@ a.exec-kpi:hover {
   }
 }
 
+/* ─── RTL layout ────────────────────────────────────────────────────────────────
+   Applied when dir="rtl" is set on .dashboard-shell (Arabic locale).
+   All logical-direction properties (start/end) already flip automatically;
+   these rules handle the cases that need explicit overrides.
+────────────────────────────────────────────────────────────────────────────── */
+
+/* Sidebar moves to the right — flip border */
+.dashboard-shell[dir="rtl"] .sidebar {
+  border-right: none;
+  border-left: 1px solid var(--sidebar-border);
+  order: 1; /* sidebar renders after .dash-column in source, so push it right */
+}
+
+.dashboard-shell[dir="rtl"] .dash-column {
+  order: 0;
+}
+
+/* Active sidebar accent bar — already stubbed in file, reinforced here */
+.dashboard-shell[dir="rtl"] .nav-link.is-active,
+.dashboard-shell[dir="rtl"] .status-nav-item.is-active {
+  box-shadow: inset -3px 0 0 var(--accent);
+}
+
+/* Stat strip pills — icon + label order */
+.dashboard-shell[dir="rtl"] .desk-stats-strip {
+  direction: rtl;
+}
+
+/* Topbar inner — reverse flex so hamburger stays on the correct edge */
+.dashboard-shell[dir="rtl"] .topbar-inner {
+  flex-direction: row-reverse;
+}
+
+/* User menu — keep toggle + sign-out left-to-right within the block */
+.dashboard-shell[dir="rtl"] .user-menu {
+  flex-direction: row-reverse;
+}
+
+/* Text alignment for titles, card headings */
+.dashboard-shell[dir="rtl"] :is(
+  .header-title,
+  .header-subtitle,
+  .ops-unclaimed-title,
+  .editorial-read-title,
+  .editorial-read-body,
+  .report-card-title,
+  .page-intro-title,
+  .nav-section-label,
+  .small-muted,
+  .subtext
+) {
+  text-align: right;
+}
+
+/* Detail panel toggle already has its own :dir(rtl) rule — no override needed */
+
+/* Mobile bottom nav — reverse tab order */
+.dashboard-shell[dir="rtl"] .mobile-bottom-nav {
+  flex-direction: row-reverse;
+}
+
+/* Arabic typography: use a system Arabic font stack */
+.dashboard-shell[dir="rtl"] {
+  font-family:
+    "Segoe UI",
+    Tahoma,
+    "Noto Sans Arabic",
+    "Arabic Typesetting",
+    system-ui,
+    sans-serif;
+  line-height: 1.7; /* Arabic glyphs benefit from slightly more leading */
+}
+
+/* ─── Language toggle ────────────────────────────────────────────────────────── */
+
+.locale-toggle {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  background: color-mix(in oklab, var(--bg) 60%, var(--border));
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 2px;
+}
+
+.locale-toggle-btn {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  padding: 3px 8px;
+  border-radius: 6px;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background 0.12s ease, color 0.12s ease;
+  line-height: 1.4;
+}
+
+.locale-toggle-btn:hover {
+  color: var(--text);
+  background: color-mix(in oklab, var(--text) 8%, transparent);
+}
+
+.locale-toggle-btn.is-active {
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
 

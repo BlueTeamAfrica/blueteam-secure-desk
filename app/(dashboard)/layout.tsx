@@ -110,7 +110,7 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
   const { status } = state;
   const router = useRouter();
   const pathname = usePathname();
-  const { labels, branding } = useDashboardBranding();
+  const { labels, branding, dir, locale } = useDashboardBranding();
   const editorDeskFallbackTitle = labels.editorDeskHeaderSuspenseTitle;
   const editorDeskFallbackSubtitle = labels.editorDeskHeaderSuspenseSubtitle;
   const deskMode =
@@ -198,6 +198,8 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
     <CaseQueueProvider>
       <div
         className="dashboard-shell"
+        dir={dir}
+        lang={locale}
         {...(deskMode ? { "data-desk-mode": deskMode } : {})}
         {...(sidebarOpen ? { "data-sidebar-open": "true" } : {})}
         style={branding.accentColor ? ({ ["--accent" as string]: branding.accentColor } as Record<string, string>) : undefined}

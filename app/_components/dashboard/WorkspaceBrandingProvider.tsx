@@ -5,6 +5,7 @@ import { doc, onSnapshot } from "firebase/firestore";
 import { db } from "@/app/_lib/firebase/firestore";
 import { getOrgLabels } from "@/app/_lib/org/getOrgLabels";
 import type { OrgLabels } from "@/app/_lib/org/types";
+import { useLocale, applyLocaleToLabels, type SupportedLocale, type UseLocaleReturn } from "@/app/_lib/i18n/useLocale";
 
 export type WorkspaceBrandingDoc = {
   orgName: string;
@@ -53,6 +54,9 @@ export type WorkspaceBranding = {
 export type DashboardBrandingContextValue = {
   branding: WorkspaceBranding;
   labels: OrgLabels;
+  locale: SupportedLocale;
+  setLocale: UseLocaleReturn["setLocale"];
+  dir: "ltr" | "rtl";
 };
 
 const DashboardBrandingContext = createContext<DashboardBrandingContextValue | null>(null);
@@ -60,6 +64,7 @@ const DashboardBrandingContext = createContext<DashboardBrandingContextValue | n
 export function WorkspaceBrandingProvider({ children }: { children: ReactNode }) {
   const baseLabels = useMemo(() => getOrgLabels(), []);
   const [remote, setRemote] = useState<Partial<WorkspaceBrandingDoc> | null>(null);
+  const { locale, setLocale, dir } = useLocale();
 
   useEffect(() => {
     const ref = doc(db, "settings", "branding");
@@ -87,7 +92,7 @@ export function WorkspaceBrandingProvider({ children }: { children: ReactNode })
   }, [remote]);
 
   const labels: OrgLabels = useMemo(() => {
-    return {
+    const withRemote = {
       ...baseLabels,
       // Identity layer overrides (no tenants; single global doc).
       workspaceName: branding.orgName || baseLabels.workspaceName,
@@ -95,9 +100,13 @@ export function WorkspaceBrandingProvider({ children }: { children: ReactNode })
       itemSingular: branding.terminology.item || baseLabels.itemSingular,
       itemPlural: branding.terminology.items || baseLabels.itemPlural,
     };
-  }, [baseLabels, branding.orgName, branding.logoUrl, branding.terminology.item, branding.terminology.items]);
+    return applyLocaleToLabels(withRemote, locale);
+  }, [baseLabels, branding.orgName, branding.logoUrl, branding.terminology.item, branding.terminology.items, locale]);
 
-  const value = useMemo(() => ({ branding, labels }), [branding, labels]);
+  const value = useMemo(
+    () => ({ branding, labels, locale, setLocale, dir }),
+    [branding, labels, locale, setLocale, dir],
+  );
 
   return <DashboardBrandingContext.Provider value={value}>{children}</DashboardBrandingContext.Provider>;
 }
@@ -116,6 +125,9 @@ export function useDashboardBranding(): DashboardBrandingContextValue {
         accentColor: null,
       },
       labels: base,
+      locale: "en",
+      setLocale: () => undefined,
+      dir: "ltr",
     };
   }
   return ctx;
