@@ -212,6 +212,20 @@ export type WorkspaceBoardCopy = {
   intakeEmptyOrWord: string;
   intakeEmptyStateTriageLabel: string;
   intakeEmptyAfterStates: string;
+  /** View-specific empty state strings for getDashboardViewConfig */
+  viewEmptyMyQueueTitle: string;
+  viewEmptyMyQueueBody: string;
+  viewEmptyAssignedWorkTitle: string;
+  viewEmptyAssignedWorkBody: string;
+  viewEmptyNeedsLeadTitle: string;
+  viewEmptyNeedsLeadBody: string;
+  viewEmptyWithLeadBody: string;
+  viewEmptyResolvedBody: string;
+  viewEmptyArchiveBody: string;
+  viewEmptyActiveReportsBody: string;
+  viewEmptyQueueClearTitle: string;
+  viewEmptyDefaultTitle: string;
+  viewEmptyDefaultBody: string;
   stageColumnTitleDesk: string;
   stageColumnTitleDefault: string;
   leadColumnTitleDesk: string;

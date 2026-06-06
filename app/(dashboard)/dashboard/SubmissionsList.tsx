@@ -1091,10 +1091,9 @@ export function SubmissionsList({
           </div>
         ) : filteredCases.length === 0 ? (
           <div className="empty-state">
-            <p className="empty-state-title">{viewConfig?.emptyTitle ?? "Nothing in this view"}</p>
+            <p className="empty-state-title">{viewConfig?.emptyTitle ?? labels.viewEmptyDefaultTitle}</p>
             <p className="subtext" style={{ margin: 0 }}>
-              {viewConfig?.emptyBody ??
-                "Try another tab on the left, or check back as cases move through the workflow."}
+              {viewConfig?.emptyBody ?? labels.viewEmptyDefaultBody}
             </p>
           </div>
         ) : (

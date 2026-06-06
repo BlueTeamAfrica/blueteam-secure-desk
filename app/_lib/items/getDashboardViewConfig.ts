@@ -92,13 +92,13 @@ export function getDashboardViewConfig(args: {
       : presentationView === "archive"
         ? `No ${labels.archive.toLowerCase()} ${labels.itemPlural} yet.`
         : presentationView === "myQueue"
-          ? "Nothing is assigned to you right now."
+          ? labels.viewEmptyMyQueueTitle
           : presentationView === "withLead"
             ? `No ${labels.withLead.toLowerCase()} ${labels.itemPlural} yet.`
             : presentationView === "assignedWork"
-              ? "No assigned work right now."
+              ? labels.viewEmptyAssignedWorkTitle
               : presentationView === "needsLead"
-                ? "No items need a lead right now."
+                ? labels.viewEmptyNeedsLeadTitle
             : presentationView === "new"
               ? `No new ${labels.itemPlural} yet.`
               : presentationView === "needsTriage"
@@ -108,25 +108,25 @@ export function getDashboardViewConfig(args: {
                   : presentationView === "awaitingFollowUp"
                     ? `No ${labels.awaitingFollowUp.toLowerCase()} items right now.`
                     : managingEditorDesk
-                      ? "This queue is clear"
-                      : "Nothing in this view";
+                      ? labels.viewEmptyQueueClearTitle
+                      : labels.viewEmptyDefaultTitle;
 
   const emptyBody =
     presentationView === "resolved"
-      ? "When work is filed as resolved, it will appear here."
+      ? labels.viewEmptyResolvedBody
       : presentationView === "archive"
-        ? "When items are archived, they will appear here."
+        ? labels.viewEmptyArchiveBody
         : presentationView === "myQueue"
-          ? "When you’re set as the lead on a report, it will show up here for quick access."
+          ? labels.viewEmptyMyQueueBody
           : presentationView === "withLead"
-            ? "Assigned work will appear here once a lead is set."
+            ? labels.viewEmptyWithLeadBody
             : presentationView === "assignedWork"
-              ? "Items that already have a lead."
+              ? labels.viewEmptyAssignedWorkBody
               : presentationView === "needsLead"
-                ? "Unclaimed items waiting for assignment."
+                ? labels.viewEmptyNeedsLeadBody
             : presentationView === "activeReports"
-              ? "Switch queues on the left or wait for new filings — the run sheet above still reflects the whole room."
-              : "Try another tab on the left, or check back as cases move through the workflow.";
+              ? labels.viewEmptyActiveReportsBody
+              : labels.viewEmptyDefaultBody;
 
   return {
     presentationView,

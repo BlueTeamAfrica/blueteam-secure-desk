@@ -3466,6 +3466,11 @@ a.exec-kpi:hover {
     flex-direction: column;
   }
 
+  /* RTL: narrow viewport still stacks vertically */
+  .dashboard-shell[dir="rtl"] {
+    flex-direction: column;
+  }
+
   .sidebar-inner {
     flex-direction: row;
     flex-wrap: wrap;
@@ -5150,15 +5155,10 @@ a.exec-kpi:hover {
    these rules handle the cases that need explicit overrides.
 ────────────────────────────────────────────────────────────────────────────── */
 
-/* Sidebar moves to the right — flip border */
+/* Sidebar moves to the right — reverse row direction and flip border */
 .dashboard-shell[dir="rtl"] .sidebar {
   border-right: none;
   border-left: 1px solid var(--sidebar-border);
-  order: 1; /* sidebar renders after .dash-column in source, so push it right */
-}
-
-.dashboard-shell[dir="rtl"] .dash-column {
-  order: 0;
 }
 
 /* Active sidebar accent bar — already stubbed in file, reinforced here */
@@ -5205,8 +5205,9 @@ a.exec-kpi:hover {
   flex-direction: row-reverse;
 }
 
-/* Arabic typography: use a system Arabic font stack */
+/* Arabic typography + RTL row layout */
 .dashboard-shell[dir="rtl"] {
+  flex-direction: row-reverse;
   font-family:
     "Segoe UI",
     Tahoma,
