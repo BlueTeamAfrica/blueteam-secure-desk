@@ -181,27 +181,23 @@ async function createStageFolder(args: {
     mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
   });
 
-  // Upload reporter DOCX attachment only (filter by mimeType)
+  // Upload DOCX attachments only — PDFs and other files stay in the incoming/ folder.
   const allAttachments = (decryptedFiling?.attachments?.length ?? 0) > 0
     ? (decryptedFiling?.attachments ?? [])
     : (workspaceCase.attachments ?? []);
 
-  const reporterDocx = allAttachments.find(
-    (a) => a.mimeType === "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-      || a.name?.toLowerCase().endsWith(".docx"),
+  const docxAttachments = allAttachments.filter(
+    (a) =>
+      a.mimeType === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ||
+      a.name?.toLowerCase().endsWith(".docx"),
   );
 
-  if (reporterDocx?.storagePath?.trim()) {
-    const bytes = await downloadAttachmentFromSupabase(reporterDocx.storagePath);
-    if (bytes) {
-      const safeName = safeExportName(reporterDocx.name || "reporter-file.docx", { maxLen: 120 });
-      await graphUploadFile({
-        accessToken,
-        drivePath: `${folderPath}/${safeName}`,
-        bytes,
-        mimeType: reporterDocx.mimeType ?? "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-      });
-    }
+  if (docxAttachments.length > 0) {
+    await uploadAttachmentsToFolder({
+      accessToken,
+      folderPath,
+      attachments: docxAttachments,
+    });
   }
 
   // Suppress unused variable warning — submissionId reserved for future logging.
