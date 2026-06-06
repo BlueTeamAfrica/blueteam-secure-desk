@@ -491,13 +491,14 @@ export function normalizeSidebarView(raw: string | null): SidebarViewKey {
   const t = (raw ?? "").trim().toLowerCase().replace(/[\s-]+/g, "_");
   if (t === "needs_lead" || t === "needslead" || t === "unassigned") return "needs_lead";
   if (t === "assigned_work" || t === "assignedwork" || t === "with_lead") return "assigned_work";
-  if (t === "raw" || t === "raw_materials") return "new";
-  if (t === "edit1" || t === "first_editing") return "needs_triage";
-  if (t === "edit2" || t === "second_editing") return "assigned";
-  if (t === "proof" || t === "proofreading") return "in_review";
-  if (t === "design" || t === "designed") return "waiting_follow_up";
-  if (t === "published") return "resolved";
-  if (t === "archive" || t === "archived") return "archive";
+  // Canonical CaseStatus values used directly as URL params (e.g. from stat strip).
+  if (t === "incoming") return "new";
+  if (t === "raw" || t === "raw_materials") return "needs_triage";
+  if (t === "first_edit" || t === "edit1" || t === "first_editing") return "assigned";
+  if (t === "second_edit" || t === "edit2" || t === "second_editing") return "in_review";
+  if (t === "in_review" || t === "proof" || t === "proofreading") return "waiting_follow_up";
+  if (t === "reviewed" || t === "published") return "resolved";
+  if (t === "designed" || t === "archive" || t === "archived") return "archive";
   return "inbox";
 }
 
