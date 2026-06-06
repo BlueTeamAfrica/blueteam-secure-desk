@@ -127,9 +127,15 @@ Two parallel routing trees:
 1. Read this file
 2. Read `secure-reporter-shared/SHARED_CONTEXT.md`
 3. Read `MASTER_HANDOVER.md` — core sections only (stop at `## Extended project reference`).
-   Load the extended sections only if this session targets: secure-reporter-app contracts, blueteam-portal, blueteamafrica, or cross-project planning.
-4. Also check `@AGENTS.md` if it exists in the repo root
-5. State which open thread you are targeting before writing any code
+   Load extended sections only if this session targets: secure-reporter-app contracts, blueteam-portal, blueteamafrica, or cross-project planning.
+4. For cross-project context, decisions log, and working rules: read relevant files in `~/Documents/blueteam-brain/`
+   - `INDEX.md` — project map and quick reference
+   - `RULES.md` — non-negotiable working rules
+   - `DECISIONS.md` — technical decisions log
+   - `projects/secure-desk.md` — current state and open threads
+   - `systems/onedrive.md` — OneDrive integration reference
+5. Also check `@AGENTS.md` if it exists in the repo root
+6. State which open thread you are targeting before writing any code
 
 ## Corrections
 - [Date] — [mistake Claude made] → [correct approach]
