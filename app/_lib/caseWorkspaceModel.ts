@@ -487,6 +487,10 @@ export function toCaseQueueSnapshot(c: WorkspaceCase): CaseQueueSnapshot {
 }
 
 export function normalizeSidebarView(raw: string | null): SidebarViewKey {
+  // "in_review" exists in both CaseStatus and SidebarViewKey with different semantics.
+  // As a URL param it always means CaseStatus.in_review → SidebarViewKey "waiting_follow_up".
+  // Must be intercepted before the SIDEBAR_KEYS shortcut below.
+  if (raw === "in_review") return "waiting_follow_up";
   if (raw && SIDEBAR_KEYS.has(raw)) return raw as SidebarViewKey;
   const t = (raw ?? "").trim().toLowerCase().replace(/[\s-]+/g, "_");
   if (t === "needs_lead" || t === "needslead" || t === "unassigned") return "needs_lead";
@@ -496,7 +500,7 @@ export function normalizeSidebarView(raw: string | null): SidebarViewKey {
   if (t === "raw" || t === "raw_materials") return "needs_triage";
   if (t === "first_edit" || t === "edit1" || t === "first_editing") return "assigned";
   if (t === "second_edit" || t === "edit2" || t === "second_editing") return "in_review";
-  if (t === "in_review" || t === "proof" || t === "proofreading") return "waiting_follow_up";
+  if (t === "proof" || t === "proofreading") return "waiting_follow_up";
   if (t === "reviewed" || t === "published") return "resolved";
   if (t === "designed" || t === "archive" || t === "archived") return "archive";
   return "inbox";
