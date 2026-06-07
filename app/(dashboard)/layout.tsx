@@ -194,6 +194,74 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
     return null;
   }
 
+  const sidebarEl = (
+    <Suspense fallback={<SidebarFallback />}>
+      <SidebarNav />
+    </Suspense>
+  );
+
+  const dashColumnEl = (
+    <div className="dash-column">
+      <header className={`topbar${deskMode === "managing-editor" ? " topbar--managing-editor-minimal" : ""}`}>
+        <div
+          className={`topbar-inner${deskMode === "managing-editor" ? " topbar-inner--managing-editor-minimal" : ""}`}
+        >
+          {/* Hamburger — visible only on tablet/mobile via CSS */}
+          <button
+            type="button"
+            className="sidebar-hamburger"
+            aria-label="Open navigation"
+            aria-expanded={sidebarOpen}
+            onClick={() => setSidebarOpen((v) => !v)}
+          >
+            <span className="sidebar-hamburger-bar" />
+          </button>
+
+          <div style={{ flex: 1, minWidth: 0 }}>
+            {state.status === "signedInWorkspace" && state.role === "reviewer" ? (
+              <>
+                <Suspense
+                  fallback={
+                    <>
+                      <div className="header-title header-title--desk">{editorDeskFallbackTitle}</div>
+                      <div className="header-subtitle header-subtitle--desk">{editorDeskFallbackSubtitle}</div>
+                    </>
+                  }
+                >
+                  <EditorDeskHeader />
+                </Suspense>
+              </>
+            ) : state.status === "signedInWorkspace" && (state.role === "owner" || state.role === "admin") ? (
+              <div className="topbar-me-brand">
+                {branding.logoUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={branding.logoUrl} alt="" className="topbar-me-logo" />
+                ) : (
+                  <span className="topbar-me-brand-mark" />
+                )}
+                <span className="topbar-me-brand-text">{labels.workspaceName}</span>
+                <TopbarLiveBadge />
+              </div>
+            ) : (
+              <>
+                <div className="header-title">{labels.intakeTopbarTitle}</div>
+                <div className="header-subtitle">{labels.intakeTopbarSubtitle}</div>
+              </>
+            )}
+          </div>
+          <UserMenu />
+        </div>
+      </header>
+      <main className="content">
+        <div className="container container--wide">{children}</div>
+      </main>
+      {/* Mobile bottom nav — hidden on desktop via CSS */}
+      <Suspense fallback={null}>
+        <MobileBottomNav />
+      </Suspense>
+    </div>
+  );
+
   return (
     <CaseQueueProvider>
       <div
@@ -213,69 +281,14 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
           />
         )}
 
-        <Suspense fallback={<SidebarFallback />}>
-          <SidebarNav />
-        </Suspense>
-
-        <div className="dash-column">
-          <header className={`topbar${deskMode === "managing-editor" ? " topbar--managing-editor-minimal" : ""}`}>
-            <div
-              className={`topbar-inner${deskMode === "managing-editor" ? " topbar-inner--managing-editor-minimal" : ""}`}
-            >
-              {/* Hamburger — visible only on tablet/mobile via CSS */}
-              <button
-                type="button"
-                className="sidebar-hamburger"
-                aria-label="Open navigation"
-                aria-expanded={sidebarOpen}
-                onClick={() => setSidebarOpen((v) => !v)}
-              >
-                <span className="sidebar-hamburger-bar" />
-              </button>
-
-              <div style={{ flex: 1, minWidth: 0 }}>
-                {state.status === "signedInWorkspace" && state.role === "reviewer" ? (
-                  <>
-                    <Suspense
-                      fallback={
-                        <>
-                          <div className="header-title header-title--desk">{editorDeskFallbackTitle}</div>
-                          <div className="header-subtitle header-subtitle--desk">{editorDeskFallbackSubtitle}</div>
-                        </>
-                      }
-                    >
-                      <EditorDeskHeader />
-                    </Suspense>
-                  </>
-                ) : state.status === "signedInWorkspace" && (state.role === "owner" || state.role === "admin") ? (
-                  <div className="topbar-me-brand">
-                    {branding.logoUrl ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={branding.logoUrl} alt="" className="topbar-me-logo" />
-                    ) : (
-                      <span className="topbar-me-brand-mark" />
-                    )}
-                    <span className="topbar-me-brand-text">{labels.workspaceName}</span>
-                    <TopbarLiveBadge />
-                  </div>
-                ) : (
-                  <>
-                    <div className="header-title">{labels.intakeTopbarTitle}</div>
-                    <div className="header-subtitle">{labels.intakeTopbarSubtitle}</div>
-                  </>
-                )}
-              </div>
-              <UserMenu />
-            </div>
-          </header>
-          <main className="content">
-            <div className="container container--wide">{children}</div>
-          </main>
-          {/* Mobile bottom nav — hidden on desktop via CSS */}
-          <Suspense fallback={null}>
-            <MobileBottomNav />
-          </Suspense>
-        </div>
+        {/* In RTL (Arabic) mode, render dash-column first so the sidebar
+            physically appears on the right in the DOM — avoids CSS specificity
+            battles with flex-direction: row-reverse across breakpoints. */}
+        {dir === "rtl" ? (
+          <>{dashColumnEl}{sidebarEl}</>
+        ) : (
+          <>{sidebarEl}{dashColumnEl}</>
+        )}
       </div>
     </CaseQueueProvider>
   );

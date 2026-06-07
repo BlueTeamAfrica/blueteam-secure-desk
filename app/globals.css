@@ -4173,42 +4173,42 @@ a.exec-kpi:hover {
 
 /* Per-stage: border + faint tint */
 .report-card--clean[data-case-status="incoming"] {
-  border-left-color: var(--stage-new) !important;
+  border-inline-start-color: var(--stage-new) !important;
   background: color-mix(in oklab, var(--stage-new) 5%, var(--premium-sheet-gradient)) !important;
 }
 .report-card--clean[data-case-status="raw"] {
-  border-left-color: var(--stage-triage) !important;
+  border-inline-start-color: var(--stage-triage) !important;
   background: color-mix(in oklab, var(--stage-triage) 5%, var(--premium-sheet-gradient)) !important;
 }
 .report-card--clean[data-case-status="first_edit"] {
-  border-left-color: var(--stage-assigned) !important;
+  border-inline-start-color: var(--stage-assigned) !important;
   background: color-mix(in oklab, var(--stage-assigned) 5%, var(--premium-sheet-gradient)) !important;
 }
 .report-card--clean[data-case-status="second_edit"] {
-  border-left-color: var(--stage-in-review) !important;
+  border-inline-start-color: var(--stage-in-review) !important;
   background: color-mix(in oklab, var(--stage-in-review) 5%, var(--premium-sheet-gradient)) !important;
 }
 .report-card--clean[data-case-status="in_review"] {
-  border-left-color: var(--stage-follow-up) !important;
+  border-inline-start-color: var(--stage-follow-up) !important;
   background: color-mix(in oklab, var(--stage-follow-up) 5%, var(--premium-sheet-gradient)) !important;
 }
 .report-card--clean[data-case-status="reviewed"] {
-  border-left-color: var(--stage-resolved) !important;
+  border-inline-start-color: var(--stage-resolved) !important;
   background: color-mix(in oklab, var(--stage-resolved) 5%, var(--premium-sheet-gradient)) !important;
 }
 .report-card--clean[data-case-status="designed"] {
-  border-left-color: var(--stage-archived) !important;
+  border-inline-start-color: var(--stage-archived) !important;
   background: color-mix(in oklab, var(--stage-archived) 5%, var(--premium-sheet-gradient)) !important;
 }
 
 /* Deepen the border on hover */
-.report-card--clean:hover[data-case-status="incoming"]             { border-left-color: color-mix(in oklab, var(--stage-new) 80%, #000) !important; }
-.report-card--clean:hover[data-case-status="raw"]    { border-left-color: color-mix(in oklab, var(--stage-triage) 80%, #000) !important; }
-.report-card--clean:hover[data-case-status="first_edit"]        { border-left-color: color-mix(in oklab, var(--stage-assigned) 80%, #000) !important; }
-.report-card--clean:hover[data-case-status="second_edit"]       { border-left-color: color-mix(in oklab, var(--stage-in-review) 80%, #000) !important; }
-.report-card--clean:hover[data-case-status="in_review"]{ border-left-color: color-mix(in oklab, var(--stage-follow-up) 80%, #000) !important; }
-.report-card--clean:hover[data-case-status="reviewed"]        { border-left-color: color-mix(in oklab, var(--stage-resolved) 80%, #000) !important; }
-.report-card--clean:hover[data-case-status="designed"]        { border-left-color: color-mix(in oklab, var(--stage-archived) 80%, #000) !important; }
+.report-card--clean:hover[data-case-status="incoming"]             { border-inline-start-color: color-mix(in oklab, var(--stage-new) 80%, #000) !important; }
+.report-card--clean:hover[data-case-status="raw"]    { border-inline-start-color: color-mix(in oklab, var(--stage-triage) 80%, #000) !important; }
+.report-card--clean:hover[data-case-status="first_edit"]        { border-inline-start-color: color-mix(in oklab, var(--stage-assigned) 80%, #000) !important; }
+.report-card--clean:hover[data-case-status="second_edit"]       { border-inline-start-color: color-mix(in oklab, var(--stage-in-review) 80%, #000) !important; }
+.report-card--clean:hover[data-case-status="in_review"]{ border-inline-start-color: color-mix(in oklab, var(--stage-follow-up) 80%, #000) !important; }
+.report-card--clean:hover[data-case-status="reviewed"]        { border-inline-start-color: color-mix(in oklab, var(--stage-resolved) 80%, #000) !important; }
+.report-card--clean:hover[data-case-status="designed"]        { border-inline-start-color: color-mix(in oklab, var(--stage-archived) 80%, #000) !important; }
 
 /* ── Corner triangle flag: overdue or critical/high priority ── */
 /* Uses ::after (::before is reserved for potential future use) */
@@ -4357,13 +4357,13 @@ a.exec-kpi:hover {
   display: flex;
   flex-direction: column;
   width: 100%;
-  text-align: left;
+  text-align: start;
   font-family: inherit;
   color: var(--text);
   cursor: pointer;
   border-radius: var(--radius-xl);
   border: 1px solid var(--card-border);
-  border-left-width: 4px;
+  border-inline-start-width: 4px;
   background: var(--panel-secondary);
   box-shadow: 0 2px 6px rgba(12, 11, 9, 0.07), 0 1px 2px rgba(12, 11, 9, 0.04);
   overflow: hidden;
@@ -4392,22 +4392,22 @@ a.exec-kpi:hover {
 }
 
 /* ── Stage accent colors ── */
-.rc[data-case-status="incoming"]               { border-left-color: var(--stage-new); background: color-mix(in oklab, var(--stage-new) 4%, var(--panel-secondary)); }
-.rc[data-case-status="raw"]      { border-left-color: var(--stage-triage); background: color-mix(in oklab, var(--stage-triage) 4%, var(--panel-secondary)); }
-.rc[data-case-status="first_edit"]          { border-left-color: var(--stage-assigned); background: color-mix(in oklab, var(--stage-assigned) 4%, var(--panel-secondary)); }
-.rc[data-case-status="second_edit"]         { border-left-color: var(--stage-in-review); background: color-mix(in oklab, var(--stage-in-review) 4%, var(--panel-secondary)); }
-.rc[data-case-status="in_review"] { border-left-color: var(--stage-follow-up); background: color-mix(in oklab, var(--stage-follow-up) 4%, var(--panel-secondary)); }
-.rc[data-case-status="reviewed"]          { border-left-color: var(--stage-resolved); background: color-mix(in oklab, var(--stage-resolved) 4%, var(--panel-secondary)); }
-.rc[data-case-status="designed"]          { border-left-color: var(--stage-archived); background: color-mix(in oklab, var(--stage-archived) 4%, var(--panel-secondary)); }
+.rc[data-case-status="incoming"]               { border-inline-start-color: var(--stage-new); background: color-mix(in oklab, var(--stage-new) 4%, var(--panel-secondary)); }
+.rc[data-case-status="raw"]      { border-inline-start-color: var(--stage-triage); background: color-mix(in oklab, var(--stage-triage) 4%, var(--panel-secondary)); }
+.rc[data-case-status="first_edit"]          { border-inline-start-color: var(--stage-assigned); background: color-mix(in oklab, var(--stage-assigned) 4%, var(--panel-secondary)); }
+.rc[data-case-status="second_edit"]         { border-inline-start-color: var(--stage-in-review); background: color-mix(in oklab, var(--stage-in-review) 4%, var(--panel-secondary)); }
+.rc[data-case-status="in_review"] { border-inline-start-color: var(--stage-follow-up); background: color-mix(in oklab, var(--stage-follow-up) 4%, var(--panel-secondary)); }
+.rc[data-case-status="reviewed"]          { border-inline-start-color: var(--stage-resolved); background: color-mix(in oklab, var(--stage-resolved) 4%, var(--panel-secondary)); }
+.rc[data-case-status="designed"]          { border-inline-start-color: var(--stage-archived); background: color-mix(in oklab, var(--stage-archived) 4%, var(--panel-secondary)); }
 
 /* Hover: deepen the left border */
-.rc:hover[data-case-status="incoming"]               { border-left-color: color-mix(in oklab, var(--stage-new) 75%, #000); }
-.rc:hover[data-case-status="raw"]      { border-left-color: color-mix(in oklab, var(--stage-triage) 75%, #000); }
-.rc:hover[data-case-status="first_edit"]          { border-left-color: color-mix(in oklab, var(--stage-assigned) 75%, #000); }
-.rc:hover[data-case-status="second_edit"]         { border-left-color: color-mix(in oklab, var(--stage-in-review) 75%, #000); }
-.rc:hover[data-case-status="in_review"] { border-left-color: color-mix(in oklab, var(--stage-follow-up) 75%, #000); }
-.rc:hover[data-case-status="reviewed"]          { border-left-color: color-mix(in oklab, var(--stage-resolved) 75%, #000); }
-.rc:hover[data-case-status="designed"]          { border-left-color: color-mix(in oklab, var(--stage-archived) 75%, #000); }
+.rc:hover[data-case-status="incoming"]               { border-inline-start-color: color-mix(in oklab, var(--stage-new) 75%, #000); }
+.rc:hover[data-case-status="raw"]      { border-inline-start-color: color-mix(in oklab, var(--stage-triage) 75%, #000); }
+.rc:hover[data-case-status="first_edit"]          { border-inline-start-color: color-mix(in oklab, var(--stage-assigned) 75%, #000); }
+.rc:hover[data-case-status="second_edit"]         { border-inline-start-color: color-mix(in oklab, var(--stage-in-review) 75%, #000); }
+.rc:hover[data-case-status="in_review"] { border-inline-start-color: color-mix(in oklab, var(--stage-follow-up) 75%, #000); }
+.rc:hover[data-case-status="reviewed"]          { border-inline-start-color: color-mix(in oklab, var(--stage-resolved) 75%, #000); }
+.rc:hover[data-case-status="designed"]          { border-inline-start-color: color-mix(in oklab, var(--stage-archived) 75%, #000); }
 
 /* ── Urgency corner flag ── */
 .rc.rc--overdue::after,
