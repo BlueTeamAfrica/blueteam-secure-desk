@@ -5,12 +5,15 @@ import { mayAccessSettingsInUi } from "@/app/_lib/rbac";
 import { getFirebaseAuth } from "@/app/_lib/firebase/auth";
 import { fetchOneDriveStatus, startOneDriveConnect } from "@/app/_lib/integrations/onedrive/client";
 import { useEffect, useMemo, useState } from "react";
+import { useDashboardBranding } from "@/app/_components/dashboard/WorkspaceBrandingProvider";
 
 export default function SettingsPage() {
   const { state } = useAuth();
   const sessionReady = state.status === "signedInWorkspace";
   const role = sessionReady ? state.role : null;
   const canSeeIntegrations = role === "owner" || role === "admin";
+  const { labels } = useDashboardBranding();
+  const sl = labels.settingsLabels;
 
   const [oneDriveConnected, setOneDriveConnected] = useState<boolean | null>(null);
   const [oneDriveAccountEmail, setOneDriveAccountEmail] = useState<string | null>(null);
@@ -56,10 +59,9 @@ export default function SettingsPage() {
     return (
       <div className="stack-20">
         <div className="auth-card" style={{ maxWidth: 520, margin: "0 auto" }}>
-          <h1 className="heading-xl">Settings unavailable</h1>
+          <h1 className="heading-xl">{sl?.unavailableTitle ?? "Settings unavailable"}</h1>
           <p className="subtext">
-            Your workspace role does not include access to settings. Ask an owner or admin if you
-            need a change.
+            {sl?.unavailableBody ?? "Your workspace role does not include access to settings. Ask an owner or admin if you need a change."}
           </p>
         </div>
       </div>
@@ -69,38 +71,37 @@ export default function SettingsPage() {
   return (
     <div className="stack-20">
       <div>
-        <h1 className="page-intro-title">Settings</h1>
+        <h1 className="page-intro-title">{sl?.pageTitle ?? "Settings"}</h1>
         <p className="page-intro-desc">
-          Workspace preferences and how your organisation handles sensitive information.
+          {sl?.pageDesc ?? "Workspace preferences and how your organisation handles sensitive information."}
         </p>
       </div>
 
       <section className="card stack-16">
-        <div className="header-title">Workspace profile</div>
+        <div className="header-title">{sl?.sectionWorkspaceProfileTitle ?? "Workspace profile"}</div>
         <p className="subtext" style={{ margin: 0 }}>
-          Your workspace name and region will appear here once configured for your organisation.
+          {sl?.sectionWorkspaceProfileBody ?? "Your workspace name and region will appear here once configured for your organisation."}
         </p>
       </section>
 
       <section className="card stack-16">
-        <div className="header-title">Security</div>
+        <div className="header-title">{sl?.sectionSecurityTitle ?? "Security"}</div>
         <p className="subtext" style={{ margin: 0 }}>
-          Sign-in policies and session reminders are managed by your organisation&apos;s IT lead.
+{sl?.sectionSecurityBody ?? "Sign-in policies and session reminders are managed by your organisation's IT lead."}
         </p>
       </section>
 
       <section className="card stack-16">
-        <div className="header-title">Data handling</div>
+        <div className="header-title">{sl?.sectionDataHandlingTitle ?? "Data handling"}</div>
         <p className="subtext" style={{ margin: 0 }}>
-          Retention and export rules for cases and reporter messages are agreed with your leadership
-          team and applied at the infrastructure level.
+          {sl?.sectionDataHandlingBody ?? "Retention and export rules for cases and reporter messages are agreed with your leadership team and applied at the infrastructure level."}
         </p>
       </section>
 
       <section className="card stack-16">
-        <div className="header-title">Integrations</div>
+        <div className="header-title">{sl?.sectionIntegrationsTitle ?? "Integrations"}</div>
         <p className="subtext" style={{ margin: 0 }}>
-          Connect your newsroom tools to streamline exports.
+          {sl?.sectionIntegrationsBody ?? "Connect your newsroom tools to streamline exports."}
         </p>
         {canSeeIntegrations ? (
           <div className="stack-12" style={{ marginTop: 10 }}>
@@ -128,14 +129,14 @@ export default function SettingsPage() {
                   })();
                 }}
               >
-                {oneDriveConnected ? "Reconnect OneDrive" : "Connect OneDrive"}
+                {oneDriveConnected ? (sl?.oneDriveReconnect ?? "Reconnect OneDrive") : (sl?.oneDriveConnect ?? "Connect OneDrive")}
               </button>
               <div className="small-muted" style={{ alignSelf: "center" }}>
                 {oneDriveConnected === null
-                  ? "Checking status…"
+                  ? (sl?.oneDriveCheckingStatus ?? "Checking status…")
                   : oneDriveConnected
-                    ? `Connected${oneDriveAccountEmail ? ` · ${oneDriveAccountEmail}` : ""}`
-                    : "Not connected"}
+                    ? `${sl?.oneDriveConnected ?? "Connected"}${oneDriveAccountEmail ? ` · ${oneDriveAccountEmail}` : ""}`
+                    : (sl?.oneDriveNotConnected ?? "Not connected")}
               </div>
             </div>
             {oneDriveError ? (
@@ -147,7 +148,7 @@ export default function SettingsPage() {
             {/* Diagnostic panel — visible to owner/admin whether connected or not */}
             <div className="stack-8" style={{ borderTop: "1px solid var(--border)", paddingTop: 12 }}>
               <div className="small-muted">
-                If sync is not working, run diagnostics to see exactly what is misconfigured.
+{sl?.oneDriveDiagHint ?? "If sync is not working, run diagnostics to see exactly what is misconfigured."}
               </div>
               <div className="action-row">
                 <button
@@ -175,7 +176,7 @@ export default function SettingsPage() {
                     })();
                   }}
                 >
-                  {diagBusy ? "Running…" : "Diagnose connection"}
+                  {diagBusy ? (sl?.oneDriveDiagRunning ?? "Running…") : (sl?.oneDriveDiagButton ?? "Diagnose connection")}
                 </button>
               </div>
               {diagResult ? (
@@ -198,16 +199,15 @@ export default function SettingsPage() {
           </div>
         ) : (
           <div className="small-muted" style={{ marginTop: 10 }}>
-            OneDrive connections are available to workspace owners and admins.
+{sl?.oneDriveRestrictedNotice ?? "OneDrive connections are available to workspace owners and admins."}
           </div>
         )}
       </section>
 
       <section className="card stack-16">
-        <div className="header-title">Team access</div>
+        <div className="header-title">{sl?.sectionTeamAccessTitle ?? "Team access"}</div>
         <p className="subtext" style={{ margin: 0 }}>
-          Invitations and role changes will be available here once member management is turned on
-          for your workspace.
+          {sl?.sectionTeamAccessBody ?? "Invitations and role changes will be available here once member management is turned on for your workspace."}
         </p>
       </section>
     </div>

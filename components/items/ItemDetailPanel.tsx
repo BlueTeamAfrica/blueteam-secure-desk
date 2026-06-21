@@ -1,7 +1,7 @@
 "use client";
 
 import type { CaseStatus, WorkspaceCase } from "@/app/_lib/caseWorkspaceModel";
-import { PRIORITY_LABEL, ownerDisplayLine } from "@/app/_lib/caseWorkspaceModel";
+import { ownerDisplayLine } from "@/app/_lib/caseWorkspaceModel";
 import type { CachedCaseFiling } from "@/app/_lib/decryptedSubmissionReadout";
 import { getSubmissionDisplay } from "@/app/_lib/items/getSubmissionDisplay";
 import type { WorkspaceRole } from "@/app/_lib/rbac";
@@ -442,7 +442,7 @@ export function ItemDetailPanel({
       : (selectedCaseFiling?.attachments ?? []);
   const priorityValue =
     (labels.priorityLabels as Record<string, string | undefined> | undefined)?.[selected.priority] ??
-    PRIORITY_LABEL[selected.priority] ??
+    (labels.priorityLabels as Record<string,string>)[selected.priority] ??
     "—";
   const ageValue = relativeTimeShort(selected.createdAt);
   const updatedValue = relativeTimeShort(selected.updatedAt);
@@ -477,10 +477,10 @@ export function ItemDetailPanel({
           {display.displayTitle}
         </div>
         <div className="small-muted" style={{ marginTop: 8 }}>
-          Ref: {display.displayRef}
+          {section.metaRef ?? "Ref:"} {display.displayRef}
         </div>
         <p className="subtext" style={{ margin: "10px 0 0", fontSize: 14, lineHeight: 1.5 }}>
-          {selected.summary}
+          {selected.summary || (section.noSummaryFallback ?? "No summary has been added yet.")}
         </p>
         <div className="detail-meta-strip" aria-label="Report metadata">
           <div className="detail-meta-chip">
@@ -500,16 +500,16 @@ export function ItemDetailPanel({
             <div className="detail-meta-value">{priorityValue}</div>
           </div>
           <div className="detail-meta-chip">
-            <div className="detail-meta-label">Age</div>
+            <div className="detail-meta-label">{section.metaAge ?? "Age"}</div>
             <div className="detail-meta-value">{ageValue}</div>
           </div>
           <div className="detail-meta-chip">
-            <div className="detail-meta-label">Updated</div>
+            <div className="detail-meta-label">{section.detailMetaUpdated}</div>
             <div className="detail-meta-value">{updatedValue}</div>
           </div>
           <div className="detail-meta-chip">
-            <div className="detail-meta-label">Due</div>
-            <div className="detail-meta-value">{overdue ? "Overdue" : dueValue}</div>
+            <div className="detail-meta-label">{section.metaDue ?? "Due"}</div>
+            <div className="detail-meta-value">{overdue ? (section.metaOverdue ?? "Overdue") : dueValue}</div>
           </div>
         </div>
       </div>
@@ -546,7 +546,7 @@ export function ItemDetailPanel({
               disabled={workflowBusy || workflowStatusDraft === selected.status}
               onClick={onApplyWorkflowStatus}
             >
-              {workflowBusy ? "Saving…" : (editorDesk || managingEditorDesk ? "Move" : "Apply")}
+              {workflowBusy ? (action.saving ?? "Saving…") : (editorDesk || managingEditorDesk ? (action.moveStage ?? "Move") : (action.applyStageChange ?? "Apply"))}
             </button>
           </div>
           {workflowError ? (
@@ -563,7 +563,7 @@ export function ItemDetailPanel({
                 style={{ fontSize: 12, padding: "0 12px", height: 28, minHeight: 28 }}
                 onClick={() => setAssignPanelOpen(!assignPanelOpen)}
               >
-                {assignPanelOpen ? "Cancel" : "Assign"}
+                {assignPanelOpen ? (action.cancel ?? "Cancel") : (action.assignToggle ?? "Assign")}
               </button>
             </div>
           ) : null}
@@ -612,14 +612,14 @@ export function ItemDetailPanel({
               </dd>
             </div>
             <div>
-              <dt className="detail-dt">Region</dt>
+              <dt className="detail-dt">{section.reporterRegion ?? "Region"}</dt>
               <dd className="detail-dd" dir="auto">
                 {display.displayReporterRegion ?? "—"}
               </dd>
             </div>
             {display.displayReporterPhone ? (
               <div>
-                <dt className="detail-dt">Phone</dt>
+                <dt className="detail-dt">{section.reporterPhone ?? "Phone"}</dt>
                 <dd className="detail-dd" dir="auto">
                   {display.displayReporterPhone}
                 </dd>
@@ -627,7 +627,7 @@ export function ItemDetailPanel({
             ) : null}
             {display.displayReporterAlias ? (
               <div>
-                <dt className="detail-dt">Alias</dt>
+                <dt className="detail-dt">{section.reporterAlias ?? "Alias"}</dt>
                 <dd className="detail-dd" dir="auto">
                   {display.displayReporterAlias}
                 </dd>
@@ -638,10 +638,9 @@ export function ItemDetailPanel({
 
         {role === "intake" ? (
           <div className="desk-notice detail-read-ambient">
-            <div className="detail-section-title">Triage workspace</div>
+            <div className="detail-section-title">{section.triageWorkspaceTitle ?? "Triage workspace"}</div>
             <p className="subtext" style={{ margin: 0, fontSize: 14, lineHeight: 1.55 }}>
-              Work from the summary above and your triage notes below. Editors carry the full reporter
-              filing once this clears the triage queue.
+              {section.triageWorkspaceBody ?? "Work from the summary above and your triage notes below. Editors carry the full reporter filing once this clears the triage queue."}
             </p>
           </div>
         ) : null}
@@ -704,7 +703,7 @@ export function ItemDetailPanel({
           <dl className="detail-dl detail-dl--read">
             <div>
               <dt className="detail-dt">{priorityLabel}</dt>
-              <dd className="detail-dd">{PRIORITY_LABEL[selected.priority]}</dd>
+              <dd className="detail-dd">{(labels.priorityLabels as Record<string,string>)[selected.priority]}</dd>
             </div>
             <div>
               <dt className="detail-dt">{leadLabel}</dt>
@@ -787,7 +786,7 @@ export function ItemDetailPanel({
             </div>
             <div>
               <dt className="detail-dt">{priorityLabel}</dt>
-              <dd className="detail-dd">{PRIORITY_LABEL[selected.priority]}</dd>
+              <dd className="detail-dd">{(labels.priorityLabels as Record<string,string>)[selected.priority]}</dd>
             </div>
             <div>
               <dt className="detail-dt">{leadLabel}</dt>
@@ -804,12 +803,12 @@ export function ItemDetailPanel({
           </dl>
 
           <div style={{ marginTop: 12 }}>
-            <div className="editorial-read-kicker">Export package preview</div>
+            <div className="editorial-read-kicker">{section.exportPreviewTitle ?? "Export package preview"}</div>
             {exportPreviewLoading ? (
               <div className="row-between" style={{ gap: 12, marginTop: 6 }}>
                 <div className="spinner" />
                 <span className="muted" style={{ fontSize: 14 }}>
-                  Loading export preview…
+                  {section.exportPreviewLoading ?? "Loading export preview…"}
                 </span>
               </div>
             ) : exportPreviewError ? (
@@ -820,7 +819,7 @@ export function ItemDetailPanel({
               (() => {
                 const provider =
                   exportPreview.destination.provider === "manualDownload"
-                    ? "Manual export / download"
+                    ? (section.exportManualProvider ?? "Manual export / download")
                     : exportPreview.destination.provider;
                 const folder = exportPreview.destination.folderName ?? "—";
                 const plannedDocx = exportPreview.items.some((x) => x.kind === "docx");
@@ -836,19 +835,19 @@ export function ItemDetailPanel({
                 return (
                   <dl className="detail-dl" style={{ marginTop: 8 }}>
                     <div>
-                      <dt className="detail-dt">Destination</dt>
+                      <dt className="detail-dt">{section.exportDestination ?? "Destination"}</dt>
                       <dd className="detail-dd">{provider}</dd>
                     </div>
                     <div>
-                      <dt className="detail-dt">Folder</dt>
+                      <dt className="detail-dt">{section.exportFolder ?? "Folder"}</dt>
                       <dd className="detail-dd" dir="auto">
                         {folder}
                       </dd>
                     </div>
                     <div>
-                      <dt className="detail-dt">Planned items</dt>
+                      <dt className="detail-dt">{section.exportPlannedItems ?? "Planned items"}</dt>
                       <dd className="detail-dd" dir="auto">
-                        {plannedDocx ? "Word export" : "No Word export"}
+                        {plannedDocx ? (section.exportWordIncluded ?? "Word export") : (section.exportWordExcluded ?? "No Word export")}
                         {plannedAttachments.length > 0
                           ? ` · ${plannedAttachments.length} attachment${plannedAttachments.length === 1 ? "" : "s"}`
                           : ""}
@@ -860,7 +859,7 @@ export function ItemDetailPanel({
               })()
             ) : (
               <div className="small-muted" style={{ marginTop: 6, lineHeight: 1.5 }}>
-                Preview not available yet.
+                {section.exportPreviewEmpty ?? "Preview not available yet."}
               </div>
             )}
           </div>
@@ -874,7 +873,7 @@ export function ItemDetailPanel({
         >
           {attachments.length === 0 ? (
             <p className="subtext" style={{ margin: 0 }}>
-              No attachments were uploaded with this report.
+              {section.attachmentEmpty ?? "No attachments were uploaded with this report."}
             </p>
           ) : (
             <div className="detail-attachment-list">
@@ -962,12 +961,12 @@ export function ItemDetailPanel({
             {showPriorityScaffold ? (
               <div className="detail-action-group">
                 <div className="detail-section-title" style={{ marginBottom: 10 }}>
-                  Priority & due date
+                  {section.priorityDueSectionTitle ?? "Priority & due date"}
                 </div>
                 <div className="stack-12">
                   <div>
                     <label className="label" htmlFor="priority-select">
-                      Priority
+                      {section.priorityFieldLabel ?? "Priority"}
                     </label>
                     <div className="row-between" style={{ gap: 10, alignItems: "center" }}>
                       <select
@@ -977,10 +976,10 @@ export function ItemDetailPanel({
                         onChange={(e) => setPriorityDraft(e.target.value as WorkspaceCase["priority"])}
                         disabled={priorityBusy || dueDateBusy}
                       >
-                        <option value="low">Low</option>
-                        <option value="normal">Normal</option>
-                        <option value="high">High</option>
-                        <option value="critical">Critical</option>
+                        <option value="low">{labels.priorityLabels?.low ?? "Low"}</option>
+                        <option value="normal">{labels.priorityLabels?.normal ?? "Normal"}</option>
+                        <option value="high">{labels.priorityLabels?.high ?? "High"}</option>
+                        <option value="critical">{labels.priorityLabels?.critical ?? "Critical"}</option>
                       </select>
                       <button
                         type="button"
@@ -1027,7 +1026,7 @@ export function ItemDetailPanel({
                           })();
                         }}
                       >
-                        {priorityBusy ? "Saving…" : "Save"}
+                        {priorityBusy ? (action.saving ?? "Saving…") : (action.save ?? "Save")}
                       </button>
                     </div>
                     {priorityError ? (
@@ -1039,7 +1038,7 @@ export function ItemDetailPanel({
 
                   <div>
                     <label className="label" htmlFor="due-date-input">
-                      Due date
+                      {section.dueDateFieldLabel ?? "Due date"}
                     </label>
                     <div className="row-between" style={{ gap: 10, alignItems: "center" }}>
                       <input
@@ -1095,7 +1094,7 @@ export function ItemDetailPanel({
                           })();
                         }}
                       >
-                        {dueDateBusy ? "Saving…" : "Save"}
+                        {dueDateBusy ? (action.saving ?? "Saving…") : (action.save ?? "Save")}
                       </button>
                       {selected.dueDate ? (
                         <button
@@ -1104,7 +1103,7 @@ export function ItemDetailPanel({
                           disabled={dueDateBusy || priorityBusy}
                           onClick={() => setDueDateDraft("")}
                         >
-                          Clear
+                          {section.dueDateClear ?? "Clear"}
                         </button>
                       ) : null}
                     </div>
@@ -1115,7 +1114,7 @@ export function ItemDetailPanel({
                     ) : null}
                     {overdue ? (
                       <div className="small-muted" style={{ marginTop: 10 }}>
-                        This {labels.itemSingular.toLowerCase()} is past due.
+                        {section.dueDatePastDue ?? `This ${labels.itemSingular.toLowerCase()} is past due.`}
                       </div>
                     ) : null}
                   </div>
@@ -1137,7 +1136,7 @@ export function ItemDetailPanel({
                       }}
                     >
                       {assignPanelOpen
-                        ? "Cancel"
+                        ? (action.cancel ?? "Cancel")
                         : managingEditorDesk
                           ? (action.setLead ?? "Set lead")
                           : (action.assign ?? "Assign")}
@@ -1183,7 +1182,7 @@ export function ItemDetailPanel({
                       disabled={exportOneDriveBusy || refreshOneDriveBusy || exportDocxBusy || actionPending || assignBusy || workflowBusy}
                       onClick={onExportOneDrive}
                     >
-                      {exportOneDriveBusy ? "Sending…" : "Export \u2192 Send to OneDrive"}
+                      {exportOneDriveBusy ? (action.sending ?? "Sending…") : (action.exportOneDrive ?? "Export → Send to OneDrive")}
                     </button>
                   ) : null}
                   {showRefreshOneDrive ? (
@@ -1194,16 +1193,16 @@ export function ItemDetailPanel({
                       onClick={onRefreshOneDrive}
                     >
                       {refreshOneDriveBusy
-                        ? "Refreshing…"
+                        ? (action.refreshing ?? "Refreshing…")
                         : refreshOneDriveDone
-                          ? "\u2713 Refreshed"
-                          : "Refresh OneDrive export"}
+                          ? (action.refreshDone ?? "✓ Refreshed")
+                          : (action.refreshOneDrive ?? "Refresh OneDrive export")}
                     </button>
                   ) : null}
                 </div>
                 {!selectedCaseFiling?.body?.trim() ? (
                   <div className="small-muted" style={{ marginTop: 10, lineHeight: 1.5 }}>
-                    This export may omit the full narrative if the filing cannot be opened for your role.
+                    {section.exportNarrativeWarning ?? "This export may omit the full narrative if the filing cannot be opened for your role."}
                   </div>
                 ) : null}
               </div>
@@ -1260,7 +1259,7 @@ export function ItemDetailPanel({
                       disabled={deleteBusy || actionPending || assignBusy || workflowBusy}
                       onClick={onDeletePermanently}
                     >
-                      {deleteBusy ? "Deleting…" : (action.deletePermanently ?? "Delete permanently")}
+                      {deleteBusy ? (action.deleting ?? "Deleting…") : (action.deletePermanently ?? "Delete permanently")}
                     </button>
                   </div>
                 </div>

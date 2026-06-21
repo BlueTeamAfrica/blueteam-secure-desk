@@ -80,6 +80,8 @@ export type WorkspaceDeskLabels = {
   reporterNoun: string;
   withLabel: string;
   filedByLabel: string;
+  noLead: string;
+  fromPrefix: string;
 };
 
 export type WorkspaceActionLabels = {
@@ -89,6 +91,7 @@ export type WorkspaceActionLabels = {
   opening: string;
   exportDocx: string;
   exportingDocx: string;
+  exportOneDrive: string;
   applyStageChange: string;
   updateStatus: string;
   saveTriageNote: string;
@@ -97,6 +100,16 @@ export type WorkspaceActionLabels = {
   saveInternalNote: string;
   setLead: string;
   assign: string;
+  assignToggle: string;
+  moveStage: string;
+  cancel: string;
+  save: string;
+  saving: string;
+  deleting: string;
+  sending: string;
+  refreshing: string;
+  refreshDone: string;
+  refreshOneDrive: string;
   markHighPriority: string;
   resolve: string;
   archive: string;
@@ -105,11 +118,25 @@ export type WorkspaceActionLabels = {
   deleteKeep: string;
   deletePermanently: string;
   deleteConfirmBody: string;
+  assignPanelTitleDesk: string;
+  assignPanelTitleDefault: string;
+  assignPanelHintDesk: string;
+  assignPanelHintDefault: string;
+  assignPanelLoadingMembers: string;
+  assignPanelLabelDesk: string;
+  assignPanelLabelDefault: string;
+  assignPanelSelectPlaceholder: string;
+  assignPanelSave: string;
 };
 
 export type WorkspacePriorityLabels = {
   urgent: string;
   highAttention: string;
+  overdue: string;
+  low: string;
+  normal: string;
+  high: string;
+  critical: string;
   columnLabelDesk: string;    // "Attention" — column header in editor/managing-editor views
   columnLabelDefault: string; // "Priority"  — column header in all other views
 };
@@ -147,6 +174,39 @@ export type WorkspaceDetailSectionLabels = {
   noBodyText: string;
   titleAsFiled: string;
   theirWords: string;
+  // Summary fallback (rendered when Firestore doc has no summary yet)
+  noSummaryFallback: string;
+  // Meta chip labels
+  metaRef: string;
+  metaAge: string;
+  metaDue: string;
+  metaOverdue: string;
+  // Reporter section field labels
+  reporterRegion: string;
+  reporterPhone: string;
+  reporterAlias: string;
+  // Attachment empty state
+  attachmentEmpty: string;
+  // Export preview section
+  exportPreviewTitle: string;
+  exportPreviewLoading: string;
+  exportPreviewEmpty: string;
+  exportDestination: string;
+  exportFolder: string;
+  exportPlannedItems: string;
+  exportWordIncluded: string;
+  exportWordExcluded: string;
+  exportManualProvider: string;
+  exportNarrativeWarning: string;
+  // Priority & due date action section
+  priorityDueSectionTitle: string;
+  priorityFieldLabel: string;
+  dueDateFieldLabel: string;
+  dueDateClear: string;
+  dueDatePastDue: string;
+  // Triage workspace notice
+  triageWorkspaceTitle: string;
+  triageWorkspaceBody: string;
 };
 
 export type WorkspaceExportDocxLabels = {
@@ -216,6 +276,13 @@ export type WorkspaceRunSheetCopy = {
 };
 
 export type WorkspaceBoardCopy = {
+  loadingSession: string;
+  loadingRole: string;
+  openingAnalytics: string;
+  redirectingAnalytics: string;
+  analyticsTitle: string;
+  analyticsDesc: string;
+  errorSomethingWentWrong: string;
   emptyNoCasesTitleEditor: string;
   emptyNoCasesTitleManagingEditor: string;
   emptyNoCasesTitleDefault: string;
@@ -256,6 +323,35 @@ export type WorkspaceTeamCopy = {
   teamPageTitle: string;
   teamRosterLimitedBody: string;
   teamPageIntro: string;
+  teamYouLabel: string;
+  teamColleaguesLabel: string;
+  teamColleaguesCountNote: string;
+};
+
+export type WorkspaceSettingsLabels = {
+  pageTitle: string;
+  pageDesc: string;
+  unavailableTitle: string;
+  unavailableBody: string;
+  sectionWorkspaceProfileTitle: string;
+  sectionWorkspaceProfileBody: string;
+  sectionSecurityTitle: string;
+  sectionSecurityBody: string;
+  sectionDataHandlingTitle: string;
+  sectionDataHandlingBody: string;
+  sectionIntegrationsTitle: string;
+  sectionIntegrationsBody: string;
+  oneDriveConnect: string;
+  oneDriveReconnect: string;
+  oneDriveCheckingStatus: string;
+  oneDriveConnected: string;
+  oneDriveNotConnected: string;
+  oneDriveDiagHint: string;
+  oneDriveDiagRunning: string;
+  oneDriveDiagButton: string;
+  oneDriveRestrictedNotice: string;
+  sectionTeamAccessTitle: string;
+  sectionTeamAccessBody: string;
 };
 
 export type WorkspaceConfig = {
@@ -277,6 +373,7 @@ export type WorkspaceConfig = {
   runSheet: WorkspaceRunSheetCopy;
   board: WorkspaceBoardCopy;
   team: WorkspaceTeamCopy;
+  settingsLabels: WorkspaceSettingsLabels;
 };
 
 /** Flattened labels consumed across dashboard UI (back-compat shape). */
@@ -289,6 +386,7 @@ export type OrgLabels = WorkspaceBranding &
     priorityLabels: WorkspacePriorityLabels;
     detailSectionLabels: WorkspaceDetailSectionLabels;
     exportDocxLabels: WorkspaceExportDocxLabels;
+    settingsLabels: WorkspaceSettingsLabels;
     /** Locale-aware editor desk headers. Falls back to WorkspaceConfig.editorDeskHeaders when absent. */
     editorDeskHeaders?: WorkspaceEditorDeskHeaders;
   } &

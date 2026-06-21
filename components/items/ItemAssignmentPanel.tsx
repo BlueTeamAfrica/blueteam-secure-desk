@@ -1,6 +1,7 @@
 "use client";
 
 import { ROLE_LABEL, normalizeWorkspaceRole, type WorkspaceRole } from "@/app/_lib/rbac";
+import { useDashboardBranding } from "@/app/_components/dashboard/WorkspaceBrandingProvider";
 
 type WorkspaceMemberRow = {
   uid: string;
@@ -44,23 +45,28 @@ export function ItemAssignmentPanel({
   onConfirm: () => void;
   onCancel: () => void;
 }) {
+  const { labels } = useDashboardBranding();
+  const action = labels.actionLabels;
+
   if (!open) return null;
 
   return (
     <div className="assign-panel card stack-12">
       <div className="detail-section-title" style={{ marginBottom: 0 }}>
-        {managingEditorDesk ? "Set submission lead" : "Assign case owner"}
+        {managingEditorDesk
+          ? (action.assignPanelTitleDesk ?? "Set submission lead")
+          : (action.assignPanelTitleDefault ?? "Assign case owner")}
       </div>
       <p className="small-muted" style={{ margin: 0 }}>
         {managingEditorDesk
-          ? "Choose who carries the edit next. They will see this submission on their own desk the moment it saves."
-          : "Pick a workspace member. This updates the submission in Firestore; reviewers see the case when they are the assigned owner."}
+          ? (action.assignPanelHintDesk ?? "Choose who carries the edit next. They will see this submission on their own desk the moment it saves.")
+          : (action.assignPanelHintDefault ?? "Pick a workspace member. This updates the submission in Firestore; reviewers see the case when they are the assigned owner.")}
       </p>
       {membersLoading ? (
         <div className="row-between" style={{ gap: 10 }}>
           <div className="spinner" />
           <span className="muted" style={{ fontSize: 14 }}>
-            Loading members…
+            {action.assignPanelLoadingMembers ?? "Loading members…"}
           </span>
         </div>
       ) : membersError ? (
@@ -70,7 +76,9 @@ export function ItemAssignmentPanel({
       ) : (
         <>
           <label className="label" htmlFor="assignee-select">
-            {managingEditorDesk ? "Lead" : "Assign to"}
+            {managingEditorDesk
+              ? (action.assignPanelLabelDesk ?? "Lead")
+              : (action.assignPanelLabelDefault ?? "Assign to")}
           </label>
           <select
             id="assignee-select"
@@ -80,7 +88,7 @@ export function ItemAssignmentPanel({
             onChange={(e) => onChangeAssigneeUid(e.target.value)}
             disabled={assignBusy}
           >
-            <option value="">Select a person…</option>
+            <option value="">{action.assignPanelSelectPlaceholder ?? "Select a person…"}</option>
             {workspaceMembers.map((m) => {
               const wr = normalizeWorkspaceRole(m.role);
               return (
@@ -103,10 +111,12 @@ export function ItemAssignmentPanel({
               disabled={assignBusy || !assigneeUidDraft.trim() || role === "readonly"}
               onClick={onConfirm}
             >
-              {assignBusy ? "Saving…" : "Save assignment"}
+              {assignBusy
+                ? (action.saving ?? "Saving…")
+                : (action.assignPanelSave ?? "Save assignment")}
             </button>
             <button type="button" className="btn btn-ghost" disabled={assignBusy} onClick={onCancel}>
-              Cancel
+              {action.cancel ?? "Cancel"}
             </button>
           </div>
         </>
@@ -114,4 +124,3 @@ export function ItemAssignmentPanel({
     </div>
   );
 }
-

@@ -16,6 +16,7 @@ import type {
   WorkspaceDetailSectionLabels,
   WorkspaceExportDocxLabels,
   WorkspaceEditorDeskHeaders,
+  WorkspaceSettingsLabels,
 } from "@/app/_lib/org/types";
 import type { OrgLabels } from "@/app/_lib/org/types";
 
@@ -26,6 +27,8 @@ const deskLabels: WorkspaceDeskLabels = {
   reporterNoun: "مراسل",
   withLabel: "مع",
   filedByLabel: "قدّمه",
+  noLead: "لا قائد",
+  fromPrefix: "من",
 };
 
 const actionLabels: WorkspaceActionLabels = {
@@ -35,6 +38,7 @@ const actionLabels: WorkspaceActionLabels = {
   opening: "جارٍ الفتح…",
   exportDocx: "تصدير Word (.docx)",
   exportingDocx: "جارٍ التحضير…",
+  exportOneDrive: "تصدير ← إرسال إلى OneDrive",
   applyStageChange: "تطبيق تغيير المرحلة",
   updateStatus: "تحديث الحالة",
   saveTriageNote: "حفظ ملاحظة الفرز",
@@ -43,6 +47,16 @@ const actionLabels: WorkspaceActionLabels = {
   saveInternalNote: "حفظ ملاحظة داخلية",
   setLead: "تعيين قائد",
   assign: "إسناد",
+  assignToggle: "إسناد",
+  moveStage: "نقل",
+  cancel: "إلغاء",
+  save: "حفظ",
+  saving: "جارٍ الحفظ…",
+  deleting: "جارٍ الحذف…",
+  sending: "جارٍ الإرسال…",
+  refreshing: "جارٍ التحديث…",
+  refreshDone: "✓ تم التحديث",
+  refreshOneDrive: "تحديث تصدير OneDrive",
   markHighPriority: "تحديد أولوية عالية",
   resolve: "إنهاء",
   archive: "أرشفة",
@@ -52,11 +66,25 @@ const actionLabels: WorkspaceActionLabels = {
   deletePermanently: "حذف نهائي",
   deleteConfirmBody:
     "يؤدي هذا إلى حذف التقرير نهائياً من غرفة الأخبار عبر حذف مستند التقديم من Firestore. سيفقد أي شخص يشاهد هذا السجل حق الوصول. لا يمكن التراجع عن هذا الإجراء.",
+  assignPanelTitleDesk: "تعيين قائد التحرير",
+  assignPanelTitleDefault: "تعيين مالك الحالة",
+  assignPanelHintDesk: "اختر من سيتولى التحرير. ستظهر هذه المادة على طاولته فور الحفظ.",
+  assignPanelHintDefault: "اختر عضواً من مساحة العمل. يُحدَّث الإسناد في Firestore؛ يرى المراجعون الحالة عند تعيينهم مالكاً لها.",
+  assignPanelLoadingMembers: "جارٍ تحميل الأعضاء…",
+  assignPanelLabelDesk: "القائد",
+  assignPanelLabelDefault: "إسناد إلى",
+  assignPanelSelectPlaceholder: "اختر شخصاً…",
+  assignPanelSave: "حفظ الإسناد",
 };
 
 const priorityLabels: WorkspacePriorityLabels = {
   urgent: "عاجل",
   highAttention: "أولوية عالية",
+  overdue: "متأخر",
+  low: "منخفضة",
+  normal: "عادية",
+  high: "عالية",
+  critical: "حرجة",
   columnLabelDesk: "انتباه",
   columnLabelDefault: "الأولوية",
 };
@@ -100,6 +128,32 @@ const detailSectionLabels: WorkspaceDetailSectionLabels = {
   noBodyText: "لم يُعثر على نص أساسي في هذا الملف.",
   titleAsFiled: "العنوان كما قُدِّم",
   theirWords: "كلماتهم",
+  noSummaryFallback: "لم يُضف ملخص بعد. راجع زملاءك أو تحقق من الملف عندما يُوجّهه المحررون.",
+  metaRef: "المرجع:",
+  metaAge: "العمر",
+  metaDue: "الموعد النهائي",
+  metaOverdue: "متأخر",
+  reporterRegion: "المنطقة",
+  reporterPhone: "الهاتف",
+  reporterAlias: "الاسم المستعار",
+  attachmentEmpty: "لم تُرفق ملفات مع هذا التقرير.",
+  exportPreviewTitle: "معاينة حزمة التصدير",
+  exportPreviewLoading: "جارٍ تحميل المعاينة…",
+  exportPreviewEmpty: "المعاينة غير متاحة بعد.",
+  exportDestination: "الوجهة",
+  exportFolder: "المجلد",
+  exportPlannedItems: "العناصر المخططة",
+  exportWordIncluded: "تصدير Word",
+  exportWordExcluded: "لا يوجد تصدير Word",
+  exportManualProvider: "تصدير / تنزيل يدوي",
+  exportNarrativeWarning: "قد يفتقر هذا التصدير إلى النص الكامل إذا لم يتمكن دورك من فتح الملف.",
+  priorityDueSectionTitle: "الأولوية والموعد النهائي",
+  priorityFieldLabel: "الأولوية",
+  dueDateFieldLabel: "الموعد النهائي",
+  dueDateClear: "مسح",
+  dueDatePastDue: "تجاوز هذا التقرير موعده النهائي.",
+  triageWorkspaceTitle: "مساحة الفرز",
+  triageWorkspaceBody: "اعمل من الملخص أعلاه وملاحظات الفرز أدناه. يتولى المحررون الملف الكامل بعد مغادرته قائمة الفرز.",
 };
 
 const exportDocxLabels: WorkspaceExportDocxLabels = {
@@ -213,6 +267,36 @@ const editorDeskHeaders: WorkspaceEditorDeskHeaders = {
       subtitle: "الأرشيف.",
     },
   },
+};
+
+// ─── Settings labels ─────────────────────────────────────────────────────────
+
+const settingsLabels: WorkspaceSettingsLabels = {
+  pageTitle: "الإعدادات",
+  pageDesc: "تفضيلات مساحة العمل وكيفية تعامل مؤسستك مع المعلومات الحساسة.",
+  unavailableTitle: "الإعدادات غير متاحة",
+  unavailableBody: "لا يتضمن دورك صلاحية الوصول إلى الإعدادات. تواصل مع مالك المساحة أو مديرها إذا احتجت إلى تغيير.",
+  sectionWorkspaceProfileTitle: "ملف مساحة العمل",
+  sectionWorkspaceProfileBody: "سيظهر اسم مساحة العمل ومنطقتها هنا بعد الإعداد لمؤسستك.",
+  sectionSecurityTitle: "الأمان",
+  sectionSecurityBody: "تُدار سياسات تسجيل الدخول وتذكيرات الجلسة من قِبل مسؤول تقنية المعلومات في مؤسستك.",
+  sectionDataHandlingTitle: "التعامل مع البيانات",
+  sectionDataHandlingBody:
+    "قواعد الاحتفاظ بالبيانات وتصديرها محددة مع فريق القيادة وتُطبَّق على مستوى البنية التحتية.",
+  sectionIntegrationsTitle: "التكاملات",
+  sectionIntegrationsBody: "اربط أدوات غرفة الأخبار لتبسيط عمليات التصدير.",
+  oneDriveConnect: "ربط OneDrive",
+  oneDriveReconnect: "إعادة ربط OneDrive",
+  oneDriveCheckingStatus: "جارٍ التحقق من الحالة…",
+  oneDriveConnected: "مرتبط",
+  oneDriveNotConnected: "غير مرتبط",
+  oneDriveDiagHint: "إذا لم تعمل المزامنة، شغّل التشخيص لمعرفة المشكلة بدقة.",
+  oneDriveDiagRunning: "جارٍ التشغيل…",
+  oneDriveDiagButton: "تشخيص الاتصال",
+  oneDriveRestrictedNotice: "اتصالات OneDrive متاحة لمالكي مساحة العمل والمديرين فقط.",
+  sectionTeamAccessTitle: "وصول الفريق",
+  sectionTeamAccessBody:
+    "ستتوفر الدعوات وتغييرات الأدوار هنا بعد تفعيل إدارة الأعضاء في مساحتك.",
 };
 
 // ─── Flat OrgLabels override ──────────────────────────────────────────────────
@@ -358,6 +442,13 @@ export const arLabels: Partial<OrgLabels> = {
   leadColumnTitleDefault: "المسؤول",
   cardOpenLabel: "فتح",
   cardAssignLabel: "إسناد",
+  loadingSession: "ستُحمَّل الحالات عند اكتمال جلسة العمل.",
+  loadingRole: "تعذّر تحميل دور مساحة العمل.",
+  openingAnalytics: "جارٍ فتح التحليلات…",
+  redirectingAnalytics: "جارٍ التحويل إلى مساحتك…",
+  analyticsTitle: "تحليلات مساحة العمل",
+  analyticsDesc: "وصول للقراءة فقط: مقاييس ملخصة. قوائم الحالات والملفات الكاملة وإجراءات الكتابة مخفية لهذا الدور.",
+  errorSomethingWentWrong: "حدث خطأ ما",
 
   // ── Team page ────────────────────────────────────────────────────────────────
   teamPageTitle: "الفريق",
@@ -365,6 +456,10 @@ export const arLabels: Partial<OrgLabels> = {
     "قائمة الفريق مقتصرة على أدوار المالك والمدير في هذا الفضاء.",
   teamPageIntro:
     "صورة بسيطة عمّن في هذا الفضاء اليوم. ستصل الدعوات وتحرير القائمة في مرحلة لاحقة.",
+  teamYouLabel: "أنت",
+  teamColleaguesLabel: "الزملاء (معاينة)",
+  teamColleaguesCountNote:
+    "ستعكس الأعداد الإسنادات الحية عند تخزين حقل المالك على كل حالة. إدارة الأعضاء والدعوات غير متاحة في هذا الإصدار.",
 
   // ── Nested label group replacements ─────────────────────────────────────────
   deskLabels,
@@ -373,4 +468,5 @@ export const arLabels: Partial<OrgLabels> = {
   detailSectionLabels,
   exportDocxLabels,
   editorDeskHeaders,
+  settingsLabels,
 };

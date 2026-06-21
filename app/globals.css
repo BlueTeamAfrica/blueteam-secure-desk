@@ -5220,6 +5220,37 @@ a.exec-kpi:hover {
   flex-direction: row-reverse;
 }
 
+/* Card footer RTL — reverse assignee + flags order */
+.dashboard-shell[dir="rtl"] .rc-footer {
+  flex-direction: row-reverse;
+}
+.dashboard-shell[dir="rtl"] .rc-assignee {
+  flex-direction: row-reverse;
+}
+.dashboard-shell[dir="rtl"] .rc-flags {
+  flex-direction: row-reverse;
+}
+
+/* Stat pill RTL — flip text alignment, decorative circle, and icon badge */
+.dashboard-shell[dir="rtl"] .desk-stat-pill {
+  text-align: right !important;
+  align-items: flex-end !important;
+}
+.dashboard-shell[dir="rtl"] .desk-stat-pill::before {
+  right: auto !important;
+  left: -18px !important;
+}
+.dashboard-shell[dir="rtl"] .desk-stat-icon {
+  right: auto !important;
+  left: 14px !important;
+}
+@media (max-width: 640px) {
+  .dashboard-shell[dir="rtl"] .desk-stat-icon {
+    right: auto !important;
+    left: 10px !important;
+  }
+}
+
 /* Arabic typography + RTL row layout */
 .dashboard-shell[dir="rtl"] {
   flex-direction: row-reverse;

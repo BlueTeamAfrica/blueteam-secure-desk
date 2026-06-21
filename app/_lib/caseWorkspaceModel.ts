@@ -425,9 +425,7 @@ export function normalizeSubmissionToCase(id: string, data: DocumentData): Works
 
   const title = pickSubmittedTitleFromDocument(data);
   const reporterSourceName = pickReporterSourceNameFromDocument(data);
-  const summary =
-    str(data.summary) ??
-    "No summary has been added yet. Ask a colleague or check the filing when editors have routed it.";
+  const summary = str(data.summary) ?? "";
 
   return {
     id,

@@ -10,6 +10,7 @@ import type {
   WorkspaceDetailInspectorCopy,
   WorkspaceEditorDeskHeaders,
   WorkspaceRunSheetCopy,
+  WorkspaceSettingsLabels,
   WorkspaceTeamCopy,
 } from "@/app/_lib/org/types";
 
@@ -88,6 +89,8 @@ const deskLabels: WorkspaceDeskLabels = {
   reporterNoun: "reporter",
   withLabel: "With",
   filedByLabel: "Filed by",
+  noLead: "No lead",
+  fromPrefix: "From",
 };
 
 const actionLabels: WorkspaceActionLabels = {
@@ -97,6 +100,7 @@ const actionLabels: WorkspaceActionLabels = {
   opening: "Opening…",
   exportDocx: "Export Word (.docx)",
   exportingDocx: "Preparing Word…",
+  exportOneDrive: "Export → Send to OneDrive",
   applyStageChange: "Apply stage change",
   updateStatus: "Update status",
   saveTriageNote: "Save triage note",
@@ -105,6 +109,16 @@ const actionLabels: WorkspaceActionLabels = {
   saveInternalNote: "Save internal note",
   setLead: "Set lead",
   assign: "Assign",
+  assignToggle: "Assign",
+  moveStage: "Move",
+  cancel: "Cancel",
+  save: "Save",
+  saving: "Saving…",
+  deleting: "Deleting…",
+  sending: "Sending…",
+  refreshing: "Refreshing…",
+  refreshDone: "✓ Refreshed",
+  refreshOneDrive: "Refresh OneDrive export",
   markHighPriority: "Mark high priority",
   resolve: "Resolve",
   archive: "Archive",
@@ -114,11 +128,25 @@ const actionLabels: WorkspaceActionLabels = {
   deletePermanently: "Delete permanently",
   deleteConfirmBody:
     "This permanently removes this report from the newsroom by deleting the Firestore submission document. Anyone viewing this record will lose access. This cannot be undone.",
+  assignPanelTitleDesk: "Set submission lead",
+  assignPanelTitleDefault: "Assign case owner",
+  assignPanelHintDesk: "Choose who carries the edit next. They will see this submission on their own desk the moment it saves.",
+  assignPanelHintDefault: "Pick a workspace member. This updates the submission in Firestore; reviewers see the case when they are the assigned owner.",
+  assignPanelLoadingMembers: "Loading members…",
+  assignPanelLabelDesk: "Lead",
+  assignPanelLabelDefault: "Assign to",
+  assignPanelSelectPlaceholder: "Select a person…",
+  assignPanelSave: "Save assignment",
 };
 
 const priorityLabels = {
   urgent: "Urgent",
   highAttention: "High attention",
+  overdue: "Overdue",
+  low: "Low",
+  normal: "Normal",
+  high: "High",
+  critical: "Critical",
   columnLabelDesk: "Attention",
   columnLabelDefault: "Priority",
 } satisfies import("@/app/_lib/org/types").WorkspacePriorityLabels;
@@ -159,6 +187,32 @@ const detailSectionLabels = {
   noBodyText: "No body text was found in this filing.",
   titleAsFiled: "Title as filed",
   theirWords: "Their words",
+  noSummaryFallback: "No summary has been added yet. Ask a colleague or check the filing when editors have routed it.",
+  metaRef: "Ref:",
+  metaAge: "Age",
+  metaDue: "Due",
+  metaOverdue: "Overdue",
+  reporterRegion: "Region",
+  reporterPhone: "Phone",
+  reporterAlias: "Alias",
+  attachmentEmpty: "No attachments were uploaded with this report.",
+  exportPreviewTitle: "Export package preview",
+  exportPreviewLoading: "Loading export preview…",
+  exportPreviewEmpty: "Preview not available yet.",
+  exportDestination: "Destination",
+  exportFolder: "Folder",
+  exportPlannedItems: "Planned items",
+  exportWordIncluded: "Word export",
+  exportWordExcluded: "No Word export",
+  exportManualProvider: "Manual export / download",
+  exportNarrativeWarning: "This export may omit the full narrative if the filing cannot be opened for your role.",
+  priorityDueSectionTitle: "Priority & due date",
+  priorityFieldLabel: "Priority",
+  dueDateFieldLabel: "Due date",
+  dueDateClear: "Clear",
+  dueDatePastDue: "This report is past due.",
+  triageWorkspaceTitle: "Triage workspace",
+  triageWorkspaceBody: "Work from the summary above and your triage notes below. Editors carry the full reporter filing once this clears the triage queue.",
 } satisfies import("@/app/_lib/org/types").WorkspaceDetailSectionLabels;
 
 const exportDocxLabels = {
@@ -325,6 +379,13 @@ const board: WorkspaceBoardCopy = {
   leadColumnTitleDefault: "Owner",
   cardOpenLabel: "Open",
   cardAssignLabel: "Assign",
+  loadingSession: "Cases will load once your session is ready.",
+  loadingRole: "Your workspace role could not be loaded.",
+  openingAnalytics: "Opening analytics…",
+  redirectingAnalytics: "Redirecting to your workspace…",
+  analyticsTitle: "Workspace analytics",
+  analyticsDesc: "Read-only access: summary metrics only. Case lists, full reporter filings, and write actions are hidden for this role.",
+  errorSomethingWentWrong: "Something went wrong",
 };
 
 const team: WorkspaceTeamCopy = {
@@ -332,6 +393,38 @@ const team: WorkspaceTeamCopy = {
   teamRosterLimitedBody: "Team roster is limited to owner and administrator roles in this workspace.",
   teamPageIntro:
     "A simple picture of who is in this workspace today. Invitations and roster editing will arrive in a later phase.",
+  teamYouLabel: "You",
+  teamColleaguesLabel: "Colleagues (preview)",
+  teamColleaguesCountNote:
+    "Counts will reflect live assignments once owner fields are stored on each case. Member management and invitations are not available in this release.",
+};
+
+const settingsLabels: WorkspaceSettingsLabels = {
+  pageTitle: "Settings",
+  pageDesc: "Workspace preferences and how your organisation handles sensitive information.",
+  unavailableTitle: "Settings unavailable",
+  unavailableBody: "Your workspace role does not include access to settings. Ask an owner or admin if you need a change.",
+  sectionWorkspaceProfileTitle: "Workspace profile",
+  sectionWorkspaceProfileBody: "Your workspace name and region will appear here once configured for your organisation.",
+  sectionSecurityTitle: "Security",
+  sectionSecurityBody: "Sign-in policies and session reminders are managed by your organisation's IT lead.",
+  sectionDataHandlingTitle: "Data handling",
+  sectionDataHandlingBody:
+    "Retention and export rules for cases and reporter messages are agreed with your leadership team and applied at the infrastructure level.",
+  sectionIntegrationsTitle: "Integrations",
+  sectionIntegrationsBody: "Connect your newsroom tools to streamline exports.",
+  oneDriveConnect: "Connect OneDrive",
+  oneDriveReconnect: "Reconnect OneDrive",
+  oneDriveCheckingStatus: "Checking status…",
+  oneDriveConnected: "Connected",
+  oneDriveNotConnected: "Not connected",
+  oneDriveDiagHint: "If sync is not working, run diagnostics to see exactly what is misconfigured.",
+  oneDriveDiagRunning: "Running…",
+  oneDriveDiagButton: "Diagnose connection",
+  oneDriveRestrictedNotice: "OneDrive connections are available to workspace owners and admins.",
+  sectionTeamAccessTitle: "Team access",
+  sectionTeamAccessBody:
+    "Invitations and role changes will be available here once member management is turned on for your workspace.",
 };
 
 export const factsdWorkspaceConfig: WorkspaceConfig = {
@@ -396,4 +489,5 @@ export const factsdWorkspaceConfig: WorkspaceConfig = {
   runSheet,
   board,
   team,
+  settingsLabels,
 };

@@ -811,7 +811,7 @@ export function SubmissionsList({
   if (!sessionReady) {
     return (
       <div className="card">
-        <p className="subtext">Cases will load once your session is ready.</p>
+        <p className="subtext">{labels.loadingSession ?? "Cases will load once your session is ready."}</p>
       </div>
     );
   }
@@ -819,7 +819,7 @@ export function SubmissionsList({
   if (!role) {
     return (
       <div className="card">
-        <p className="subtext">Your workspace role could not be loaded.</p>
+        <p className="subtext">{labels.loadingRole ?? "Your workspace role could not be loaded."}</p>
       </div>
     );
   }
@@ -830,7 +830,7 @@ export function SubmissionsList({
         <div className="row-between">
           <div className="spinner" />
           <span className="muted" style={{ fontSize: 14 }}>
-            Opening analytics…
+            {labels.openingAnalytics ?? "Opening analytics…"}
           </span>
         </div>
       </div>
@@ -840,7 +840,7 @@ export function SubmissionsList({
   if (view === "analytics" && role !== "readonly") {
     return (
       <div className="card">
-        <p className="subtext">Redirecting to your workspace…</p>
+        <p className="subtext">{labels.redirectingAnalytics ?? "Redirecting to your workspace…"}</p>
       </div>
     );
   }
@@ -849,10 +849,9 @@ export function SubmissionsList({
     return (
       <div className="card stack-16">
         <div>
-          <div className="header-title">Workspace analytics</div>
+          <div className="header-title">{labels.analyticsTitle ?? "Workspace analytics"}</div>
           <p className="subtext" style={{ marginTop: 8 }}>
-            Read-only access: summary metrics only. Case lists, full reporter filings, and write actions
-            are hidden for this role.
+            {labels.analyticsDesc ?? "Read-only access: summary metrics only. Case lists, full reporter filings, and write actions are hidden for this role."}
           </p>
         </div>
         <div
@@ -895,7 +894,7 @@ export function SubmissionsList({
     return (
       <div className="card">
         <div className="page-intro-title" style={{ fontSize: 18 }}>
-          Something went wrong
+          {labels.errorSomethingWentWrong ?? "Something went wrong"}
         </div>
         <p className="subtext" style={{ marginTop: 8 }}>
           {error}
@@ -937,7 +936,7 @@ export function SubmissionsList({
           <p className="subtext" style={{ marginTop: 8 }}>{labels.teamPageIntro}</p>
         </div>
 
-        <div className="detail-section-title">You</div>
+        <div className="detail-section-title">{labels.teamYouLabel ?? "You"}</div>
         <div
           style={{
             padding: 16,
@@ -955,7 +954,7 @@ export function SubmissionsList({
           </div>
         </div>
 
-        <div className="detail-section-title">Colleagues (preview)</div>
+        <div className="detail-section-title">{labels.teamColleaguesLabel ?? "Colleagues (preview)"}</div>
         <ul className="subtext" style={{ margin: 0, paddingLeft: 20, lineHeight: 1.7 }}>
           <li>
             <span className="strong">Amina</span> — Field coordinator ·{" "}
@@ -972,8 +971,7 @@ export function SubmissionsList({
         </ul>
 
         <p className="small-muted" style={{ margin: 0 }}>
-          Counts will reflect live assignments once owner fields are stored on each case. Member
-          management and invitations are not available in this release.
+          {labels.teamColleaguesCountNote ?? "Counts will reflect live assignments once owner fields are stored on each case. Member management and invitations are not available in this release."}
         </p>
       </div>
     );
@@ -1048,7 +1046,7 @@ export function SubmissionsList({
             <span className="desk-stat-pill desk-stat-pill--urgent" data-stage="urgent" aria-label={`${urgentCount} urgent cases`}>
               <span className="desk-stat-icon" aria-hidden="true"><StatIcon stage="urgent" /></span>
               <span className="desk-stat-value">{urgentCount}</span>
-              <span className="desk-stat-label">Urgent</span>
+              <span className="desk-stat-label">{labels.priorityLabels?.urgent ?? "Urgent"}</span>
             </span>
           )}
         </nav>

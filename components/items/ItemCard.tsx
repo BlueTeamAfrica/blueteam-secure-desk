@@ -124,10 +124,10 @@ export function ItemCard({
 
         <div className="rc-flags">
           {overdue && (
-            <span className="rc-flag rc-flag--overdue">Overdue</span>
+            <span className="rc-flag rc-flag--overdue">{labels.priorityLabels?.overdue ?? "Overdue"}</span>
           )}
           {!overdue && dueLabel && (
-            <span className="rc-flag rc-flag--due">Due {dueLabel}</span>
+            <span className="rc-flag rc-flag--due">{labels.detailSectionLabels?.metaDue ?? "Due"} {dueLabel}</span>
           )}
           {isCritical && (
             <span className="rc-flag rc-flag--critical">{priorityUrgent}</span>
@@ -136,7 +136,7 @@ export function ItemCard({
             <span className="rc-flag rc-flag--high">{priorityHighAttention}</span>
           )}
           {!overdue && !isCritical && !isHigh && unassigned && (
-            <span className="rc-flag rc-flag--unassigned">No lead</span>
+            <span className="rc-flag rc-flag--unassigned">{labels.deskLabels?.noLead ?? "No lead"}</span>
           )}
         </div>
       </div>
