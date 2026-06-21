@@ -110,6 +110,8 @@ export type WorkspaceActionLabels = {
 export type WorkspacePriorityLabels = {
   urgent: string;
   highAttention: string;
+  columnLabelDesk: string;    // "Attention" — column header in editor/managing-editor views
+  columnLabelDefault: string; // "Priority"  — column header in all other views
 };
 
 export type WorkspaceDetailSectionLabels = {
@@ -152,6 +154,22 @@ export type WorkspaceExportDocxLabels = {
   status: string;
   attachments: string;
   generatedByPrefix: string;
+  // DOCX section headings
+  sectionMetadata: string;
+  sectionReport: string;
+  sectionChangeLog: string;
+  // DOCX field labels
+  fieldReferenceId: string;
+  fieldSubmitted: string;
+  fieldReporterRegion: string;
+  fieldReporterPhone: string;
+  fieldReporterAlias: string;
+  fieldSource: string;
+  fieldAssignedOwner: string;
+  fieldPriority: string;
+  fieldSourceChannel: string;
+  // Fallback body text when encrypted payload is unavailable
+  noPayloadFallback: string;
 };
 
 /** Editor desk top header lines keyed by the same `inferred` string the layout switch used. */
@@ -271,6 +289,8 @@ export type OrgLabels = WorkspaceBranding &
     priorityLabels: WorkspacePriorityLabels;
     detailSectionLabels: WorkspaceDetailSectionLabels;
     exportDocxLabels: WorkspaceExportDocxLabels;
+    /** Locale-aware editor desk headers. Falls back to WorkspaceConfig.editorDeskHeaders when absent. */
+    editorDeskHeaders?: WorkspaceEditorDeskHeaders;
   } &
   WorkspaceChromeLabels &
   WorkspaceDetailInspectorCopy &

@@ -5182,6 +5182,21 @@ a.exec-kpi:hover {
   flex-direction: row-reverse;
 }
 
+/* Mobile overlay sidebar — RTL: slides in from the right instead of the left.
+   Overrides the translateX(-110%) and border-right set in the ≤1023px block. */
+@media (max-width: 1023px) {
+  .dashboard-shell[dir="rtl"] .sidebar {
+    transform: translateX(110%);
+    border-right: none !important;
+    border-left: 1px solid var(--sidebar-border) !important;
+  }
+
+  .dashboard-shell[dir="rtl"][data-sidebar-open="true"] .sidebar {
+    transform: translateX(0);
+    box-shadow: -4px 0 32px rgba(0, 0, 0, 0.2);
+  }
+}
+
 /* Text alignment for titles, card headings */
 .dashboard-shell[dir="rtl"] :is(
   .header-title,

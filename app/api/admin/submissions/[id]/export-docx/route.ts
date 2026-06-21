@@ -70,11 +70,14 @@ export async function GET(request: NextRequest, context: RouteParams) {
     });
 
     const generatedAtIso = new Date().toISOString();
+    const localeParam = request.nextUrl.searchParams.get("locale");
+    const locale = localeParam === "ar" || localeParam === "en" ? localeParam : undefined;
     const buffer = await buildSubmissionDocxBuffer({
       submission: workspaceCase,
       display,
       item,
       generatedAtIso,
+      locale,
     });
 
     const filename = buildExportDocxFilename(display);

@@ -999,7 +999,7 @@ export function SubmissionsList({
     editorDesk || managingEditorDesk ? labels.stageColumnTitleDesk : labels.stageColumnTitleDefault;
   const leadLabel =
     editorDesk || managingEditorDesk ? labels.leadColumnTitleDesk : labels.leadColumnTitleDefault;
-  const priorityLabel = editorDesk || managingEditorDesk ? "Attention" : "Priority";
+  const priorityLabel = editorDesk || managingEditorDesk ? labels.priorityLabels.columnLabelDesk : labels.priorityLabels.columnLabelDefault;
 
   const showStatusPicker =
     selected && userCtx && role ? mayChangeCaseStatusInUi(role, selected, userCtx) : false;

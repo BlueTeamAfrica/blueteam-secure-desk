@@ -15,10 +15,13 @@ export function getWorkspaceConfig(): WorkspaceConfig {
 
 /**
  * Editor desk top header copy — same inference as the dashboard layout previously used.
+ * Pass `headers` (from locale-aware OrgLabels) to get translated strings; omit to fall
+ * back to the static workspace config (English).
  */
 export function getEditorDeskHeaderFor(args: {
   pathname: string;
   viewRaw: string | null;
+  headers?: import("@/app/_lib/org/types").WorkspaceEditorDeskHeaders;
 }): EditorDeskHeaderPair {
   const { pathname, viewRaw } = args;
   const t = (viewRaw ?? "").trim().toLowerCase().replace(/[\s_]+/g, "-");
@@ -31,6 +34,6 @@ export function getEditorDeskHeaderFor(args: {
         ? view
         : view;
 
-  const cfg = getWorkspaceConfig().editorDeskHeaders;
+  const cfg = args.headers ?? getWorkspaceConfig().editorDeskHeaders;
   return cfg.byInferredView[inferred] ?? cfg.default;
 }

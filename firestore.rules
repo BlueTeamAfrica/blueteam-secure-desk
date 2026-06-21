@@ -12,6 +12,12 @@ service cloud.firestore {
         get(/databases/$(database)/documents/adminUsers/$(request.auth.uid)).data.active == true;
     }
 
+    // Collections NOT covered by rules below (submissionAudit, onedriveAuthStates,
+    // integrations/*, settings/integrations): intentionally absent. These collections
+    // are written and read exclusively through Next.js API routes using the Firebase
+    // Admin SDK, which bypasses security rules. No client-side access is intended or
+    // needed. Do not add client-readable rules for them.
+
     // Workspace branding
     match /settings/branding {
       allow read: if signedIn();

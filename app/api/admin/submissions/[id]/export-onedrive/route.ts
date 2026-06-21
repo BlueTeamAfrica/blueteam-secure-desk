@@ -80,6 +80,10 @@ export async function POST(request: NextRequest, context: RouteParams) {
     const { id } = await context.params;
     if (!id?.trim()) return NextResponse.json({ error: "Missing submission id" }, { status: 400 });
 
+    const body = await request.json().catch(() => ({})) as Record<string, unknown>;
+    const localeRaw = body.locale;
+    const locale = localeRaw === "ar" || localeRaw === "en" ? localeRaw : undefined;
+
     const workspaceCase = await loadWorkspaceCaseForSubmission(id);
     if (!workspaceCase) return jsonNotFound();
 
@@ -131,6 +135,7 @@ export async function POST(request: NextRequest, context: RouteParams) {
       display,
       item,
       generatedAtIso: new Date().toISOString(),
+      locale,
     });
 
     const filename = buildOneDriveDocxName(display.displayTitle || display.displayRef || "Report");

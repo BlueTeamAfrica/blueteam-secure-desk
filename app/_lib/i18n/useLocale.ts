@@ -15,6 +15,7 @@
 import { useCallback, useEffect, useState } from "react";
 import type { OrgLabels } from "@/app/_lib/org/types";
 import { arLabels } from "@/app/_lib/i18n/ar";
+import { getWorkspaceConfig } from "@/app/_lib/org/getWorkspaceConfig";
 
 export type SupportedLocale = "en" | "ar";
 
@@ -24,7 +25,10 @@ const SUPPORTED: SupportedLocale[] = ["en", "ar"];
 function readStoredLocale(): SupportedLocale {
   if (typeof window === "undefined") return "en";
   const v = window.localStorage.getItem(STORAGE_KEY);
-  return SUPPORTED.includes(v as SupportedLocale) ? (v as SupportedLocale) : "en";
+  if (SUPPORTED.includes(v as SupportedLocale)) return v as SupportedLocale;
+  // Fall back to the workspace config default so factsd opens in Arabic by default.
+  const configLocale = getWorkspaceConfig().locale;
+  return SUPPORTED.includes(configLocale as SupportedLocale) ? (configLocale as SupportedLocale) : "en";
 }
 
 /** Merge locale override shallowly, then deep-merge the known nested groups. */

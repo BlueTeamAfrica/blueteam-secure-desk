@@ -23,6 +23,11 @@ import {
   graphUploadFile,
 } from "@/app/_lib/server/workspaceOneDriveGraph";
 
+// ─── Workspace locale for DOCX generation ───────────────────────────────────
+// Server-side DOCX builds have no requesting-user browser context, so we use
+// the workspace default locale. For factsd this is "ar"; demoNgo stays "en".
+const WORKSPACE_DOCX_LOCALE = (getWorkspaceConfig().locale || "en") as "en" | "ar";
+
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
 /** True when the workspace OneDrive integration is configured and enabled. */
@@ -169,6 +174,7 @@ async function createStageFolder(args: {
     display,
     item,
     generatedAtIso: new Date().toISOString(),
+    locale: WORKSPACE_DOCX_LOCALE,
     lastChangedBy: { uid: actor.uid, role: actor.role, action: actionLabel },
   });
 
@@ -262,6 +268,7 @@ async function refreshDocxInFolder(args: {
     display,
     item,
     generatedAtIso: new Date().toISOString(),
+    locale: WORKSPACE_DOCX_LOCALE,
     lastChangedBy: args.lastChangedBy,
   });
 
@@ -348,6 +355,7 @@ export async function pushSubmissionToOneDrive(
     display,
     item,
     generatedAtIso: new Date().toISOString(),
+    locale: WORKSPACE_DOCX_LOCALE,
   });
   await graphUploadFile({
     accessToken,
@@ -501,6 +509,7 @@ export async function moveSubmissionToStageInOneDrive(
       display,
       item,
       generatedAtIso: new Date().toISOString(),
+      locale: WORKSPACE_DOCX_LOCALE,
     });
     await graphUploadFile({
       accessToken,

@@ -93,9 +93,11 @@ function TopbarLiveBadge() {
 function EditorDeskHeader() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const { labels } = useDashboardBranding();
   const hdr = getEditorDeskHeaderFor({
     pathname,
     viewRaw: searchParams.get("view"),
+    headers: labels.editorDeskHeaders,
   });
   return (
     <>

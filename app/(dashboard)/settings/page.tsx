@@ -17,14 +17,6 @@ export default function SettingsPage() {
   const [oneDriveBusy, setOneDriveBusy] = useState(false);
   const [oneDriveError, setOneDriveError] = useState<string | null>(null);
 
-  const [pullSyncBusy, setPullSyncBusy] = useState(false);
-  const [pullSyncResult, setPullSyncResult] = useState<{
-    checked: number;
-    updated: number;
-    errors?: string[];
-  } | null>(null);
-  const [pullSyncError, setPullSyncError] = useState<string | null>(null);
-
   const [diagBusy, setDiagBusy] = useState(false);
   const [diagResult, setDiagResult] = useState<Record<string, unknown> | null>(null);
 
@@ -149,73 +141,6 @@ export default function SettingsPage() {
             {oneDriveError ? (
               <div className="alert alert-danger" role="alert">
                 {oneDriveError}
-              </div>
-            ) : null}
-
-            {oneDriveConnected ? (
-              <div className="stack-8" style={{ borderTop: "1px solid var(--border)", paddingTop: 12 }}>
-                <div className="small-muted">
-                  Pull latest stage changes from OneDrive into Secure Desk. Runs automatically
-                  every 15 minutes via GitHub Actions — use this to sync immediately.
-                </div>
-                <div className="action-row" style={{ flexWrap: "wrap" }}>
-                  <button
-                    type="button"
-                    className="btn btn-secondary"
-                    disabled={pullSyncBusy}
-                    onClick={() => {
-                      setPullSyncError(null);
-                      setPullSyncResult(null);
-                      setPullSyncBusy(true);
-                      (async () => {
-                        try {
-                          const user = getFirebaseAuth().currentUser;
-                          if (!user) throw new Error("Not signed in");
-                          const token = await user.getIdToken(true);
-                          const res = await fetch("/api/admin/onedrive/pull-sync", {
-                            method: "POST",
-                            headers: { Authorization: `Bearer ${token}` },
-                          });
-                          const data = await res.json().catch(() => null);
-                          if (!res.ok) {
-                            setPullSyncError(data?.error ?? "Sync failed.");
-                            return;
-                          }
-                          setPullSyncResult({
-                            checked: data.checked ?? 0,
-                            updated: data.updated ?? 0,
-                            errors: data.errors,
-                          });
-                        } catch {
-                          setPullSyncError("Could not run OneDrive sync.");
-                        } finally {
-                          setPullSyncBusy(false);
-                        }
-                      })();
-                    }}
-                  >
-                    {pullSyncBusy ? "Syncing…" : "Sync from OneDrive"}
-                  </button>
-                  {pullSyncResult && !pullSyncBusy ? (
-                    <div className="small-muted" style={{ alignSelf: "center" }}>
-                      {pullSyncResult.updated === 0
-                        ? `Already in sync — checked ${pullSyncResult.checked} submission${pullSyncResult.checked !== 1 ? "s" : ""}`
-                        : `Updated ${pullSyncResult.updated} of ${pullSyncResult.checked} submission${pullSyncResult.checked !== 1 ? "s" : ""}`}
-                    </div>
-                  ) : null}
-                </div>
-                {pullSyncError ? (
-                  <div className="alert alert-danger" role="alert">
-                    {pullSyncError}
-                  </div>
-                ) : null}
-                {pullSyncResult?.errors?.length ? (
-                  <div className="alert alert-danger" role="alert">
-                    {pullSyncResult.errors.map((e, i) => (
-                      <div key={i}>{e}</div>
-                    ))}
-                  </div>
-                ) : null}
               </div>
             ) : null}
 

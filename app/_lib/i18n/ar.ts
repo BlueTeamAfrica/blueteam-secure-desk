@@ -15,6 +15,7 @@ import type {
   WorkspacePriorityLabels,
   WorkspaceDetailSectionLabels,
   WorkspaceExportDocxLabels,
+  WorkspaceEditorDeskHeaders,
 } from "@/app/_lib/org/types";
 import type { OrgLabels } from "@/app/_lib/org/types";
 
@@ -56,6 +57,8 @@ const actionLabels: WorkspaceActionLabels = {
 const priorityLabels: WorkspacePriorityLabels = {
   urgent: "عاجل",
   highAttention: "أولوية عالية",
+  columnLabelDesk: "انتباه",
+  columnLabelDefault: "الأولوية",
 };
 
 const detailSectionLabels: WorkspaceDetailSectionLabels = {
@@ -104,6 +107,112 @@ const exportDocxLabels: WorkspaceExportDocxLabels = {
   status: "الحالة",
   attachments: "المرفقات",
   generatedByPrefix: "صدر بواسطة",
+  sectionMetadata: "البيانات الوصفية",
+  sectionReport: "التقرير",
+  sectionChangeLog: "سجل التغييرات",
+  fieldReferenceId: "رقم المرجع",
+  fieldSubmitted: "تاريخ التقديم",
+  fieldReporterRegion: "منطقة المراسل",
+  fieldReporterPhone: "هاتف المراسل",
+  fieldReporterAlias: "اسم مستعار للمراسل",
+  fieldSource: "المصدر",
+  fieldAssignedOwner: "المسؤول المُكلَّف",
+  fieldPriority: "الأولوية",
+  fieldSourceChannel: "قناة المصدر",
+  noPayloadFallback:
+    "النص الكامل غير مُدرج في هذا التصدير (المحتوى المشفر غير متاح لهذا الدور أو تعذّر فكّ تشفيره على الخادم). افتح لوحة التحكم للاطلاع على المحتوى الموثوق.",
+};
+
+// ─── Editor desk headers ──────────────────────────────────────────────────────
+// Reviewed and finalised by Mohamed El-Daby, 2026-06-21.
+
+const editorDeskHeaders: WorkspaceEditorDeskHeaders = {
+  default: {
+    title: "مكتب التحرير",
+    subtitle: "اعمل بوضوح وحرّك الملفات إلى الأمام.",
+  },
+  byInferredView: {
+    inbox: {
+      title: "الوارد",
+      subtitle: "جميع التقديمات.",
+    },
+    raw: {
+      title: "تقديم",
+      subtitle: "التقديمات الواردة الجديدة بانتظار التوجيه.",
+    },
+    new: {
+      title: "تقديم",
+      subtitle: "التقديمات الواردة الجديدة بانتظار التوجيه.",
+    },
+    "raw-materials": {
+      title: "تقديم",
+      subtitle: "التقديمات الواردة الجديدة بانتظار التوجيه.",
+    },
+    edit1: {
+      title: "مواد خام",
+      subtitle: "مواد جديدة بانتظار التحرير الأول.",
+    },
+    "first-editing": {
+      title: "مواد خام",
+      subtitle: "مواد جديدة بانتظار التحرير الأول.",
+    },
+    needs_triage: {
+      title: "مواد خام",
+      subtitle: "مواد جديدة بانتظار التحرير الأول.",
+    },
+    assigned: {
+      title: "تحرير أول",
+      subtitle: "مواد بانتظار التحرير الثاني.",
+    },
+    "your-queue": {
+      title: "تحرير أول",
+      subtitle: "مواد بانتظار التحرير الثاني.",
+    },
+    edit2: {
+      title: "تحرير أول",
+      subtitle: "مواد بانتظار التحرير الثاني.",
+    },
+    proof: {
+      title: "تحرير ثاني",
+      subtitle: "مواد محررة.",
+    },
+    proofreading: {
+      title: "تحرير ثاني",
+      subtitle: "مواد محررة.",
+    },
+    in_review: {
+      title: "تصحيح",
+      subtitle: "القصص قيد المراجعة قبل الموافقة النهائية.",
+    },
+    design: {
+      title: "مصحح",
+      subtitle: "القصص الجاهزة للتصميم.",
+    },
+    designed: {
+      title: "مصمم",
+      subtitle: "القصص المصممة.",
+    },
+    waiting_follow_up: {
+      title: "مصحح",
+      subtitle: "القصص الجاهزة للتصميم.",
+    },
+    published: {
+      title: "مراجعة",
+      subtitle: "القصص الجاهزة للنشر.",
+    },
+    resolved: {
+      title: "مراجعة",
+      subtitle: "القصص الجاهزة للنشر.",
+    },
+    archive: {
+      title: "مصمم",
+      subtitle: "الأرشيف.",
+    },
+    archived: {
+      title: "مصمم",
+      subtitle: "الأرشيف.",
+    },
+  },
 };
 
 // ─── Flat OrgLabels override ──────────────────────────────────────────────────
@@ -263,4 +372,5 @@ export const arLabels: Partial<OrgLabels> = {
   priorityLabels,
   detailSectionLabels,
   exportDocxLabels,
+  editorDeskHeaders,
 };

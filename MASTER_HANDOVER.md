@@ -77,7 +77,7 @@
 - Auth: Firebase email/password; `adminUsers/{uid}.active`; role from `/api/me` + `users/{uid}`.
 - Server-only decrypt: `app/api/admin/submissions/[id]/decrypt/route.ts`.
 - Case model centralized: `app/_lib/caseWorkspaceModel.ts`.
-- Export: DOCX, manual download; OneDrive adapter stubbed/disabled in `factsd` config.
+- Export: DOCX manual download (UI export button). OneDrive workspace pipeline is **live and enabled** (`factsd` config `oneDrive.enabled: true`); currently routed to `SecureDesk-Test` in Mohamed's personal OneDrive (test). `exportProvider: "manualDownload"` controls the UI button only, not the background sync. Personal OneDrive export also available per-user.
 - Branded routes: `/dashboard`, `/sudanfacts` (re-exports same shell — no duplicated logic).
 - Editorial manifest generation on `dev`/`build`.
 - Firebase Admin via `FIREBASE_SERVICE_ACCOUNT_BASE64` (Vercel-friendly).
@@ -86,7 +86,7 @@
 
 ### Partially completed
 
-- **Firestore rules not in repo** (**CERTAIN** from Phase 7 audit transcript) — deployed rules unknown from codebase alone.
+- **Firestore rules in repo** at `firestore.rules` — committed 2026-06-04. Covers `settings/branding`, `submissions`, `adminUsers`, `users`. Collections used only via Admin SDK (`submissionAudit`, `onedriveAuthStates`, `integrations/*`, `settings/integrations`) intentionally have no client rules.
 - `settings/branding` Firestore doc vs static config — branding provider was debugged; confirm production source of truth.
 - OneDrive export: configured but `enabled: false` in `factsd`.
 - `googleDrive` export: stub.
@@ -132,16 +132,20 @@
 
 **API auth patterns**
 
-- `/api/admin/*` → `requireActiveAdmin` (Bearer Firebase ID token + active admin)
-- `/api/workspace/*` → token check without admin gate (per CLAUDE.md)
+- `/api/admin/*` → `requireActiveAdmin` (Bearer Firebase ID token + `adminUsers/{uid}.active == true`)
+- `/api/workspace/users` → also uses `requireActiveAdmin` (same gate as admin routes)
+- `/api/integrations/onedrive/*` and `export-onedrive` → `requireFirebaseUser` (ID token only, no adminUsers check; role checked separately via `fetchWorkspaceRole`)
 
 **Env** (`.env.example`)
 
-- `NEXT_PUBLIC_FIREBASE_*`
-- `FIREBASE_SERVICE_ACCOUNT_BASE64` (preferred) or legacy PEM trio
+- `NEXT_PUBLIC_FIREBASE_*` (6 vars)
+- `FIREBASE_SERVICE_ACCOUNT_BASE64` (preferred) or legacy trio `FIREBASE_PROJECT_ID` + `FIREBASE_CLIENT_EMAIL` + `FIREBASE_PRIVATE_KEY`
 - `SUBMISSION_PAYLOAD_SECRET` (must match app `EXPO_PUBLIC_SUBMISSION_PAYLOAD_SECRET`)
 - `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_BUCKET`
-- `NEXT_PUBLIC_WORKSPACE_CONFIG_ID` — `demoNgo` or omit for `factsd`
+- `INTEGRATIONS_TOKEN_SECRET` — AES key for encrypting OneDrive tokens at rest in Firestore
+- `MICROSOFT_CLIENT_ID`, `MICROSOFT_CLIENT_SECRET`, `MICROSOFT_REDIRECT_URI` — Azure app registration for OneDrive OAuth
+- `MICROSOFT_TENANT_ID` — optional; `"common"` for multi-tenant
+- `NEXT_PUBLIC_WORKSPACE_CONFIG_ID` — `"demoNgo"` or omit for `factsd`
 
 ## 4. Product Decisions
 
@@ -332,7 +336,7 @@ Check transcript-equivalent status for known open items:
 | Project | Open thread |
 |---------|-------------|
 | secure-reporter-app | Production QA matrix; APK audit; remove debug logs |
-| secure-reporter-dashboard | 401 debug removal; firestore.rules in repo; branding source of truth |
+| secure-reporter-dashboard | Switch OneDrive `rootFolderName` to production path; deploy firestore.rules + indexes; notification system (not designed); Arabic/RTL interface (not started) |
 | blueteam-portal | Invoice create permission trace (`canInvoices`, owner role) |
 | blueteamafrica | Production form + image 404 verification |
 
