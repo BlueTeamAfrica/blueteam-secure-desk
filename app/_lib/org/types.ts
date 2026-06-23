@@ -374,6 +374,29 @@ export type WorkspaceConfig = {
   board: WorkspaceBoardCopy;
   team: WorkspaceTeamCopy;
   settingsLabels: WorkspaceSettingsLabels;
+  notificationLabels: WorkspaceNotificationLabels;
+};
+
+export type WorkspaceNotificationLabels = {
+  bellAriaLabel: string;
+  emptyState: string;
+  markAllRead: string;
+  /** In-app title for assignment notification. */
+  assignedTitle: string;
+  /** In-app body. Use {ref} as placeholder — replaced at write time. */
+  assignedBody: string;
+  /** In-app title for designed-stage notification. */
+  designedTitle: string;
+  /** In-app body. Use {ref} as placeholder — replaced at write time. */
+  designedBody: string;
+  /** Email subject for assignment. Use {ref} as placeholder. */
+  emailSubjectAssigned: string;
+  /** Email subject for designed stage. Use {ref} as placeholder. */
+  emailSubjectDesigned: string;
+  /** CTA label in email body. */
+  emailViewCase: string;
+  /** Footer line in email. */
+  emailFooter: string;
 };
 
 /** Flattened labels consumed across dashboard UI (back-compat shape). */
@@ -387,6 +410,7 @@ export type OrgLabels = WorkspaceBranding &
     detailSectionLabels: WorkspaceDetailSectionLabels;
     exportDocxLabels: WorkspaceExportDocxLabels;
     settingsLabels: WorkspaceSettingsLabels;
+    notificationLabels: WorkspaceNotificationLabels;
     /** Locale-aware editor desk headers. Falls back to WorkspaceConfig.editorDeskHeaders when absent. */
     editorDeskHeaders?: WorkspaceEditorDeskHeaders;
   } &

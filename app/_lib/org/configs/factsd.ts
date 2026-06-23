@@ -490,4 +490,17 @@ export const factsdWorkspaceConfig: WorkspaceConfig = {
   board,
   team,
   settingsLabels,
+  notificationLabels: {
+    bellAriaLabel: "Notifications",
+    emptyState: "No notifications yet",
+    markAllRead: "Mark all read",
+    assignedTitle: "Case assigned",
+    assignedBody: "Case {ref} has been assigned to you.",
+    designedTitle: "Case published",
+    designedBody: "Case {ref} has been moved to the published stage.",
+    emailSubjectAssigned: "Case assigned — {ref}",
+    emailSubjectDesigned: "Case published — {ref}",
+    emailViewCase: "View case",
+    emailFooter: "Secure Desk — Sudan Facts newsroom",
+  },
 };

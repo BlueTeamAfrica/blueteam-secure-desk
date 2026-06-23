@@ -18,6 +18,7 @@ export function getOrgLabels(): OrgLabels {
     detailSectionLabels: c.detailSectionLabels,
     exportDocxLabels: c.exportDocxLabels,
     settingsLabels: c.settingsLabels,
+    notificationLabels: c.notificationLabels,
     editorDeskHeaders: c.editorDeskHeaders,
     ...c.chrome,
     ...c.detailInspector,

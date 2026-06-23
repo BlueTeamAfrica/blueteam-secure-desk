@@ -6,6 +6,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { SidebarNav } from "@/app/_components/dashboard/SidebarNav";
 import { SidebarBrandHeader } from "@/app/_components/dashboard/SidebarBrandHeader";
 import { UserMenu } from "@/app/_components/dashboard/UserMenu";
+import { NotificationBell } from "@/app/_components/dashboard/NotificationBell";
 import { CaseQueueProvider } from "@/app/_components/dashboard/CaseQueueContext";
 import { useAuth } from "@/app/_components/auth/AuthContext";
 import { getEditorDeskHeaderFor } from "@/app/_lib/org/getWorkspaceConfig";
@@ -251,6 +252,7 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
               </>
             )}
           </div>
+          <NotificationBell />
           <UserMenu />
         </div>
       </header>

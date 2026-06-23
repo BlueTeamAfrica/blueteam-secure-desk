@@ -469,4 +469,17 @@ export const arLabels: Partial<OrgLabels> = {
   exportDocxLabels,
   editorDeskHeaders,
   settingsLabels,
+  notificationLabels: {
+    bellAriaLabel: "الإشعارات",
+    emptyState: "لا توجد إشعارات بعد",
+    markAllRead: "تعليم الكل كمقروء",
+    assignedTitle: "تم إسناد حالة",
+    assignedBody: "تم إسنادك إلى الحالة {ref}.",
+    designedTitle: "تم نشر الحالة",
+    designedBody: "انتقلت الحالة {ref} إلى مرحلة النشر.",
+    emailSubjectAssigned: "تم إسناد حالة — {ref}",
+    emailSubjectDesigned: "تم نشر الحالة — {ref}",
+    emailViewCase: "عرض الحالة",
+    emailFooter: "Secure Desk — غرفة أخبار Sudan Facts",
+  },
 };

@@ -9,6 +9,7 @@ import { assertWorkspaceRole, jsonForbidden } from "@/app/_lib/server/submission
 import { fetchWorkspaceRole } from "@/app/_lib/server/workspaceRole";
 import { isWorkspaceUserActive, type WorkspaceUserProfile } from "@/app/_lib/workspace/userProfile";
 import { refreshSubmissionDocxInOneDrive } from "@/app/_lib/server/submissionOneDriveSyncServer";
+import { notifyAssignment } from "@/app/_lib/server/notifications";
 
 type RouteParams = { params: Promise<{ id: string }> };
 
@@ -98,6 +99,16 @@ export async function POST(request: NextRequest, context: RouteParams) {
     } catch {
       /* audit failure must not block assignment */
     }
+
+    // Notify the assignee — fire-and-forget; never blocks assignment response.
+    const subData = subSnap.data() as Record<string, unknown> | undefined;
+    const caseRef =
+      typeof subData?.referenceCode === "string" && subData.referenceCode.trim()
+        ? subData.referenceCode.trim()
+        : id;
+    void notifyAssignment({ caseId: id, caseRef, assigneeUid: uid }).catch((e) =>
+      console.error("[notifications] notifyAssignment failed", e),
+    );
 
     // Refresh OneDrive DOCX with assignment changelog entry — fire-and-forget.
     void refreshSubmissionDocxInOneDrive(id, {

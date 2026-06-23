@@ -13,9 +13,9 @@
  */
 
 import { useCallback, useEffect, useState } from "react";
-import type { OrgLabels } from "@/app/_lib/org/types";
-import { arLabels } from "@/app/_lib/i18n/ar";
 import { getWorkspaceConfig } from "@/app/_lib/org/getWorkspaceConfig";
+export { applyLocaleToLabels } from "@/app/_lib/i18n/applyLocaleToLabels";
+export type { OrgLabels } from "@/app/_lib/org/types";
 
 export type SupportedLocale = "en" | "ar";
 
@@ -29,34 +29,6 @@ function readStoredLocale(): SupportedLocale {
   // Fall back to the workspace config default so factsd opens in Arabic by default.
   const configLocale = getWorkspaceConfig().locale;
   return SUPPORTED.includes(configLocale as SupportedLocale) ? (configLocale as SupportedLocale) : "en";
-}
-
-/** Merge locale override shallowly, then deep-merge the known nested groups. */
-export function applyLocaleToLabels(
-  base: OrgLabels,
-  locale: SupportedLocale,
-): OrgLabels {
-  if (locale === "en") return base;
-
-  const override = locale === "ar" ? arLabels : {};
-
-  return {
-    ...base,
-    ...override,
-    // Deep-merge nested label groups so a partial override doesn't wipe siblings.
-    roleLabels: { ...base.roleLabels, ...override.roleLabels },
-    caseStatusLabels: { ...base.caseStatusLabels, ...override.caseStatusLabels },
-    deskLabels: { ...base.deskLabels, ...override.deskLabels },
-    actionLabels: { ...base.actionLabels, ...override.actionLabels },
-    priorityLabels: { ...base.priorityLabels, ...override.priorityLabels },
-    detailSectionLabels: {
-      ...base.detailSectionLabels,
-      ...override.detailSectionLabels,
-    },
-    exportDocxLabels: { ...base.exportDocxLabels, ...override.exportDocxLabels },
-    // `workflow` is never translated — always use base.
-    workflow: base.workflow,
-  };
 }
 
 export type UseLocaleReturn = {

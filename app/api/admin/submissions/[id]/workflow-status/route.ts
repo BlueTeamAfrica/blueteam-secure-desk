@@ -16,6 +16,7 @@ import {
 } from "@/app/_lib/server/submissionCaseAccess";
 import { fetchWorkspaceRole } from "@/app/_lib/server/workspaceRole";
 import { moveSubmissionToStageInOneDrive } from "@/app/_lib/server/submissionOneDriveSyncServer";
+import { notifyStageDesigned } from "@/app/_lib/server/notifications";
 
 type RouteParams = { params: Promise<{ id: string }> };
 
@@ -116,6 +117,17 @@ export async function POST(request: NextRequest, context: RouteParams) {
       });
     } catch {
       /* audit failure must not block */
+    }
+
+    // Notify all eligible users when a case reaches the designed stage — fire-and-forget.
+    if (target === "designed") {
+      const caseRef =
+        typeof workspaceCase.referenceCode === "string" && workspaceCase.referenceCode.trim()
+          ? workspaceCase.referenceCode.trim()
+          : id;
+      void notifyStageDesigned({ caseId: id, caseRef }).catch((e) =>
+        console.error("[notifications] notifyStageDesigned failed", e),
+      );
     }
 
     // Mirror the stage change in OneDrive (move existing file, or upload fresh).

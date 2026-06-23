@@ -43,5 +43,11 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // In-app notifications — read by the owning user only; all writes via Admin SDK only.
+    match /notifications/{uid}/items/{notifId} {
+      allow read: if signedIn() && request.auth.uid == uid;
+      allow write: if false;
+    }
+
   }
 }
