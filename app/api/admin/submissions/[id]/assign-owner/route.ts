@@ -10,6 +10,7 @@ import { fetchWorkspaceRole } from "@/app/_lib/server/workspaceRole";
 import { isWorkspaceUserActive, type WorkspaceUserProfile } from "@/app/_lib/workspace/userProfile";
 import { refreshSubmissionDocxInOneDrive } from "@/app/_lib/server/submissionOneDriveSyncServer";
 import { notifyAssignment } from "@/app/_lib/server/notifications";
+import { normalizeSubmissionToCase } from "@/app/_lib/caseWorkspaceModel";
 
 type RouteParams = { params: Promise<{ id: string }> };
 
@@ -101,13 +102,11 @@ export async function POST(request: NextRequest, context: RouteParams) {
     }
 
     // Notify the assignee — fire-and-forget; never blocks assignment response.
-    const subData = subSnap.data() as Record<string, unknown> | undefined;
-    const caseRef =
-      typeof subData?.referenceCode === "string" && subData.referenceCode.trim()
-        ? subData.referenceCode.trim()
-        : id;
-    const caseTitle =
-      typeof subData?.title === "string" && subData.title.trim() ? subData.title.trim() : undefined;
+    // Use normalizeSubmissionToCase for ref + title — it has referenceFromId fallback and
+    // multi-field title extraction logic (same as the rest of the dashboard).
+    const workspaceCase = normalizeSubmissionToCase(id, subSnap.data() ?? {});
+    const caseRef = workspaceCase.referenceCode;
+    const caseTitle = workspaceCase.title.trim() || undefined;
     void notifyAssignment({ caseId: id, caseRef, caseTitle, assigneeUid: uid }).catch((e) =>
       console.error("[notifications] notifyAssignment failed", e),
     );
