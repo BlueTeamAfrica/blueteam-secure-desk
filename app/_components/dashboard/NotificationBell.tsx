@@ -47,22 +47,29 @@ export function NotificationBell() {
       orderBy("createdAt", "desc"),
       limit(30),
     );
-    const unsub = onSnapshot(q, (snap) => {
-      setItems(
-        snap.docs.map((d) => {
-          const data = d.data();
-          return {
-            id: d.id,
-            type: data.type as "assigned" | "designed",
-            caseId: typeof data.caseId === "string" ? data.caseId : "",
-            caseRef: typeof data.caseRef === "string" ? data.caseRef : "",
-            message: typeof data.message === "string" ? data.message : "",
-            read: data.read === true,
-            createdAt: data.createdAt ?? null,
-          };
-        }),
-      );
-    });
+    const unsub = onSnapshot(
+      q,
+      (snap) => {
+        setItems(
+          snap.docs.map((d) => {
+            const data = d.data();
+            return {
+              id: d.id,
+              type: data.type as "assigned" | "designed",
+              caseId: typeof data.caseId === "string" ? data.caseId : "",
+              caseRef: typeof data.caseRef === "string" ? data.caseRef : "",
+              message: typeof data.message === "string" ? data.message : "",
+              read: data.read === true,
+              createdAt: data.createdAt ?? null,
+            };
+          }),
+        );
+      },
+      (err) => {
+        // Permission denied = Firestore rules not yet deployed; other errors are transient.
+        console.error("[NotificationBell] onSnapshot error:", err.code, err.message);
+      },
+    );
     return unsub;
   }, [uid]);
 

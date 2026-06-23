@@ -1,7 +1,7 @@
 import "server-only";
 
 import { FieldValue } from "firebase-admin/firestore";
-import { getAdminFirestore } from "@/app/_lib/server/firebaseAdmin";
+import { getAdminAuth, getAdminFirestore } from "@/app/_lib/server/firebaseAdmin";
 import { buildEmailHtml, interpolateRef, sendEmail } from "@/app/_lib/server/sendEmail";
 import { getWorkspaceConfig } from "@/app/_lib/org/getWorkspaceConfig";
 import { applyLocaleToLabels } from "@/app/_lib/i18n/applyLocaleToLabels";
@@ -73,15 +73,27 @@ async function fetchAllActiveUsers(): Promise<Array<{ uid: string; email: string
   return results;
 }
 
-/** Fetches email for a single UID from the `users` collection. */
+/**
+ * Fetches email for a single UID — checks Firestore users/{uid}.email first,
+ * then falls back to Firebase Auth record (same pattern as assign-owner route).
+ */
 async function fetchUserEmail(uid: string): Promise<string | null> {
   const db = getAdminFirestore();
   const snap = await db.collection("users").doc(uid).get();
-  if (!snap.exists) return null;
-  const data = snap.data() as WorkspaceUserProfile;
-  const email =
-    typeof data.email === "string" && data.email.trim() ? data.email.trim() : null;
-  return email;
+  if (snap.exists) {
+    const data = snap.data() as WorkspaceUserProfile;
+    const email =
+      typeof data.email === "string" && data.email.trim() ? data.email.trim() : null;
+    if (email) return email;
+  }
+  // Firestore field missing or empty — try Firebase Auth record.
+  try {
+    const u = await getAdminAuth().getUser(uid);
+    if (u.email) return u.email;
+  } catch {
+    /* Auth user lookup failure is non-fatal */
+  }
+  return null;
 }
 
 /**
@@ -93,8 +105,10 @@ export async function notifyAssignment(opts: {
   caseId: string;
   caseRef: string;
   assigneeUid: string;
+  /** Already-resolved email from the calling route — skips a second Firestore + Auth lookup. */
+  assigneeEmail?: string | null;
 }): Promise<void> {
-  const { caseId, caseRef, assigneeUid } = opts;
+  const { caseId, caseRef, assigneeUid, assigneeEmail } = opts;
   const labels = getLabels();
   const nl = labels.notificationLabels;
   const cfg = getWorkspaceConfig();
@@ -111,8 +125,8 @@ export async function notifyAssignment(opts: {
     message,
   });
 
-  // Email
-  const email = await fetchUserEmail(assigneeUid);
+  // Email — use caller-supplied email if already known; otherwise look it up.
+  const email = assigneeEmail ?? await fetchUserEmail(assigneeUid);
   if (email) {
     const subject = interpolateRef(nl.emailSubjectAssigned, caseRef);
     const ctaUrl = `${DASHBOARD_URL}/dashboard`;
