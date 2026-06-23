@@ -429,6 +429,11 @@ export function normalizeSubmissionToCase(id: string, data: DocumentData): Works
 
   return {
     id,
+    // WARNING: older submissions in production Firestore have referenceCode set to the
+    // raw 20-char Firestore doc ID (e.g. "LX38EtPRyQ0XlrpggLFR") — not a CASE-XXXXX string.
+    // The mobile app never writes this field. Do not treat the stored value as canonical.
+    // For anything that must show a consistent CASE-XXXXX ref (e.g. notifications), call
+    // referenceFromId(id) directly instead of reading this field.
     referenceCode: str(data.referenceCode) ?? referenceFromId(id),
     title,
     summary,
