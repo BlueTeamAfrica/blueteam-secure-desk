@@ -50,11 +50,12 @@ function rolesThatCanTargetStatus(status: CaseStatus): WorkspaceRole[] {
 /** Writes one notification doc to notifications/{uid}/items/{auto-id}. */
 async function writeNotification(uid: string, record: Omit<NotificationRecord, "createdAt" | "read">): Promise<void> {
   const db = getAdminFirestore();
-  await db
+  const ref = await db
     .collection("notifications")
     .doc(uid)
     .collection("items")
     .add({ ...record, read: false, createdAt: FieldValue.serverTimestamp() });
+  console.log(`[notifications] wrote ${record.type} notification path=notifications/${uid}/items/${ref.id}`);
 }
 
 /** Fetches all active workspace users from `users` collection. */
