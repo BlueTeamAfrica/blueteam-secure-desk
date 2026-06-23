@@ -10,7 +10,7 @@ import { fetchWorkspaceRole } from "@/app/_lib/server/workspaceRole";
 import { isWorkspaceUserActive, type WorkspaceUserProfile } from "@/app/_lib/workspace/userProfile";
 import { refreshSubmissionDocxInOneDrive } from "@/app/_lib/server/submissionOneDriveSyncServer";
 import { notifyAssignment } from "@/app/_lib/server/notifications";
-import { normalizeSubmissionToCase } from "@/app/_lib/caseWorkspaceModel";
+import { referenceFromId, normalizeSubmissionToCase } from "@/app/_lib/caseWorkspaceModel";
 
 type RouteParams = { params: Promise<{ id: string }> };
 
@@ -102,10 +102,12 @@ export async function POST(request: NextRequest, context: RouteParams) {
     }
 
     // Notify the assignee — fire-and-forget; never blocks assignment response.
-    // Use normalizeSubmissionToCase for ref + title — it has referenceFromId fallback and
-    // multi-field title extraction logic (same as the rest of the dashboard).
+    // Always derive caseRef from the doc ID via referenceFromId — the mobile app never
+    // writes a referenceCode field, so the Firestore field can contain the raw doc ID
+    // (set by earlier pipeline versions). referenceFromId is the dashboard's canonical
+    // source of truth for CASE-XXXXX format and is always consistent.
+    const caseRef = referenceFromId(id);
     const workspaceCase = normalizeSubmissionToCase(id, subSnap.data() ?? {});
-    const caseRef = workspaceCase.referenceCode;
     const caseTitle = workspaceCase.title.trim() || undefined;
     void notifyAssignment({ caseId: id, caseRef, caseTitle, assigneeUid: uid }).catch((e) =>
       console.error("[notifications] notifyAssignment failed", e),

@@ -234,7 +234,7 @@ function timestampToIso(v: unknown): string | null {
   return null;
 }
 
-function referenceFromId(id: string): string {
+export function referenceFromId(id: string): string {
   const alnum = id.replace(/[^a-zA-Z0-9]/g, "");
   const tail = (alnum.slice(-5) || "00000").toUpperCase();
   return `CASE-${tail.padStart(5, "0").slice(-5)}`;
