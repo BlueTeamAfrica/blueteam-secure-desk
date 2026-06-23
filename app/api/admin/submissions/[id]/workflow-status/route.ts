@@ -125,7 +125,11 @@ export async function POST(request: NextRequest, context: RouteParams) {
         typeof workspaceCase.referenceCode === "string" && workspaceCase.referenceCode.trim()
           ? workspaceCase.referenceCode.trim()
           : id;
-      void notifyStageDesigned({ caseId: id, caseRef }).catch((e) =>
+      const caseTitle =
+        typeof workspaceCase.title === "string" && workspaceCase.title.trim()
+          ? workspaceCase.title.trim()
+          : undefined;
+      void notifyStageDesigned({ caseId: id, caseRef, caseTitle }).catch((e) =>
         console.error("[notifications] notifyStageDesigned failed", e),
       );
     }

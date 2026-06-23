@@ -2,10 +2,8 @@ import "server-only";
 
 import { FieldValue } from "firebase-admin/firestore";
 import { getAdminAuth, getAdminFirestore } from "@/app/_lib/server/firebaseAdmin";
-import { buildEmailHtml, interpolateRef, sendEmail } from "@/app/_lib/server/sendEmail";
-import { getWorkspaceConfig } from "@/app/_lib/org/getWorkspaceConfig";
+import { buildEmailHtml, interpolateVars, sendEmail } from "@/app/_lib/server/sendEmail";
 import { applyLocaleToLabels } from "@/app/_lib/i18n/applyLocaleToLabels";
-import type { SupportedLocale } from "@/app/_lib/i18n/useLocale";
 import { getOrgLabels } from "@/app/_lib/org/getOrgLabels";
 import {
   WORKSPACE_ROLES,
@@ -30,11 +28,14 @@ export type NotificationRecord = {
 const DASHBOARD_URL =
   (process.env.NEXT_PUBLIC_DASHBOARD_URL ?? "https://desk.blueteamafrica.com").replace(/\/$/, "");
 
-/** Returns workspace labels merged with locale (server-side). */
-function getLabels() {
-  const cfg = getWorkspaceConfig();
+/**
+ * Returns notification labels always in Arabic — workspace language, not per-user locale.
+ * Notifications must be readable by all Arabic-speaking recipients regardless of
+ * whatever UI language a sender happened to have active at the time of the action.
+ */
+function getNotificationLabels() {
   const base = getOrgLabels();
-  return applyLocaleToLabels(base, cfg.locale as SupportedLocale);
+  return applyLocaleToLabels(base, "ar").notificationLabels;
 }
 
 /** Returns roles that include `status` in their allowed target list (derived from RBAC, not hardcoded). */
@@ -104,18 +105,17 @@ async function fetchUserEmail(uid: string): Promise<string | null> {
 export async function notifyAssignment(opts: {
   caseId: string;
   caseRef: string;
+  caseTitle?: string;
   assigneeUid: string;
   /** Already-resolved email from the calling route — skips a second Firestore + Auth lookup. */
   assigneeEmail?: string | null;
 }): Promise<void> {
-  const { caseId, caseRef, assigneeUid, assigneeEmail } = opts;
-  const labels = getLabels();
-  const nl = labels.notificationLabels;
-  const cfg = getWorkspaceConfig();
-  const isRtl = cfg.locale === "ar";
-  const lang = cfg.locale;
+  const { caseId, caseRef, caseTitle, assigneeUid, assigneeEmail } = opts;
+  const nl = getNotificationLabels();
+  const titleVar = caseTitle?.trim() || caseRef;
+  const vars = { title: titleVar, ref: caseRef };
 
-  const message = interpolateRef(nl.assignedBody, caseRef);
+  const message = interpolateVars(nl.assignedBody, vars);
 
   // In-app notification
   await writeNotification(assigneeUid, {
@@ -128,7 +128,7 @@ export async function notifyAssignment(opts: {
   // Email — use caller-supplied email if already known; otherwise look it up.
   const email = assigneeEmail ?? await fetchUserEmail(assigneeUid);
   if (email) {
-    const subject = interpolateRef(nl.emailSubjectAssigned, caseRef);
+    const subject = interpolateVars(nl.emailSubjectAssigned, vars);
     const ctaUrl = `${DASHBOARD_URL}/dashboard`;
     await sendEmail({
       to: email,
@@ -140,8 +140,8 @@ export async function notifyAssignment(opts: {
         ctaLabel: nl.emailViewCase,
         ctaUrl,
         footer: nl.emailFooter,
-        dir: isRtl ? "rtl" : "ltr",
-        lang,
+        dir: "rtl",
+        lang: "ar",
       }),
     });
   }
@@ -156,20 +156,19 @@ export async function notifyAssignment(opts: {
 export async function notifyStageDesigned(opts: {
   caseId: string;
   caseRef: string;
+  caseTitle?: string;
 }): Promise<void> {
-  const { caseId, caseRef } = opts;
-  const labels = getLabels();
-  const nl = labels.notificationLabels;
-  const cfg = getWorkspaceConfig();
-  const isRtl = cfg.locale === "ar";
-  const lang = cfg.locale;
+  const { caseId, caseRef, caseTitle } = opts;
+  const nl = getNotificationLabels();
+  const titleVar = caseTitle?.trim() || caseRef;
+  const vars = { title: titleVar, ref: caseRef };
 
   const eligibleRoles = new Set(rolesThatCanTargetStatus("designed"));
   const allUsers = await fetchAllActiveUsers();
   const recipients = allUsers.filter((u) => eligibleRoles.has(u.role));
 
-  const message = interpolateRef(nl.designedBody, caseRef);
-  const subject = interpolateRef(nl.emailSubjectDesigned, caseRef);
+  const message = interpolateVars(nl.designedBody, vars);
+  const subject = interpolateVars(nl.emailSubjectDesigned, vars);
   const ctaUrl = `${DASHBOARD_URL}/dashboard`;
   const html = buildEmailHtml({
     title: nl.designedTitle,
@@ -177,8 +176,8 @@ export async function notifyStageDesigned(opts: {
     ctaLabel: nl.emailViewCase,
     ctaUrl,
     footer: nl.emailFooter,
-    dir: isRtl ? "rtl" : "ltr",
-    lang,
+    dir: "rtl",
+    lang: "ar",
   });
 
   await Promise.all(

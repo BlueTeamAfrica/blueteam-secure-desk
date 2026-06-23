@@ -106,7 +106,9 @@ export async function POST(request: NextRequest, context: RouteParams) {
       typeof subData?.referenceCode === "string" && subData.referenceCode.trim()
         ? subData.referenceCode.trim()
         : id;
-    void notifyAssignment({ caseId: id, caseRef, assigneeUid: uid }).catch((e) =>
+    const caseTitle =
+      typeof subData?.title === "string" && subData.title.trim() ? subData.title.trim() : undefined;
+    void notifyAssignment({ caseId: id, caseRef, caseTitle, assigneeUid: uid }).catch((e) =>
       console.error("[notifications] notifyAssignment failed", e),
     );
 

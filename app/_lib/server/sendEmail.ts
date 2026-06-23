@@ -52,6 +52,11 @@ export function interpolateRef(template: string, ref: string): string {
   return template.replace(/\{ref\}/g, ref);
 }
 
+/** Replaces any {key} placeholders in template with the corresponding values from vars. */
+export function interpolateVars(template: string, vars: Record<string, string>): string {
+  return template.replace(/\{(\w+)\}/g, (_, key) => vars[key] ?? `{${key}}`);
+}
+
 /**
  * Builds a plain functional HTML email.
  * dir/lang used for Arabic RTL support.
