@@ -397,6 +397,13 @@ export type WorkspaceNotificationLabels = {
   emailViewCase: string;
   /** Footer line in email. */
   emailFooter: string;
+  /** Prefix shown before actor display name in bell, e.g. "By:" / "بواسطة:" */
+  byActor: string;
+  /** Relative time strings for bell timestamps. Use {n} for the numeric value. */
+  relativeTimeJustNow: string;
+  relativeTimeMinutesAgo: string;
+  relativeTimeHoursAgo: string;
+  relativeTimeDaysAgo: string;
 };
 
 /** Flattened labels consumed across dashboard UI (back-compat shape). */

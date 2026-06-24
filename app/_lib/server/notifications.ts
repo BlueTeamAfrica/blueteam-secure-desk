@@ -21,6 +21,7 @@ export type NotificationRecord = {
   caseId: string;
   caseRef: string;
   message: string;
+  actorName: string | null;
   read: boolean;
   createdAt: unknown; // FieldValue.serverTimestamp() on write
 };
@@ -56,6 +57,29 @@ async function writeNotification(uid: string, record: Omit<NotificationRecord, "
     .collection("items")
     .add({ ...record, read: false, createdAt: FieldValue.serverTimestamp() });
   console.log(`[notifications] wrote ${record.type} notification path=notifications/${uid}/items/${ref.id}`);
+}
+
+/**
+ * Resolves a display name for the actor who triggered a notification.
+ * Checks Firestore users/{uid}.displayName first, then Firebase Auth, then falls back to email.
+ */
+async function resolveActorName(uid: string, fallbackEmail: string | null): Promise<string | null> {
+  const db = getAdminFirestore();
+  try {
+    const snap = await db.collection("users").doc(uid).get();
+    if (snap.exists) {
+      const data = snap.data() as WorkspaceUserProfile;
+      if (typeof data.displayName === "string" && data.displayName.trim()) {
+        return data.displayName.trim();
+      }
+    }
+  } catch { /* non-fatal */ }
+  try {
+    const u = await getAdminAuth().getUser(uid);
+    if (u.displayName) return u.displayName;
+    if (u.email) return u.email;
+  } catch { /* non-fatal */ }
+  return fallbackEmail;
 }
 
 /** Fetches all active workspace users from `users` collection. */
@@ -110,13 +134,15 @@ export async function notifyAssignment(opts: {
   assigneeUid: string;
   /** Already-resolved email from the calling route — skips a second Firestore + Auth lookup. */
   assigneeEmail?: string | null;
+  actorUid: string;
+  actorEmail?: string | null;
 }): Promise<void> {
-  const { caseId, caseRef, caseTitle, assigneeUid, assigneeEmail } = opts;
+  const { caseId, caseRef, assigneeUid, assigneeEmail, actorUid, actorEmail } = opts;
   const nl = getNotificationLabels();
-  const titleVar = caseTitle?.trim() || caseRef;
-  const vars = { title: titleVar, ref: caseRef };
+  const vars = { ref: caseRef };
 
   const message = interpolateVars(nl.assignedBody, vars);
+  const actorName = await resolveActorName(actorUid, actorEmail ?? null);
 
   // In-app notification
   await writeNotification(assigneeUid, {
@@ -124,6 +150,7 @@ export async function notifyAssignment(opts: {
     caseId,
     caseRef,
     message,
+    actorName,
   });
 
   // Email — use caller-supplied email if already known; otherwise look it up.
@@ -158,11 +185,12 @@ export async function notifyStageDesigned(opts: {
   caseId: string;
   caseRef: string;
   caseTitle?: string;
+  actorUid: string;
+  actorEmail?: string | null;
 }): Promise<void> {
-  const { caseId, caseRef, caseTitle } = opts;
+  const { caseId, caseRef, actorUid, actorEmail } = opts;
   const nl = getNotificationLabels();
-  const titleVar = caseTitle?.trim() || caseRef;
-  const vars = { title: titleVar, ref: caseRef };
+  const vars = { ref: caseRef };
 
   const eligibleRoles = new Set(rolesThatCanTargetStatus("designed"));
   const allUsers = await fetchAllActiveUsers();
@@ -170,6 +198,7 @@ export async function notifyStageDesigned(opts: {
 
   const message = interpolateVars(nl.designedBody, vars);
   const subject = interpolateVars(nl.emailSubjectDesigned, vars);
+  const actorName = await resolveActorName(actorUid, actorEmail ?? null);
   const ctaUrl = `${DASHBOARD_URL}/dashboard`;
   const html = buildEmailHtml({
     title: nl.designedTitle,
@@ -189,6 +218,7 @@ export async function notifyStageDesigned(opts: {
           caseId,
           caseRef,
           message,
+          actorName,
         });
         if (u.email) {
           await sendEmail({

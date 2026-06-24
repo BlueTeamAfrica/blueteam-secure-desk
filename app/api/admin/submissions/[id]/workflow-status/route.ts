@@ -129,7 +129,7 @@ export async function POST(request: NextRequest, context: RouteParams) {
         typeof workspaceCase.title === "string" && workspaceCase.title.trim()
           ? workspaceCase.title.trim()
           : undefined;
-      void notifyStageDesigned({ caseId: id, caseRef, caseTitle }).catch((e) =>
+      void notifyStageDesigned({ caseId: id, caseRef, caseTitle, actorUid: admin.uid, actorEmail: admin.adminEmail }).catch((e) =>
         console.error("[notifications] notifyStageDesigned failed", e),
       );
     }

@@ -70,15 +70,13 @@ function initAdmin() {
 
 // ── detection ─────────────────────────────────────────────────────────────────
 
-// Firestore auto-IDs: exactly 20 alphanumeric characters (no hyphens)
-const RAW_FIRESTORE_ID = /[A-Za-z0-9]{20}/;
-// Good format: CASE- followed by exactly 5 uppercase alphanumeric chars
-const CASE_REF = /CASE-[A-Z0-9]{5}/;
+// Valid case ref: CASE- followed by 4–6 uppercase letters/digits
+const CASE_REF = /CASE-[A-Z0-9]{4,6}/;
 
 function isBadNotification(data) {
   const msg = typeof data.message === "string" ? data.message : "";
-  // Contains a raw Firestore ID AND does not contain a proper CASE-XXXXX ref
-  return RAW_FIRESTORE_ID.test(msg) && !CASE_REF.test(msg);
+  // Bad = message does not contain a valid CASE-XXXXX ref
+  return !CASE_REF.test(msg);
 }
 
 // ── main ──────────────────────────────────────────────────────────────────────

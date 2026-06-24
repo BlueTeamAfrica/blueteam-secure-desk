@@ -5418,6 +5418,18 @@ a.exec-kpi:hover {
   line-height: 1.4;
 }
 
+.notif-actor {
+  font-size: 11px;
+  color: var(--text-tertiary, #999);
+  line-height: 1.3;
+}
+
+.notif-time {
+  font-size: 11px;
+  color: var(--text-tertiary, #999);
+  line-height: 1.3;
+}
+
 /* RTL bell panel — flip dropdown anchor */
 .dashboard-shell[dir="rtl"] .notif-panel {
   right: auto;

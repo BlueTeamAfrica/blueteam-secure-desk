@@ -13,9 +13,23 @@ type NotificationItem = {
   caseId: string;
   caseRef: string;
   message: string;
+  actorName: string | null;
   read: boolean;
   createdAt: { seconds: number } | null;
 };
+
+function relativeTime(
+  ts: { seconds: number } | null,
+  nl: { relativeTimeJustNow: string; relativeTimeMinutesAgo: string; relativeTimeHoursAgo: string; relativeTimeDaysAgo: string },
+): string | null {
+  if (!ts) return null;
+  const diffSec = Math.floor(Date.now() / 1000) - ts.seconds;
+  const sub = (t: string, n: number) => t.replace("{n}", String(n));
+  if (diffSec < 60) return nl.relativeTimeJustNow;
+  if (diffSec < 3600) return sub(nl.relativeTimeMinutesAgo, Math.floor(diffSec / 60));
+  if (diffSec < 86400) return sub(nl.relativeTimeHoursAgo, Math.floor(diffSec / 3600));
+  return sub(nl.relativeTimeDaysAgo, Math.floor(diffSec / 86400));
+}
 
 function BellIcon() {
   return (
@@ -42,6 +56,7 @@ export function NotificationBell() {
   // Real-time listener
   useEffect(() => {
     if (!uid) return;
+    console.log(`[NotificationBell] subscribing uid=${uid} path=notifications/${uid}/items`);
     const q = query(
       collection(db, "notifications", uid, "items"),
       orderBy("createdAt", "desc"),
@@ -59,6 +74,7 @@ export function NotificationBell() {
               caseId: typeof data.caseId === "string" ? data.caseId : "",
               caseRef: typeof data.caseRef === "string" ? data.caseRef : "",
               message: typeof data.message === "string" ? data.message : "",
+              actorName: typeof data.actorName === "string" ? data.actorName : null,
               read: data.read === true,
               createdAt: data.createdAt ?? null,
             };
@@ -152,6 +168,13 @@ export function NotificationBell() {
                 <li key={n.id} className={`notif-item${n.read ? "" : " notif-item--unread"}`}>
                   <span className="notif-ref">{n.caseRef}</span>
                   <span className="notif-msg">{n.message}</span>
+                  {n.actorName && nl?.byActor && (
+                    <span className="notif-actor">{nl.byActor} {n.actorName}</span>
+                  )}
+                  {nl && (() => {
+                    const t = relativeTime(n.createdAt, nl);
+                    return t ? <span className="notif-time">{t}</span> : null;
+                  })()}
                 </li>
               ))
             )}

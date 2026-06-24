@@ -109,7 +109,8 @@ export async function POST(request: NextRequest, context: RouteParams) {
     const caseRef = referenceFromId(id);
     const workspaceCase = normalizeSubmissionToCase(id, subSnap.data() ?? {});
     const caseTitle = workspaceCase.title.trim() || undefined;
-    void notifyAssignment({ caseId: id, caseRef, caseTitle, assigneeUid: uid }).catch((e) =>
+    console.log(`[assign-owner] notifyAssignment uid=${uid} path=notifications/${uid}/items`);
+    void notifyAssignment({ caseId: id, caseRef, caseTitle, assigneeUid: uid, actorUid: admin.uid, actorEmail: admin.adminEmail }).catch((e) =>
       console.error("[notifications] notifyAssignment failed", e),
     );
 
