@@ -482,7 +482,7 @@ export const arLabels: Partial<OrgLabels> = {
     emailViewCase: "عرض الحالة",
     emailFooter: "Secure Desk — غرفة أخبار Sudan Facts",
     byActor: "بواسطة:",
-    relativeTimeJustNow: "للتو",
+    relativeTimeJustNow: "الآن",
     relativeTimeMinutesAgo: "منذ {n} دقيقة",
     relativeTimeHoursAgo: "منذ {n} ساعة",
     relativeTimeDaysAgo: "منذ {n} يوم",

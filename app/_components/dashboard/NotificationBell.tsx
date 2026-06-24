@@ -164,19 +164,18 @@ export function NotificationBell() {
             {items.length === 0 ? (
               <li className="notif-empty">{nl?.emptyState ?? "No notifications yet"}</li>
             ) : (
-              items.map((n) => (
-                <li key={n.id} className={`notif-item${n.read ? "" : " notif-item--unread"}`}>
-                  <span className="notif-ref">{n.caseRef}</span>
-                  <span className="notif-msg">{n.message}</span>
-                  {n.actorName && nl?.byActor && (
-                    <span className="notif-actor">{nl.byActor} {n.actorName}</span>
-                  )}
-                  {nl && (() => {
-                    const t = relativeTime(n.createdAt, nl);
-                    return t ? <span className="notif-time">{t}</span> : null;
-                  })()}
-                </li>
-              ))
+              items.map((n) => {
+                const actorLine = n.actorName && nl?.byActor ? `${nl.byActor} ${n.actorName}` : null;
+                const timeLine = nl ? relativeTime(n.createdAt, nl) : null;
+                return (
+                  <li key={n.id} className={`notif-item${n.read ? "" : " notif-item--unread"}`}>
+                    <span className="notif-ref">{n.caseRef}</span>
+                    <span className="notif-msg">{n.message}</span>
+                    {actorLine && <span className="notif-actor">{actorLine}</span>}
+                    {timeLine && <span className="notif-time">{timeLine}</span>}
+                  </li>
+                );
+              })
             )}
           </ul>
         </div>
