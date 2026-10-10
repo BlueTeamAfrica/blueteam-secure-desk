@@ -1,5 +1,5 @@
 import { initializeApp, getApps, getApp } from "firebase/app";
-import { getFirestore } from "firebase/firestore";
+import { getFirestore, connectFirestoreEmulator } from "firebase/firestore";
 
 const config = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -13,3 +13,11 @@ const config = {
 const app = getApps().length ? getApp() : initializeApp(config);
 
 export const db = getFirestore(app);
+
+if (process.env.NEXT_PUBLIC_USE_FIREBASE_EMULATOR === "true") {
+  try {
+    connectFirestoreEmulator(db, "127.0.0.1", 8080);
+  } catch {
+    // Already connected (HMR re-evaluation) — safe to ignore
+  }
+}

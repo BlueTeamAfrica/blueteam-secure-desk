@@ -9,7 +9,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "seed:workspace-owner": "node scripts/seed-workspace-owner.mjs"
+    "seed:workspace-owner": "node scripts/seed-workspace-owner.mjs",
+    "seed:demo": "node scripts/seed-demo.mjs",
+    "dev:demo": "node scripts/generate-editorial-manifest.mjs && next dev"
   },
   "dependencies": {
     "@opentelemetry/api": "^1.9.1",

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist_Mono, Poppins } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/app/_components/auth/AuthContext";
+import { HtmlLangSync } from "@/app/_components/HtmlLangSync";
 import { getOrgSettings } from "@/app/_lib/org/getOrgSettings";
 
 const poppins = Poppins({
@@ -27,8 +28,9 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${poppins.variable} ${geistMono.variable}`}>
+    <html className={`${poppins.variable} ${geistMono.variable}`}>
       <body className={`${poppins.className} app-flex-col`}>
+        <HtmlLangSync />
         <AuthProvider>{children}</AuthProvider>
       </body>
     </html>

@@ -59,9 +59,18 @@ NEXT_PUBLIC_WORKSPACE_CONFIG_ID=        # "demoNgo" for demo tenant; omit/blank 
 Permission helpers: `mayAssignInUi`, `canAssignCasesInWorkspace`, `allowedCaseStatusTargets`, etc.
 Both API routes and UI components import from here — keep permission logic centralized, never duplicate it.
 
+## Component Trees
+Two parallel trees — do not mix concerns between them:
+- `app/_components/dashboard/` — auth-aware shell components: `SidebarNav`, `SidebarBrandHeader`, `UserMenu`, `CaseQueueContext`, `WorkspaceBrandingProvider`
+- `components/items/` — pure display components with no auth/context deps: `ItemCard` (CSS class prefix `rc-`), `ItemDetailPanel`, `ItemAssignmentPanel`, `ItemStatusBadge`, `ItemMetaRow`
+- `components/dashboard/` — view-level pages: `AssignmentsView`, `MyQueueView`
+
+`WorkspaceBrandingProvider` is the single source of truth for `{ labels, branding, locale, setLocale, dir }`. All shell and item components consume it via `useDashboardBranding()`.
+
 ## Data Model
 `app/_lib/caseWorkspaceModel.ts` is the central domain model:
 - Defines `WorkspaceCase` (normalized case shape), `CaseStatus`, `PriorityLevel`
+- `CaseStatus` canonical 7-value set: `incoming | raw | first_edit | second_edit | in_review | reviewed | designed`
 - All normalization helpers: `normalizeSubmissionToCase`, `normalizeCaseStatus`, etc.
 - Firestore `submissions` docs are raw and may carry legacy field names — all normalization goes here, not in components
 
@@ -93,6 +102,20 @@ Two parallel routing trees:
 - `scripts/generate-editorial-manifest.mjs` generates manifest consumed by `app/_lib/editorialImageManifest.ts`
 - Runs automatically before `dev` and `build`
 
+## i18n / RTL System
+- Supported locales: `en` (default), `ar`. Type: `SupportedLocale` in `app/_lib/i18n/useLocale.ts`.
+- Locale persisted in `localStorage` key `sd-locale`. Hydrates from storage after mount (avoids SSR mismatch).
+- Arabic string overrides: `app/_lib/i18n/ar.ts` — partial `OrgLabels`. Deep-merged in `applyLocaleToLabels()`.
+- `workflow` key is **never translated** — it carries routing data, not display strings.
+- `dir` (`"ltr"` | `"rtl"`) is derived from locale inside `useLocale()` and propagated via `WorkspaceBrandingProvider`.
+- `DashboardLayoutInner` applies `dir` + `lang` on the `.dashboard-shell` div, **not** on `<html>`. The root `app/layout.tsx` has static `lang="en"` on `<html>` — this is a known gap.
+- RTL DOM order: when `dir === "rtl"`, `dashColumnEl` renders before `sidebarEl` in the JSX so the sidebar physically lands on the right without fighting flex-direction overrides.
+- Adding a new locale: add override file in `app/_lib/i18n/`, import in `useLocale.ts`, add case in `applyLocaleToLabels`, add to `SUPPORTED` array.
+
+## Open RTL Bugs (as of 2026-06-09)
+1. **Sidebar width in AR mode** — The DOM order swap (RTL: dash-column first, then sidebar) is implemented, but the `.sidebar` CSS width may not survive correctly across breakpoints when the flex order changes. Inspect `.dashboard-shell` flex layout at 1024px+ in AR mode — sidebar may collapse or not fill its slot.
+2. **Case card flag strings not translated** — `ItemCard` (`components/items/ItemCard.tsx`) uses `dir="auto"` on `.rc-title` and `.rc-byline` (correct), but the hardcoded flag strings "No lead", "Overdue", "Due …" are English-only with no Arabic equivalents in `arLabels`. These strings need entries added to `OrgLabels` and `arLabels`, then consumed from `labels` in `ItemCard`.
+
 ## Relation to Other Projects
 - **Paired with `secure-reporter-app`** — reporters submit via mobile app, admins manage here
 - Shared Firebase project with app
@@ -106,6 +129,9 @@ Two parallel routing trees:
 - [ ] Verify Vercel env: use `/api/admin/debug/auth-check` (non-prod) to confirm `projectsMatch: true` before debugging 401s further
 - [ ] After rules deployed + env confirmed: full auth flow test — login → dashboard access → submission decryption → attachment download
 - [ ] Verify `adminUsers/{uid}.active` is correctly set for all admin accounts in production
+- [ ] Fix RTL sidebar width bug (see Open RTL Bugs above)
+- [ ] Translate ItemCard flag strings to Arabic and wire through labels (see Open RTL Bugs above)
+- [x] Propagate `lang`+`dir` to `<html>` dynamically — `HtmlLangSync` client component reads `sd-locale` on mount and patches `document.documentElement` (2026-06-09)
 
 ## Key Conventions
 - `requireActiveAdmin` must be enforced on every protected route — never relax without explicit review

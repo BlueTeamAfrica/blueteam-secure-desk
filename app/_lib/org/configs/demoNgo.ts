@@ -15,7 +15,7 @@ export const demoNgoWorkspaceConfig: WorkspaceConfig = {
     workspaceType: "Case Desk",
     dashboardTitle: "Demo NGO Case Desk",
     productOwner: "Blue Team Africa",
-    workspaceLogoPath: "/editorial/sf1.png",
+    workspaceLogoPath: "/editorial/demo-ngo-logo.svg",
   },
   labels: {
     itemSingular: "case",

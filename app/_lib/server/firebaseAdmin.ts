@@ -131,6 +131,15 @@ function getAdminApp(): App {
     return app;
   }
 
+  // When running against the local Firebase Emulator, skip real credentials —
+  // the emulator accepts any initialization and ignores auth tokens.
+  if (process.env.FIRESTORE_EMULATOR_HOST) {
+    const projectId = process.env.FIREBASE_PROJECT_ID ?? "demo-project";
+    console.warn("[firebase-admin] init_credential", { credentialMode: "emulator", projectId });
+    app = initializeApp({ projectId });
+    return app;
+  }
+
   const diag = getFirebaseAdminEnvDiagnostics();
   if (process.env.NODE_ENV !== "production") {
     console.warn("[firebase-admin] env_diagnostics", diag);
