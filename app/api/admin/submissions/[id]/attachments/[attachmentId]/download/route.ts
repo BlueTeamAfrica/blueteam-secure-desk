@@ -70,6 +70,14 @@ export async function GET(request: NextRequest, context: RouteParams) {
       );
 
     if (error || !data?.signedUrl) {
+      // Message + status only: never the storage path, file name or key.
+      const e = error as { message?: unknown; status?: unknown; statusCode?: unknown } | null;
+      console.error("[attachment-download] createSignedUrl failed", {
+        message: typeof e?.message === "string" ? e.message : null,
+        status: e?.status ?? null,
+        statusCode: e?.statusCode ?? null,
+        noSignedUrl: !error,
+      });
       return NextResponse.json({ error: "Could not generate download URL" }, { status: 500 });
     }
 
