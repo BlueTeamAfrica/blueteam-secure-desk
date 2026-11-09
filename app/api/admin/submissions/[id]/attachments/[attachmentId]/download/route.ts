@@ -12,6 +12,7 @@ import {
   workspaceUserContextFromAdmin,
 } from "@/app/_lib/server/submissionCaseAccess";
 import { fetchWorkspaceRole } from "@/app/_lib/server/workspaceRole";
+import { attachmentDownloadName } from "@/app/_lib/attachments/downloadFileName";
 
 export const runtime = "nodejs";
 
@@ -57,11 +58,26 @@ export async function GET(request: NextRequest, context: RouteParams) {
     if (!attachment.storagePath?.trim()) return jsonNotFound();
 
     const { client, bucket } = getSupabaseAdmin();
+    // Save under the reporter's original file name (Arabic included), not the stored object
+    // name. Older submissions carry the original name too; without a usable name, sign as before.
+    const downloadName = attachmentDownloadName(attachment.name);
     const { data, error } = await client.storage
       .from(bucket)
-      .createSignedUrl(attachment.storagePath, SIGNED_URL_EXPIRY_SECONDS);
+      .createSignedUrl(
+        attachment.storagePath,
+        SIGNED_URL_EXPIRY_SECONDS,
+        downloadName ? { download: downloadName } : undefined,
+      );
 
     if (error || !data?.signedUrl) {
+      // Message + status only: never the storage path, file name or key.
+      const e = error as { message?: unknown; status?: unknown; statusCode?: unknown } | null;
+      console.error("[attachment-download] createSignedUrl failed", {
+        message: typeof e?.message === "string" ? e.message : null,
+        status: e?.status ?? null,
+        statusCode: e?.statusCode ?? null,
+        noSignedUrl: !error,
+      });
       return NextResponse.json({ error: "Could not generate download URL" }, { status: 500 });
     }
 
