@@ -1,15 +1,19 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { collection, onSnapshot, orderBy, query, limit } from "firebase/firestore";
 import { db } from "@/app/_lib/firebase/firestore";
 import { useAuth } from "@/app/_components/auth/AuthContext";
 import { getFirebaseAuth } from "@/app/_lib/firebase/auth";
 import { useDashboardBranding } from "@/app/_components/dashboard/WorkspaceBrandingProvider";
 
+type NotificationType = "assigned" | "designed" | "new_submission";
+
 type NotificationItem = {
   id: string;
-  type: "assigned" | "designed";
+  type: NotificationType;
   caseId: string;
   caseRef: string;
   message: string;
@@ -31,6 +35,14 @@ function relativeTime(
   return sub(nl.relativeTimeDaysAgo, Math.floor(diffSec / 86400));
 }
 
+/** Older items stored an email as actorName; the bell shows names only. */
+function displayableActorName(name: string | null): string | null {
+  if (!name) return null;
+  const t = name.trim();
+  if (!t || t.includes("@")) return null;
+  return t;
+}
+
 function BellIcon() {
   return (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -45,6 +57,12 @@ export function NotificationBell() {
   const { labels } = useDashboardBranding();
   const nl = labels.notificationLabels;
   const uid = state.status === "signedInWorkspace" ? state.user.uid : null;
+  const pathname = usePathname() ?? "";
+  const basePath = pathname.startsWith("/sudanfacts") ? "/sudanfacts" : "/dashboard";
+  // Incoming list href from the workspace workflow config (same mapping as SidebarNav).
+  const incomingHref = (
+    labels.workflow.sidebarStageViews.find((v) => v.key === "new")?.href ?? "/dashboard?view=incoming"
+  ).replace(/^\/dashboard\b/, basePath);
 
   const [items, setItems] = useState<NotificationItem[]>([]);
   const [open, setOpen] = useState(false);
@@ -56,7 +74,7 @@ export function NotificationBell() {
   // Real-time listener
   useEffect(() => {
     if (!uid) return;
-    console.log(`[NotificationBell] subscribing uid=${uid} path=notifications/${uid}/items project=${db.app.options.projectId ?? "unknown"}`);
+    console.log(`[NotificationBell] subscribing path=notifications/{uid}/items project=${db.app.options.projectId ?? "unknown"}`);
     const q = query(
       collection(db, "notifications", uid, "items"),
       orderBy("createdAt", "desc"),
@@ -70,7 +88,7 @@ export function NotificationBell() {
             const data = d.data();
             return {
               id: d.id,
-              type: data.type as "assigned" | "designed",
+              type: data.type as NotificationType,
               caseId: typeof data.caseId === "string" ? data.caseId : "",
               caseRef: typeof data.caseRef === "string" ? data.caseRef : "",
               message: typeof data.message === "string" ? data.message : "",
@@ -165,10 +183,24 @@ export function NotificationBell() {
               <li className="notif-empty">{nl?.emptyState ?? "No notifications yet"}</li>
             ) : (
               items.map((n) => {
-                const actorLine = n.actorName && nl?.byActor ? `${nl.byActor} ${n.actorName}` : null;
+                const actorName = displayableActorName(n.actorName);
+                const actorLine = actorName && nl?.byActor ? `${nl.byActor} ${actorName}` : null;
                 const timeLine = nl ? relativeTime(n.createdAt, nl) : null;
+                const itemClass = `notif-item${n.read ? "" : " notif-item--unread"}`;
+                if (n.type === "new_submission") {
+                  // Fixed text from labels (follows the UI language); links to the incoming list, not a case.
+                  return (
+                    <li key={n.id} className={itemClass}>
+                      <Link href={incomingHref} className="notif-link" onClick={() => setOpen(false)}>
+                        <span className="notif-ref">{nl?.newSubmissionTitle ?? "New item"}</span>
+                        <span className="notif-msg">{nl?.newSubmissionBody ?? "A new item is waiting on the desk."}</span>
+                        {timeLine && <span className="notif-time">{timeLine}</span>}
+                      </Link>
+                    </li>
+                  );
+                }
                 return (
-                  <li key={n.id} className={`notif-item${n.read ? "" : " notif-item--unread"}`}>
+                  <li key={n.id} className={itemClass}>
                     <span className="notif-ref">{n.caseRef}</span>
                     <span className="notif-msg">{n.message}</span>
                     {actorLine && <span className="notif-actor">{actorLine}</span>}

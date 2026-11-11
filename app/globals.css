@@ -5412,6 +5412,16 @@ a.exec-kpi:hover {
   letter-spacing: 0.05em;
 }
 
+.notif-link {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  color: inherit;
+  text-decoration: none;
+  cursor: pointer;
+}
+.notif-link:focus-visible { outline: 2px solid var(--accent, #2563eb); outline-offset: 2px; }
+
 .notif-msg {
   font-size: 13px;
   color: var(--text);

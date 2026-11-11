@@ -404,6 +404,10 @@ export type WorkspaceNotificationLabels = {
   relativeTimeMinutesAgo: string;
   relativeTimeHoursAgo: string;
   relativeTimeDaysAgo: string;
+  /** Bell title for a new reporter submission (written by the Functions trigger). Fixed text, no case details. */
+  newSubmissionTitle: string;
+  /** Bell body for a new reporter submission. Fixed text, no case details. */
+  newSubmissionBody: string;
 };
 
 /** Flattened labels consumed across dashboard UI (back-compat shape). */

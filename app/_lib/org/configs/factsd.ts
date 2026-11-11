@@ -507,5 +507,7 @@ export const factsdWorkspaceConfig: WorkspaceConfig = {
     relativeTimeMinutesAgo: "{n}m ago",
     relativeTimeHoursAgo: "{n}h ago",
     relativeTimeDaysAgo: "{n}d ago",
+    newSubmissionTitle: "New item",
+    newSubmissionBody: "A new item is waiting on the desk.",
   },
 };

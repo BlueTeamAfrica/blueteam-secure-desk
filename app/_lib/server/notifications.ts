@@ -123,25 +123,25 @@ async function sendNotificationEmail(
 
 /**
  * Resolves a display name for the actor who triggered a notification.
- * Checks Firestore users/{uid}.displayName first, then Firebase Auth, then falls back to email.
+ * Firestore users/{uid}.displayName first, then the Firebase Auth displayName.
+ * Never falls back to an email: the bell shows names only, so no name ⇒ null (no "By:" line).
  */
-async function resolveActorName(uid: string, fallbackEmail: string | null): Promise<string | null> {
+async function resolveActorName(uid: string): Promise<string | null> {
   const db = getAdminFirestore();
   try {
     const snap = await db.collection("users").doc(uid).get();
     if (snap.exists) {
       const data = snap.data() as WorkspaceUserProfile;
-      if (typeof data.displayName === "string" && data.displayName.trim()) {
+      if (typeof data.displayName === "string" && data.displayName.trim() && !data.displayName.includes("@")) {
         return data.displayName.trim();
       }
     }
   } catch { /* non-fatal */ }
   try {
     const u = await getAdminAuth().getUser(uid);
-    if (u.displayName) return u.displayName;
-    if (u.email) return u.email;
+    if (u.displayName && u.displayName.trim() && !u.displayName.includes("@")) return u.displayName.trim();
   } catch { /* non-fatal */ }
-  return fallbackEmail;
+  return null;
 }
 
 /**
@@ -213,14 +213,15 @@ export async function notifyAssignment(opts: {
   /** Already-resolved email from the calling route — skips a second Firestore + Auth lookup. */
   assigneeEmail?: string | null;
   actorUid: string;
+  /** Accepted for call-site compatibility; no longer used (actor shown by name only). */
   actorEmail?: string | null;
 }): Promise<void> {
-  const { caseId, caseRef, assigneeUid, assigneeEmail, actorUid, actorEmail } = opts;
+  const { caseId, caseRef, assigneeUid, assigneeEmail, actorUid } = opts;
   const nl = getNotificationLabels();
   const vars = { ref: caseRef };
 
   const message = interpolateVars(nl.assignedBody, vars);
-  const actorName = await resolveActorName(actorUid, actorEmail ?? null);
+  const actorName = await resolveActorName(actorUid);
 
   // In-app bell and email are independent: a failed bell write no longer suppresses the email,
   // and each outcome is logged separately.
@@ -267,9 +268,10 @@ export async function notifyStageDesigned(opts: {
   caseRef: string;
   caseTitle?: string;
   actorUid: string;
+  /** Accepted for call-site compatibility; no longer used (actor shown by name only). */
   actorEmail?: string | null;
 }): Promise<void> {
-  const { caseId, caseRef, actorUid, actorEmail } = opts;
+  const { caseId, caseRef, actorUid } = opts;
   const nl = getNotificationLabels();
   const vars = { ref: caseRef };
 
@@ -288,7 +290,7 @@ export async function notifyStageDesigned(opts: {
 
   const message = interpolateVars(nl.designedBody, vars);
   const subject = interpolateVars(nl.emailSubjectDesigned, vars);
-  const actorName = await resolveActorName(actorUid, actorEmail ?? null);
+  const actorName = await resolveActorName(actorUid);
   const ctaUrl = `${DASHBOARD_URL}/dashboard`;
   const html = buildEmailHtml({
     title: nl.designedTitle,
