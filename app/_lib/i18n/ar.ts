@@ -486,7 +486,7 @@ export const arLabels: Partial<OrgLabels> = {
     relativeTimeMinutesAgo: "منذ {n} دقيقة",
     relativeTimeHoursAgo: "منذ {n} ساعة",
     relativeTimeDaysAgo: "منذ {n} يوم",
-    newSubmissionTitle: "عنصر جديد",
-    newSubmissionBody: "عنصر جديد بانتظاركم على المكتب.",
+    newSubmissionTitle: "مادة جديدة",
+    newSubmissionBody: "وصلت مادة جديدة إلى المكتب.",
   },
 };
