@@ -56,7 +56,7 @@ export function NotificationBell() {
   // Real-time listener
   useEffect(() => {
     if (!uid) return;
-    console.log(`[NotificationBell] subscribing uid=${uid} path=notifications/${uid}/items`);
+    console.log(`[NotificationBell] subscribing uid=${uid} path=notifications/${uid}/items project=${db.app.options.projectId ?? "unknown"}`);
     const q = query(
       collection(db, "notifications", uid, "items"),
       orderBy("createdAt", "desc"),

@@ -20,18 +20,19 @@ export type EmailPayload = {
   html: string;
 };
 
+export type SendEmailResult = { status: "sent" } | { status: "skipped"; reason: "no_api_key" };
+
 /**
  * Sends a transactional email via Resend.
- * Returns silently on missing API key (useful in dev without credentials).
+ * Returns { status: "skipped" } on missing API key (useful in dev without credentials).
  * Throws on send error so callers can decide whether to swallow it.
+ * Never logs the recipient address.
  */
-export async function sendEmail(payload: EmailPayload): Promise<void> {
+export async function sendEmail(payload: EmailPayload): Promise<SendEmailResult> {
   const resend = getResend();
   if (!resend) {
-    if (process.env.NODE_ENV !== "production") {
-      console.warn("[sendEmail] RESEND_API_KEY not set — skipping email to", payload.to);
-    }
-    return;
+    console.warn("[sendEmail] RESEND_API_KEY not set — email skipped");
+    return { status: "skipped", reason: "no_api_key" };
   }
 
   const { error } = await resend.emails.send({
@@ -43,8 +44,9 @@ export async function sendEmail(payload: EmailPayload): Promise<void> {
   });
 
   if (error) {
-    throw new Error(`Resend error: ${error.message}`);
+    throw new Error(`Resend error name=${error.name} status=${error.statusCode ?? "n/a"}: ${error.message}`);
   }
+  return { status: "sent" };
 }
 
 /** Replaces {ref} placeholder in a label string. */

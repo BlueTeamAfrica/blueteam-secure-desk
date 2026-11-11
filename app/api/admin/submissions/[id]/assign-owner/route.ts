@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse, after } from "next/server";
 import { FieldValue } from "firebase-admin/firestore";
 import { normalizeWorkspaceRole } from "@/app/_lib/rbac";
 import { canAssignItem } from "@/app/_lib/workflow/permissions";
@@ -101,7 +101,7 @@ export async function POST(request: NextRequest, context: RouteParams) {
       /* audit failure must not block assignment */
     }
 
-    // Notify the assignee — fire-and-forget; never blocks assignment response.
+    // Notify the assignee — via after(); never blocks or fails the assignment response.
     // Always derive caseRef from the doc ID via referenceFromId — the mobile app never
     // writes a referenceCode field, so the Firestore field can contain the raw doc ID
     // (set by earlier pipeline versions). referenceFromId is the dashboard's canonical
@@ -109,10 +109,17 @@ export async function POST(request: NextRequest, context: RouteParams) {
     const caseRef = referenceFromId(id);
     const workspaceCase = normalizeSubmissionToCase(id, subSnap.data() ?? {});
     const caseTitle = workspaceCase.title.trim() || undefined;
-    console.log(`[assign-owner] notifyAssignment uid=${uid} path=notifications/${uid}/items`);
-    void notifyAssignment({ caseId: id, caseRef, caseTitle, assigneeUid: uid, actorUid: admin.uid, actorEmail: admin.adminEmail }).catch((e) =>
-      console.error("[notifications] notifyAssignment failed", e),
-    );
+    // after(): runs once the response is sent, but Vercel keeps the function alive until it
+    // finishes (waitUntil), so the bell write and email can no longer be cut off by a freeze.
+    after(async () => {
+      console.log("[assign-owner] notifyAssignment start path=notifications/{uid}/items");
+      try {
+        await notifyAssignment({ caseId: id, caseRef, caseTitle, assigneeUid: uid, actorUid: admin.uid, actorEmail: admin.adminEmail });
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        console.error(`[notifications] notifyAssignment failed message=${msg.replace(/[^\s@]+@[^\s@]+/g, "<redacted>")}`);
+      }
+    });
 
     // Refresh OneDrive DOCX with assignment changelog entry — fire-and-forget.
     void refreshSubmissionDocxInOneDrive(id, {

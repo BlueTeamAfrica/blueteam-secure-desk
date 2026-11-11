@@ -5,6 +5,8 @@ import { getAuth, type Auth } from "firebase-admin/auth";
 import { getFirestore, type Firestore } from "firebase-admin/firestore";
 
 let app: App | undefined;
+/** Project ID the Admin SDK was initialised with (not secret; safe to log). */
+let adminProjectId: string | null = null;
 
 /** Preferred on Vercel: full service account JSON, base64-encoded (no PEM newline issues). */
 export const FIREBASE_SERVICE_ACCOUNT_BASE64_ENV = "FIREBASE_SERVICE_ACCOUNT_BASE64";
@@ -136,6 +138,7 @@ function getAdminApp(): App {
   if (process.env.FIRESTORE_EMULATOR_HOST) {
     const projectId = process.env.FIREBASE_PROJECT_ID ?? "demo-project";
     console.warn("[firebase-admin] init_credential", { credentialMode: "emulator", projectId });
+    adminProjectId = projectId;
     app = initializeApp({ projectId });
     return app;
   }
@@ -166,6 +169,7 @@ function getAdminApp(): App {
       });
     }
 
+    adminProjectId = fromB64.projectId;
     app = initializeApp({
       credential: cert({
         projectId: fromB64.projectId,
@@ -204,6 +208,7 @@ function getAdminApp(): App {
     });
   }
 
+  adminProjectId = projectId;
   app = initializeApp({
     credential: cert({
       projectId,
@@ -212,6 +217,15 @@ function getAdminApp(): App {
     }),
   });
   return app;
+}
+
+/**
+ * Firebase project ID the Admin SDK writes to. Initialises the app if needed.
+ * Falls back to app.options.projectId when the app was created elsewhere.
+ */
+export function getAdminProjectId(): string {
+  const a = getAdminApp();
+  return adminProjectId ?? a.options.projectId ?? "unknown";
 }
 
 export function getAdminAuth(): Auth {

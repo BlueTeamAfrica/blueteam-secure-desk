@@ -1,7 +1,7 @@
 import "server-only";
 
 import { FieldValue } from "firebase-admin/firestore";
-import { getAdminAuth, getAdminFirestore } from "@/app/_lib/server/firebaseAdmin";
+import { getAdminAuth, getAdminFirestore, getAdminProjectId } from "@/app/_lib/server/firebaseAdmin";
 import { buildEmailHtml, interpolateVars, sendEmail } from "@/app/_lib/server/sendEmail";
 import { applyLocaleToLabels } from "@/app/_lib/i18n/applyLocaleToLabels";
 import { getOrgLabels } from "@/app/_lib/org/getOrgLabels";
@@ -48,15 +48,77 @@ function rolesThatCanTargetStatus(status: CaseStatus): WorkspaceRole[] {
   );
 }
 
-/** Writes one notification doc to notifications/{uid}/items/{auto-id}. */
-async function writeNotification(uid: string, record: Omit<NotificationRecord, "createdAt" | "read">): Promise<void> {
-  const db = getAdminFirestore();
-  const ref = await db
-    .collection("notifications")
-    .doc(uid)
-    .collection("items")
-    .add({ ...record, read: false, createdAt: FieldValue.serverTimestamp() });
-  console.log(`[notifications] wrote ${record.type} notification path=notifications/${uid}/items/${ref.id}`);
+const BELL_PATH_PATTERN = "notifications/{uid}/items";
+
+/** Never let an address slip into logs via a provider error message. */
+function redact(text: string): string {
+  return text.replace(/[^\s@<>"']+@[^\s@<>"']+/g, "<redacted>");
+}
+
+/** Extracts a Firestore/gRPC error code + message without dumping the whole error object. */
+function describeError(e: unknown): { code: string; message: string } {
+  const code =
+    e && typeof e === "object" && "code" in e ? String((e as { code: unknown }).code) : "none";
+  const message = e instanceof Error ? e.message : String(e);
+  return { code, message: redact(message) };
+}
+
+function projectIdForLog(): string {
+  try {
+    return getAdminProjectId();
+  } catch {
+    return "uninitialised";
+  }
+}
+
+/**
+ * Writes one notification doc to notifications/{uid}/items/{auto-id}.
+ * Never throws: logs success/failure (path pattern + project only, no IDs) and returns whether it worked.
+ */
+async function writeNotification(
+  uid: string,
+  record: Omit<NotificationRecord, "createdAt" | "read">,
+): Promise<boolean> {
+  try {
+    const db = getAdminFirestore();
+    await db
+      .collection("notifications")
+      .doc(uid)
+      .collection("items")
+      .add({ ...record, read: false, createdAt: FieldValue.serverTimestamp() });
+    console.log(
+      `[notifications] bell_write ok type=${record.type} path=${BELL_PATH_PATTERN} project=${projectIdForLog()}`,
+    );
+    return true;
+  } catch (e) {
+    const { code, message } = describeError(e);
+    console.error(
+      `[notifications] bell_write FAILED type=${record.type} path=${BELL_PATH_PATTERN} project=${projectIdForLog()} code=${code} message=${message}`,
+    );
+    return false;
+  }
+}
+
+/** Sends one email and logs the outcome (never the address or content). Never throws. */
+async function sendNotificationEmail(
+  type: NotificationType,
+  payload: Parameters<typeof sendEmail>[0] | null,
+): Promise<void> {
+  if (!payload) {
+    console.warn(`[notifications] email SKIPPED type=${type} reason=no_recipient_email`);
+    return;
+  }
+  try {
+    const result = await sendEmail(payload);
+    if (result.status === "sent") {
+      console.log(`[notifications] email ok type=${type}`);
+    } else {
+      console.warn(`[notifications] email SKIPPED type=${type} reason=${result.reason}`);
+    }
+  } catch (e) {
+    const { code, message } = describeError(e);
+    console.error(`[notifications] email FAILED type=${type} code=${code} message=${message}`);
+  }
 }
 
 /**
@@ -82,7 +144,10 @@ async function resolveActorName(uid: string, fallbackEmail: string | null): Prom
   return fallbackEmail;
 }
 
-/** Fetches all active workspace users from `users` collection. */
+/**
+ * Fetches all active workspace users from `users` collection.
+ * Email comes from users/{uid}.email, falling back to the Firebase Auth record (same as assignment).
+ */
 async function fetchAllActiveUsers(): Promise<Array<{ uid: string; email: string | null; role: WorkspaceRole }>> {
   const db = getAdminFirestore();
   const snap = await db.collection("users").get();
@@ -96,6 +161,18 @@ async function fetchAllActiveUsers(): Promise<Array<{ uid: string; email: string
       typeof data.email === "string" && data.email.trim() ? data.email.trim() : null;
     results.push({ uid: doc.id, email, role });
   }
+  await Promise.all(
+    results.map(async (r) => {
+      if (r.email) return;
+      try {
+        const u = await getAdminAuth().getUser(r.uid);
+        if (u.email) r.email = u.email;
+      } catch (e) {
+        const { code } = describeError(e);
+        console.warn(`[notifications] auth_email_lookup FAILED code=${code}`);
+      }
+    }),
+  );
   return results;
 }
 
@@ -116,8 +193,9 @@ async function fetchUserEmail(uid: string): Promise<string | null> {
   try {
     const u = await getAdminAuth().getUser(uid);
     if (u.email) return u.email;
-  } catch {
-    /* Auth user lookup failure is non-fatal */
+  } catch (e) {
+    const { code } = describeError(e);
+    console.warn(`[notifications] auth_email_lookup FAILED code=${code}`);
   }
   return null;
 }
@@ -125,7 +203,7 @@ async function fetchUserEmail(uid: string): Promise<string | null> {
 /**
  * Trigger 1: case assigned to a user.
  * Writes one in-app notification for the assignee and sends them an email.
- * Fire-and-forget from the route — errors are logged but never surface to the client.
+ * Runs in the route's after() callback — errors are logged but never surface to the client.
  */
 export async function notifyAssignment(opts: {
   caseId: string;
@@ -144,7 +222,8 @@ export async function notifyAssignment(opts: {
   const message = interpolateVars(nl.assignedBody, vars);
   const actorName = await resolveActorName(actorUid, actorEmail ?? null);
 
-  // In-app notification
+  // In-app bell and email are independent: a failed bell write no longer suppresses the email,
+  // and each outcome is logged separately.
   await writeNotification(assigneeUid, {
     type: "assigned",
     caseId,
@@ -155,31 +234,33 @@ export async function notifyAssignment(opts: {
 
   // Email — use caller-supplied email if already known; otherwise look it up.
   const email = assigneeEmail ?? await fetchUserEmail(assigneeUid);
-  if (email) {
-    const subject = interpolateVars(nl.emailSubjectAssigned, vars);
-    const ctaUrl = `${DASHBOARD_URL}/dashboard`;
-    await sendEmail({
-      to: email,
-      subject,
-      text: `${nl.assignedTitle}\n\n${message}\n\n${ctaUrl}\n\n${nl.emailFooter}`,
-      html: buildEmailHtml({
-        title: nl.assignedTitle,
-        body: message,
-        ctaLabel: nl.emailViewCase,
-        ctaUrl,
-        footer: nl.emailFooter,
-        dir: "rtl",
-        lang: "ar",
-      }),
-    });
-  }
+  const ctaUrl = `${DASHBOARD_URL}/dashboard`;
+  await sendNotificationEmail(
+    "assigned",
+    email
+      ? {
+          to: email,
+          subject: interpolateVars(nl.emailSubjectAssigned, vars),
+          text: `${nl.assignedTitle}\n\n${message}\n\n${ctaUrl}\n\n${nl.emailFooter}`,
+          html: buildEmailHtml({
+            title: nl.assignedTitle,
+            body: message,
+            ctaLabel: nl.emailViewCase,
+            ctaUrl,
+            footer: nl.emailFooter,
+            dir: "rtl",
+            lang: "ar",
+          }),
+        }
+      : null,
+  );
 }
 
 /**
  * Trigger 2: case moved to "designed" stage.
  * Notifies all active workspace users whose role can target the "designed" stage
  * (derived from allowedCaseStatusTargets — currently owner + admin).
- * Fire-and-forget from the route.
+ * Runs in the route's after() callback.
  */
 export async function notifyStageDesigned(opts: {
   caseId: string;
@@ -195,6 +276,15 @@ export async function notifyStageDesigned(opts: {
   const eligibleRoles = new Set(rolesThatCanTargetStatus("designed"));
   const allUsers = await fetchAllActiveUsers();
   const recipients = allUsers.filter((u) => eligibleRoles.has(u.role));
+  if (recipients.length === 0) {
+    console.warn(
+      `[notifications] designed ZERO_RECIPIENTS activeUsers=${allUsers.length} eligibleRoles=${[...eligibleRoles].join(",")} project=${projectIdForLog()}`,
+    );
+    return;
+  }
+  console.log(
+    `[notifications] designed recipients=${recipients.length} withEmail=${recipients.filter((u) => u.email).length}`,
+  );
 
   const message = interpolateVars(nl.designedBody, vars);
   const subject = interpolateVars(nl.emailSubjectDesigned, vars);
@@ -212,25 +302,24 @@ export async function notifyStageDesigned(opts: {
 
   await Promise.all(
     recipients.map(async (u) => {
-      try {
-        await writeNotification(u.uid, {
-          type: "designed",
-          caseId,
-          caseRef,
-          message,
-          actorName,
-        });
-        if (u.email) {
-          await sendEmail({
-            to: u.email,
-            subject,
-            text: `${nl.designedTitle}\n\n${message}\n\n${ctaUrl}\n\n${nl.emailFooter}`,
-            html,
-          });
-        }
-      } catch (e) {
-        console.error(`[notifications] notifyStageDesigned failed for uid=${u.uid}`, e);
-      }
+      await writeNotification(u.uid, {
+        type: "designed",
+        caseId,
+        caseRef,
+        message,
+        actorName,
+      });
+      await sendNotificationEmail(
+        "designed",
+        u.email
+          ? {
+              to: u.email,
+              subject,
+              text: `${nl.designedTitle}\n\n${message}\n\n${ctaUrl}\n\n${nl.emailFooter}`,
+              html,
+            }
+          : null,
+      );
     }),
   );
 }

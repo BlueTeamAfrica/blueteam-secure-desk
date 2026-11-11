@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse, after } from "next/server";
 import { FieldValue } from "firebase-admin/firestore";
 import type { CaseStatus } from "@/app/_lib/caseWorkspaceModel";
 import { normalizeCaseStatus } from "@/app/_lib/caseWorkspaceModel";
@@ -119,7 +119,7 @@ export async function POST(request: NextRequest, context: RouteParams) {
       /* audit failure must not block */
     }
 
-    // Notify all eligible users when a case reaches the designed stage — fire-and-forget.
+    // Notify all eligible users when a case reaches the designed stage — via after(), never blocks the response.
     if (target === "designed") {
       const caseRef =
         typeof workspaceCase.referenceCode === "string" && workspaceCase.referenceCode.trim()
@@ -129,9 +129,15 @@ export async function POST(request: NextRequest, context: RouteParams) {
         typeof workspaceCase.title === "string" && workspaceCase.title.trim()
           ? workspaceCase.title.trim()
           : undefined;
-      void notifyStageDesigned({ caseId: id, caseRef, caseTitle, actorUid: admin.uid, actorEmail: admin.adminEmail }).catch((e) =>
-        console.error("[notifications] notifyStageDesigned failed", e),
-      );
+      after(async () => {
+        console.log("[workflow-status] notifyStageDesigned start");
+        try {
+          await notifyStageDesigned({ caseId: id, caseRef, caseTitle, actorUid: admin.uid, actorEmail: admin.adminEmail });
+        } catch (e) {
+          const msg = e instanceof Error ? e.message : String(e);
+          console.error(`[notifications] notifyStageDesigned failed message=${msg.replace(/[^\s@]+@[^\s@]+/g, "<redacted>")}`);
+        }
+      });
     }
 
     // Mirror the stage change in OneDrive (move existing file, or upload fresh).
